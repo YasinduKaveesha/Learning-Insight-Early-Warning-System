@@ -164,3 +164,39 @@ def test_migration_seeds_the_one_model_version() -> None:
     assert '"model_version": "1.0.0"' in source
     assert "019f000be16f533630b6e5d3215bf86597745a725cb13c5b989d03f45769db15" in source
     assert '"sklearn_version": "1.9.0"' in source
+
+
+def _seed_row() -> dict[str, object]:
+    """The single dict passed to `op.bulk_insert` for `t3_model_versions`.
+
+    Only string/int constants are resolved; a value written as a parenthesised string
+    literal is still a single `ast.Constant` after parsing, so the SHA comes through whole.
+    """
+
+    (insert,) = _calls("bulk_insert")
+    rows = insert.args[1]
+    assert isinstance(rows, ast.List) and len(rows.elts) == 1, "expected exactly one seed row"
+    row = rows.elts[0]
+    assert isinstance(row, ast.Dict)
+    out: dict[str, object] = {}
+    for key, value in zip(row.keys, row.values):
+        if isinstance(key, ast.Constant) and isinstance(value, ast.Constant):
+            out[key.value] = value.value
+    return out
+
+
+def test_gate7_seed_artefact_identity_tracks_the_loader_constants() -> None:
+    """Gate 7: the provenance record the DB stores and the checksum the loader verifies must
+    not drift. Import the loader constants -- never retype them here."""
+
+    from app.infrastructure.model_loading import ARTEFACT_FILENAME, ARTEFACT_SHA256
+
+    seed = _seed_row()
+    assert seed["artefact_sha256"] == ARTEFACT_SHA256, (
+        "seeded t3_model_versions.artefact_sha256 has drifted from "
+        "model_loading.ARTEFACT_SHA256"
+    )
+    assert seed["artefact_filename"] == ARTEFACT_FILENAME, (
+        "seeded t3_model_versions.artefact_filename has drifted from "
+        "model_loading.ARTEFACT_FILENAME"
+    )
