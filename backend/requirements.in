@@ -1,0 +1,15 @@
+# Component 3 backend -- requires Python 3.11 (see environment.yml / conda env c3-ews).
+# scikit-learn is pinned to the version the primary artefact was pickled under (decision
+# D18). Do not bump it without re-verifying the golden vector.
+scikit-learn==1.9.0
+numpy==2.4.6
+scipy==1.17.1
+
+fastapi
+uvicorn[standard]
+pydantic>=2
+pydantic-settings
+joblib
+pandas
+pytest
+httpx
