@@ -7,8 +7,7 @@ what make the autogenerate guard-check meaningful:
 * B3.3 -- `t3_panel` (one row per learner per intervention session),
   `t3_features_at_t` (the model input matrix, one row per `(student_id, t)`).
 * B3.4 -- `t3_predictions` (the model output), `t3_model_versions` (the model card).
-
-Still not created here: `t3_recommendations` (that is B3.5).
+* B3.5 -- `t3_recommendations` (the teacher-facing recommendation envelope; schema only).
 """
 
 from __future__ import annotations
@@ -35,6 +34,8 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import desc as sa_desc
+from sqlalchemy import text as sa_text
+from sqlalchemy.sql.elements import conv
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -141,6 +142,11 @@ class Panel(ProvenanceCoreMixin, Base):
     `pipeline_run_id` is part of the primary key, carries the FK to `t3_pipeline_runs`, and
     serves as the sixth reduced-provenance column -- so the class mixes in only the five
     non-key provenance columns (`ProvenanceCoreMixin`), the same pattern as `t3_pipeline_runs`.
+
+    Migration 0005 (work order B4) adds five nullable columns: the source-payload ids
+    (`intervention_session_id`, `b_session_id`, `c_session_id`) and the two Component C
+    safety guards (`c_session_technical_issue_flag`, `c_inactive_time_sec`). The primary key
+    is unchanged.
     """
 
     __tablename__ = "t3_panel"
@@ -170,6 +176,14 @@ class Panel(ProvenanceCoreMixin, Base):
     b_present: Mapped[bool] = mapped_column(Boolean, nullable=False)
     c_present: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
+    # Source-payload identifiers (migration 0005). Stored as varchar to match the source
+    # type ("STU-0001-I-001" etc.), not uuid. The primary key is unchanged -- these are
+    # carried for provenance and cross-reference, not as the key (docs/04 section 4's
+    # (student_id, intervention_session_id) key is deliberately NOT adopted).
+    intervention_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    b_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    c_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     # Component B -- all nullable (b_present may be false).
     b_accuracy_rate: Mapped[float | None] = mapped_column(REAL, nullable=True)
     b_total_questions: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -197,6 +211,12 @@ class Panel(ProvenanceCoreMixin, Base):
     c_telemetry_quality_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     c_current_difficulty_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     c_difficulty_trend: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    # Component C safety guards (migration 0005). A technical fault must never be rendered
+    # as disengagement (backend_plan.md section 3); c_telemetry_quality_status alone cannot
+    # separate the two, so the raw flag and the inactivity figure are carried explicitly.
+    c_session_technical_issue_flag: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    c_inactive_time_sec: Mapped[float | None] = mapped_column(REAL, nullable=True)
 
     pipeline_run_id: Mapped[uuid.UUID] = mapped_column(
         PgUUID(as_uuid=True),
@@ -391,4 +411,118 @@ class ModelVersion(ProvenanceMixin, Base):
     limitations: Mapped[list] = mapped_column(JSONB, nullable=False)
     deployed_at_utc: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+# B7's author must see this: trigger.evidence must never contain `population`, `dd_subtype`,
+# any latent trait, or any cluster label (docs/13 "Evidence constraints"; rule 3-F1).
+_TRIGGER_COMMENT = (
+    "Why the recommendation was raised, with its evidence ({type, evidence}). "
+    "trigger.evidence must NEVER contain population, dd_subtype, any latent trait, or any "
+    "cluster label (docs/13; rule 3-F1). Enforcement is B7's job."
+)
+
+
+class Recommendation(ProvenanceCoreMixin, Base):
+    """`t3_recommendations` -- the teacher-facing recommendation envelope (plan section 4.6;
+    `docs/13`). One row per recommendation, keyed by `recommendation_id`.
+
+    SCHEMA ONLY. The state machine, the transition service, expiry logic and every endpoint
+    are B7. Here they are columns, five CHECK constraints and one partial unique index.
+
+    Two constraints carry the weight and must not be relaxed or moved into a service:
+
+    * **`ck_t3_reco_ethical_gate`** -- a recommendation that is `pending` or `dismissed`
+      must never have applied a change to Component B or C (SF-027, rule 3-F5). It is a
+      database constraint, not application logic, on purpose: a new endpoint added later
+      cannot bypass it.
+    * **`uq_t3_reco_active`** -- at most one *active* recommendation per
+      `(student_id, target_component)`. Partial, not total: a `dismissed` recommendation
+      must not block a new one for the same learner and target.
+
+    D10: there is NO write-back path. `b_applied_at_intervention_session` /
+    `c_applied_at_intervention_session` exist for a future in which write-back is approved
+    and stay NULL for all of v1. There is NO CHECK enumerating the four `proposed_action`
+    kinds -- the vocabulary is closed by decision (D7), not by schema. There is NO
+    trigger -> action mapping -- D7 froze the vocabulary, not the mapping.
+
+    `pipeline_run_id` carries the FK to `t3_pipeline_runs` (a recommendation is a pipeline
+    output, the same choice as `t3_panel` / `t3_features_at_t` / `t3_predictions`) and is
+    the sixth reduced-provenance column, so only `ProvenanceCoreMixin` is mixed in.
+    """
+
+    __tablename__ = "t3_recommendations"
+    __table_args__ = (
+        CheckConstraint(
+            "target_component IN ('B', 'C', 'both')",
+            name=conv("ck_t3_reco_target"),
+        ),
+        CheckConstraint(
+            "teacher_status IN ('pending', 'accepted', 'dismissed', 'modified')",
+            name=conv("ck_t3_reco_status"),
+        ),
+        CheckConstraint(
+            "expires_after_session <= issued_at_intervention_session + 5",
+            name=conv("ck_t3_reco_expiry"),
+        ),
+        CheckConstraint(
+            "(teacher_modified_action IS NOT NULL) = (teacher_status = 'modified')",
+            name=conv("ck_t3_reco_modified"),
+        ),
+        CheckConstraint(
+            "teacher_status IN ('accepted', 'modified') "
+            "OR (b_applied_at_intervention_session IS NULL "
+            "AND c_applied_at_intervention_session IS NULL)",
+            name=conv("ck_t3_reco_ethical_gate"),
+        ),
+        source_class_check(),
+        Index(
+            "uq_t3_reco_active",
+            "student_id",
+            "target_component",
+            unique=True,
+            postgresql_where=sa_text(
+                "teacher_status IN ('pending', 'accepted', 'modified')"
+            ),
+        ),
+    )
+
+    recommendation_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), primary_key=True
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey(
+            "b_learners.learner_id",
+            name="fk_t3_recommendations_student_id_b_learners",
+        ),
+        nullable=False,
+    )
+    issued_at_intervention_session: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_after_session: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_component: Mapped[str] = mapped_column(String(8), nullable=False)
+    trigger: Mapped[dict] = mapped_column(JSONB, nullable=False, comment=_TRIGGER_COMMENT)
+    proposed_action: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    evidence_summary: Mapped[str] = mapped_column(String(280), nullable=False)
+    teacher_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="pending"
+    )
+    teacher_modified_action: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    decided_at_utc: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # D10: no write-back path in v1. NULL for all of v1; the ethical gate governs them.
+    b_applied_at_intervention_session: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    c_applied_at_intervention_session: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    pipeline_run_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey(
+            "t3_pipeline_runs.pipeline_run_id",
+            name="fk_t3_recommendations_pipeline_run_id_t3_pipeline_runs",
+        ),
+        nullable=False,
     )

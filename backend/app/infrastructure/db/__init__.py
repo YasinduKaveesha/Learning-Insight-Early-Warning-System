@@ -14,6 +14,7 @@ from app.infrastructure.db.models import (
     Panel,
     Prediction,
     PipelineRun,
+    Recommendation,
     b_learners,
     classrooms,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "Panel",
     "Prediction",
     "PipelineRun",
+    "Recommendation",
     "ProvenanceCoreMixin",
     "ProvenanceMixin",
     "b_learners",
