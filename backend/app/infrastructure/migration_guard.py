@@ -20,7 +20,16 @@ test can run in CI with no database.
 
 from __future__ import annotations
 
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from app.infrastructure.db_url import is_pooler_url, normalise_async_url, redact_url
+
+__all__ = [
+    "assert_direct_connection",
+    "component3_include_object",
+    "is_pooler_url",
+    "normalise_async_url",
+    "owns_table_name",
+    "redact_url",
+]
 
 T3_PREFIX = "t3_"
 
@@ -72,49 +81,9 @@ def component3_include_object(
 
 
 # --------------------------------------------------------------------------------------
-# Connection-string handling. Full normalisation (ssl translation, pooler cache disabling)
-# lands with the database work order; B3.1 needs only the driver rewrite, the sslmode strip
-# so asyncpg does not choke, and the pooler refusal.
+# Connection-string handling lives in ``db_url`` -- imported above and re-exported so the
+# Alembic env and callers keep a single import site. Pooler detection must not be duplicated.
 # --------------------------------------------------------------------------------------
-
-_ASYNC_SCHEME = "postgresql+asyncpg"
-
-
-def normalise_async_url(url: str) -> str:
-    """Force the asyncpg driver and drop the libpq-only ``sslmode`` query parameter.
-
-    ``sslmode`` is valid in ``psql`` but asyncpg raises ``TypeError: connect() got an
-    unexpected keyword argument 'sslmode'`` on it (backend_plan.md section 2).
-    """
-
-    parts = urlsplit(url)
-    scheme = parts.scheme
-    if scheme in ("postgres", "postgresql", "postgresql+psycopg2", "postgresql+psycopg"):
-        scheme = _ASYNC_SCHEME
-    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != "sslmode"]
-    return urlunsplit((scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
-
-
-def is_pooler_url(url: str) -> bool:
-    """True if the URL points at the Supabase transaction pooler (port 6543 / ``pooler`` host)."""
-
-    parts = urlsplit(url)
-    host = (parts.hostname or "").lower()
-    try:
-        port = parts.port
-    except ValueError:
-        port = None
-    return port == 6543 or "pooler" in host
-
-
-def redact_url(url: str) -> str:
-    """``scheme://***:***@host:port/db`` -- safe to print."""
-
-    parts = urlsplit(url)
-    host = parts.hostname or "?"
-    port = f":{parts.port}" if parts.port else ""
-    auth = "***:***@" if (parts.username or parts.password) else ""
-    return f"{parts.scheme}://{auth}{host}{port}{parts.path}"
 
 
 def assert_direct_connection(url: str) -> None:

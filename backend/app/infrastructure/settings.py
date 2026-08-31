@@ -6,6 +6,7 @@ see backend_plan.md section 2.
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from typing import Annotated
 
@@ -22,7 +23,12 @@ class Settings(BaseSettings):
     api_port: int = Field(validation_alias="API_PORT")
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
 
+    # Two URLs by design (backend_plan.md section 2): migrations and the loader run on the
+    # direct connection (port 5432); the API runs on the transaction pooler (port 6543).
     database_url: str = Field(validation_alias="DATABASE_URL")
+    database_url_pooled: str | None = Field(
+        default=None, validation_alias="DATABASE_URL_POOLED"
+    )
     # NoDecode: pydantic-settings otherwise JSON-decodes complex-typed fields from the raw env
     # string before any field_validator runs, which would reject a plain comma-separated list.
     cors_allowed_origins: Annotated[list[str], NoDecode] = Field(
@@ -54,6 +60,19 @@ class Settings(BaseSettings):
     @classmethod
     def _upper_log_level(cls, value: str) -> str:
         return value.upper()
+
+    @property
+    def api_database_url(self) -> str:
+        """The URL the API engine should use: the pooled one, or the direct one with a
+        logged notice when `DATABASE_URL_POOLED` is unset. No engine is wired here."""
+
+        if self.database_url_pooled:
+            return self.database_url_pooled
+        logging.getLogger(__name__).info(
+            "DATABASE_URL_POOLED is unset; the API will use the direct DATABASE_URL "
+            "(no transaction pooler). Set DATABASE_URL_POOLED (port 6543) in production."
+        )
+        return self.database_url
 
 
 @lru_cache
