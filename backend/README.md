@@ -72,3 +72,85 @@ pytest
 
 Run the golden vector first (`tests/test_golden_vector.py`) -- if it does not reproduce,
 feature construction is wrong; fix that before trusting anything else.
+
+## Live database gates (work order B0.1)
+
+Four test files reach a real Postgres and are skipped whole unless `T3_LIVE_DB_URL` is set
+and the `c3-ews` env has the DB deps installed: `test_t3_live_schema.py`, `test_t3_loader.py`
+(its end-to-end case), `test_t3_predictions_live.py`, `test_t3_recommendations_live.py`.
+
+### 1. Install the pinned DB deps into `c3-ews`
+
+```powershell
+conda run -n c3-ews python -m pip install "alembic==1.16.4" "SQLAlchemy==2.0.43" "asyncpg==0.30.0"
+```
+
+These are already pinned in `requirements.txt`; this just gets them into the conda env
+(pip-installed, not conda-installed -- do not let this bump scikit-learn).
+
+### 2. Bring the database up with a published port
+
+`Upadya/Dev/backend/compose.yaml` (owned by another team) deliberately does not publish the
+`db` service's port -- the `c3-ews` env runs on the host, not in a container, so it cannot
+reach an unpublished port. Component 3 adds a port with a separate, opt-in override file
+instead of editing that compose file:
+
+```powershell
+Set-Location "...\Upadya\Dev\backend"
+docker compose -f compose.yaml -f "...\Learning-Insight-Early-Warning-System\backend\docker\compose.c3-test-db.yaml" up -d db
+```
+
+This publishes `db` on `127.0.0.1:55432` only while the override `-f` is passed. A plain
+`docker compose up` (no override) never publishes a port. Verify either state with
+`docker port upadya-be1-db-1`.
+
+### 3. THE TARGET DATABASE IS `upadya_test`, NEVER `upadya`
+
+`upadya` is the student app's live-looking dev database -- the one Component 3's own tests,
+Alembic downgrades, and the loader would happily wipe or corrupt if pointed at it (this
+project has already had a shared database wiped once). `upadya_test` is a separate, disposable
+database on the same Postgres server, created once via
+`CREATE DATABASE upadya_test OWNER upadya;` and intended to be migrated, mutated and reset
+freely. Every live test file, and the loader's manual invocation, must target it:
+
+```
+T3_LIVE_DB_URL=postgresql://upadya:local-development-only@127.0.0.1:55432/upadya_test
+```
+
+A shared guard, `tests/_live_db_target_guard.py`, enforces this: every live test module calls
+`assert_safe_live_target(T3_LIVE_DB_URL)` before any test in it can run. It refuses (printing
+the REDACTED host/db first) if the URL names any database other than `upadya_test`, or if it
+looks like the Supabase transaction pooler (port 6543 or a `pooler` host). This is a test-only
+module and does not affect `app/infrastructure/migration_guard.py` or `migrations/env.py`.
+
+### 4. Migrate `upadya_test` to head
+
+```powershell
+Set-Location "...\Learning-Insight-Early-Warning-System\backend"
+$env:DATABASE_URL = "postgresql://upadya:local-development-only@127.0.0.1:55432/upadya_test"
+conda run -n c3-ews python -m alembic upgrade head
+```
+
+### 5. Run the live gates
+
+```powershell
+$env:T3_LIVE_DB_URL = "postgresql://upadya:local-development-only@127.0.0.1:55432/upadya_test"
+conda run -n c3-ews python -m pytest -q --no-header
+```
+
+The four DB test files now run instead of skipping. Only the full-dataset golden-vector test
+(`T3_RESEARCH_PANEL_PATH` unset) still skips by design.
+
+### Known gap: the loader's default resolver has no live match in `upadya_test`
+
+`app/application/t3_loader.SqlLearnerResolver` matches the research dataset's `student_id`
+(`"STU-0001"`, ...) against `b_learners.name` by default -- documented in its own docstring as
+"the seam" for live-integration wiring, not yet connected. `upadya_test`'s `b_learners.name`
+values are unrelated test-fixture names, so running
+`python -m app.application.t3_loader` (or `SqlLearnerResolver` at all) against `upadya_test`
+today aborts with `LearnerResolutionError` for all 300 research learners -- correctly, and
+with zero panel rows written, but it means the "`t3_panel` has exactly 7,500 rows" demonstration
+cannot be produced against this database as currently seeded. Wiring a real correspondence (or
+seeding 300 matching `b_learners` rows in `upadya_test`) is a live-integration / fixture-data
+decision outside this work order's scope (no application logic, no schema change) -- see the
+B0.1 report for the smaller-scale demonstration used in its place.

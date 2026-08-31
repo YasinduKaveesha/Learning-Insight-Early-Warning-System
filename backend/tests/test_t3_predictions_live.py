@@ -24,6 +24,12 @@ from sqlalchemy.exc import IntegrityError  # noqa: E402
 from sqlalchemy.ext.asyncio import create_async_engine  # noqa: E402
 
 _LIVE_URL = os.environ.get("T3_LIVE_DB_URL")
+
+if _LIVE_URL:
+    from tests._live_db_target_guard import assert_safe_live_target
+
+    assert_safe_live_target(_LIVE_URL)
+
 pytestmark = pytest.mark.skipif(
     not _LIVE_URL,
     reason="set T3_LIVE_DB_URL to a direct (5432) Postgres URL to run the live B3.4 gates",
