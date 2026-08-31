@@ -45,7 +45,7 @@ export function ClassKeyDisplay({
     <div>
       <p
         aria-label={spelledOut}
-        className={`rounded-lg bg-slate-100 text-center font-mono font-semibold tracking-[0.3em] text-slate-900 ${textSizeClass}`}
+        className={`rounded-lg bg-surface2 text-center font-mono font-semibold tracking-[0.3em] text-ink-primary ${textSizeClass}`}
       >
         {classKey}
       </p>
@@ -54,7 +54,7 @@ export function ClassKeyDisplay({
           type="button"
           onClick={handleCopy}
           aria-live="polite"
-          className="mt-3 min-h-[44px] w-full rounded-lg border border-slate-300 text-sm font-medium text-slate-800"
+          className="mt-3 min-h-[44px] w-full rounded-lg border border-border-strong text-sm font-medium text-ink-primary"
         >
           {copied ? "Copied" : "Copy key"}
         </button>

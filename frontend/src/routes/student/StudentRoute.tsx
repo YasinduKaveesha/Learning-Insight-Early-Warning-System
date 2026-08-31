@@ -63,22 +63,22 @@ export default function StudentRoute() {
         <Link
           to={overviewQuery.data ? `/classes/${overviewQuery.data.snapshot.classId}` : "/classes"}
           aria-label="Back"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-slate-700"
+          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
         >
           ←
         </Link>
-        <h1 className="text-base font-semibold text-slate-900">
+        <h1 className="text-base font-semibold text-ink-primary">
           {isPending ? "" : (overviewQuery.data?.snapshot.displayName ?? "Student")}
         </h1>
       </header>
 
-      <div className="flex gap-4 border-b border-slate-200 text-sm">
-        <span className="border-b-2 border-slate-900 pb-2 font-medium text-slate-900">
+      <div className="flex gap-4 border-b border-border text-sm">
+        <span className="border-b-2 border-foreground pb-2 font-medium text-ink-primary">
           Overview
         </span>
         <Link
           to={studentId ? `/students/${studentId}/sessions` : "#"}
-          className="pb-2 text-slate-500"
+          className="pb-2 text-ink-secondary"
         >
           Sessions
         </Link>
@@ -145,7 +145,7 @@ export default function StudentRoute() {
           <section>
             <SectionHeader title="Suggestions" />
             {recommendations.length === 0 ? (
-              <p className="text-sm text-slate-500">No suggestions right now.</p>
+              <p className="text-sm text-ink-secondary">No suggestions right now.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {recommendations.map((r) => (
@@ -190,12 +190,12 @@ function StatusAndWhy({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4">
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4">
       <WatchStatusBadge status={status} />
       {status.kind === "watching" && status.priority !== null ? (
         <PriorityBadge priority={status.priority} context={`in ${className}`} />
       ) : (
-        <p className="text-xs text-slate-500">{SNAPSHOT_FRAMING}</p>
+        <p className="text-xs text-ink-secondary">{SNAPSHOT_FRAMING}</p>
       )}
       <ExplanationBlock explanation={snapshot.explanation} />
     </div>

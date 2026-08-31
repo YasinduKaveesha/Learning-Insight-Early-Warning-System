@@ -56,11 +56,11 @@ export default function ClassroomRequestsRoute() {
         <Link
           to={classId ? `/classes/${classId}` : "/classes"}
           aria-label="Back to class"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-slate-700"
+          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
         >
           ←
         </Link>
-        <h1 className="text-base font-semibold text-slate-900">Join Requests</h1>
+        <h1 className="text-base font-semibold text-ink-primary">Join Requests</h1>
       </header>
       <FramingLine />
 
@@ -105,10 +105,10 @@ function RequestCard({
   onReject: (requestId: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4">
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4">
       <div>
-        <p className="text-sm font-semibold text-slate-900">{request.studentDisplayName}</p>
-        <p className="text-xs text-slate-500">Requested {formatDate(request.requestedDate)}</p>
+        <p className="text-sm font-semibold text-ink-primary">{request.studentDisplayName}</p>
+        <p className="text-xs text-ink-secondary">Requested {formatDate(request.requestedDate)}</p>
       </div>
 
       {/* Approve / Reject: ≥44px, NEVER ADJACENT, distinguished by label —
@@ -120,15 +120,19 @@ function RequestCard({
         <button
           type="button"
           onClick={() => onApprove(request.requestId)}
-          className="min-h-[44px] w-full rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white"
+          className="min-h-[44px] w-full rounded-lg bg-primary px-3 text-sm font-bold text-foreground"
         >
           Approve
         </button>
-        <div className="border-t border-slate-200 pt-3">
+        <div className="border-t border-border pt-3">
+          {/* danger.soft + foreground text — reserved for genuinely
+              destructive actions (docs/12 §7); dangerForeground/danger
+              measures only 3.52:1 (fails AA), so text stays on the safe
+              dark foreground token, never white-on-red. */}
           <button
             type="button"
             onClick={() => onReject(request.requestId)}
-            className="min-h-[44px] w-full rounded-lg px-3 text-sm font-medium text-slate-600 underline underline-offset-2"
+            className="min-h-[44px] w-full rounded-lg bg-danger-soft px-3 text-sm font-medium text-foreground underline underline-offset-2"
           >
             Reject
           </button>

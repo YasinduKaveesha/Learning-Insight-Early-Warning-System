@@ -44,23 +44,23 @@ export default function StudentSessionsRoute() {
         <Link
           to={studentId ? `/students/${studentId}` : "/classes"}
           aria-label="Back"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-slate-700"
+          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
         >
           ←
         </Link>
-        <h1 className="text-base font-semibold text-slate-900">
+        <h1 className="text-base font-semibold text-ink-primary">
           {overviewQuery.data?.snapshot.displayName ?? "Student"}
         </h1>
       </header>
 
-      <div className="flex gap-4 border-b border-slate-200 text-sm">
+      <div className="flex gap-4 border-b border-border text-sm">
         <Link
           to={studentId ? `/students/${studentId}` : "/classes"}
-          className="pb-2 text-slate-400"
+          className="pb-2 text-ink-secondary"
         >
           Overview
         </Link>
-        <span className="border-b-2 border-slate-900 pb-2 font-medium text-slate-900">
+        <span className="border-b-2 border-foreground pb-2 font-medium text-ink-primary">
           Sessions
         </span>
       </div>

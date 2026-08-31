@@ -18,7 +18,7 @@ describe("SkillProgressRow", () => {
     );
     expect(screen.getByText("Not enough data")).toBeInTheDocument();
     // No bar element should exist at all — not even a zero-width one.
-    expect(container.querySelector(".bg-slate-500")).toBeNull();
+    expect(container.querySelector(".bg-foreground")).toBeNull();
   });
 
   it("a real relativeLevel renders a bar, no number or percentage label", () => {
@@ -34,7 +34,7 @@ describe("SkillProgressRow", () => {
         bounds={{ min: -0.5, max: 0.5 }}
       />,
     );
-    const bar = container.querySelector(".bg-slate-500");
+    const bar = container.querySelector(".bg-foreground");
     expect(bar).not.toBeNull();
     expect(container.textContent).not.toMatch(/\d+%/);
     expect(container.textContent).not.toMatch(/0\.\d+/); // no raw relativeLevel number

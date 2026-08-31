@@ -14,7 +14,7 @@ export function LoadingSkeleton({ rows = 3, rowHeight = 72 }: LoadingSkeletonPro
         <div
           key={i}
           style={{ height: rowHeight }}
-          className="animate-pulse rounded-lg bg-slate-200"
+          className="animate-pulse rounded-lg bg-surface3"
         />
       ))}
     </div>

@@ -1,4 +1,5 @@
 import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
+import { chart } from "../../theme/tokens";
 
 export interface ChartProps {
   title: string;
@@ -20,7 +21,7 @@ export function Chart({ title, values, trendSentence }: ChartProps) {
   const data = values.map((v, i) => ({ index: i, value: v }));
   return (
     <div>
-      <h3 className="text-sm font-medium text-slate-700">{title}</h3>
+      <h3 className="text-sm font-medium text-ink-primary">{title}</h3>
       {data.length >= 2 ? (
         <div style={{ width: "100%", height: 80 }} aria-hidden="true">
           <ResponsiveContainer>
@@ -29,7 +30,7 @@ export function Chart({ title, values, trendSentence }: ChartProps) {
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#0f172a"
+                stroke={chart.line}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -38,7 +39,7 @@ export function Chart({ title, values, trendSentence }: ChartProps) {
           </ResponsiveContainer>
         </div>
       ) : null}
-      <p className="text-sm text-slate-600">{trendSentence}</p>
+      <p className="text-sm text-ink-secondary">{trendSentence}</p>
     </div>
   );
 }

@@ -158,8 +158,8 @@ function noop() {
 
 function GallerySection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 border-b border-slate-200 pb-6">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">{title}</h2>
+    <section className="flex flex-col gap-3 border-b border-border pb-6">
+      <h2 className="text-sm font-bold uppercase tracking-wide text-ink-secondary">{title}</h2>
       {children}
     </section>
   );
@@ -168,7 +168,7 @@ function GallerySection({ title, children }: { title: string; children: React.Re
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs text-slate-400">{label}</p>
+      <p className="text-xs text-ink-secondary">{label}</p>
       {children}
     </div>
   );
@@ -260,13 +260,13 @@ export default function GalleryRoute() {
       </GallerySection>
 
       <GallerySection title="Dialogs">
-        <button type="button" onClick={() => setDialogOpen("key")} className="min-h-[44px] rounded-lg border border-slate-300 px-3 text-sm">
+        <button type="button" onClick={() => setDialogOpen("key")} className="min-h-[44px] rounded-lg border border-border-strong px-3 text-sm">
           Open ClassKeyDialog
         </button>
-        <button type="button" onClick={() => setDialogOpen("info")} className="min-h-[44px] rounded-lg border border-slate-300 px-3 text-sm">
+        <button type="button" onClick={() => setDialogOpen("info")} className="min-h-[44px] rounded-lg border border-border-strong px-3 text-sm">
           Open ClassInfoDialog
         </button>
-        <button type="button" onClick={() => setDialogOpen("create")} className="min-h-[44px] rounded-lg border border-slate-300 px-3 text-sm">
+        <button type="button" onClick={() => setDialogOpen("create")} className="min-h-[44px] rounded-lg border border-border-strong px-3 text-sm">
           Open CreateClassDialog
         </button>
         <ClassKeyDialog isOpen={dialogOpen === "key"} onClose={() => setDialogOpen(null)} className="Grade 3 Blue" classKey="7K4P92" />

@@ -59,24 +59,24 @@ export function Dialog({ isOpen, onClose, titleId, title, children }: DialogProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 sm:items-center">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface1 p-5 shadow-elevated sm:rounded-2xl"
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+          <h2 id={titleId} className="text-lg font-semibold text-ink-primary">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-secondary hover:bg-surface2"
           >
             ✕
           </button>

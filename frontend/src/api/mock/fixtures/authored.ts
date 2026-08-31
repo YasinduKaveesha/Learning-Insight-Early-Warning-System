@@ -495,7 +495,6 @@ const PARTICIPATION_BUCKETS = [
 
 export interface ClassReportsData {
   classLearningProgress: { sessionNumbers: number[]; values: number[] };
-  studentsToWatchOverTime: { sessionNumbers: number[]; counts: number[] };
   earlyWarningTrend: { sessionNumbers: number[]; flagRates: number[]; explanation: string };
   participation: { bucketLabel: string; studentCount: number }[];
 }
@@ -529,27 +528,21 @@ export function classReportsFor(classId: string): ClassReportsData {
       .length,
   }));
 
-  // Students to watch over time: THERE IS NO real per-class longitudinal
-  // watch-count in the research artefacts — only one current-t snapshot per
-  // class was ever computed (Step 3). This is the real, cohort-wide
-  // flag-rate curve (56_early_detection_curve.csv, same curve the
-  // Early-warning trend section shows) scaled to this class's own roster
-  // size and rounded to a whole student count. It is an APPROXIMATION,
-  // clearly derived from real data rather than invented from nothing, but
-  // it is not a measured per-class trend — flagged here and in the Step 7
-  // report rather than presented as more precise than it is.
-  const rosterSize = roster.length;
-  const studentsToWatchOverTime = {
-    sessionNumbers: EARLY_WARNING_TREND.map((p) => p.sessionNumber),
-    counts: EARLY_WARNING_TREND.map((p) => Math.round(p.flagRate * rosterSize)),
-  };
+  // "Students to watch over time" (plan §4.6) is NOT computed here (Step 8
+  // review): there is no real per-class longitudinal watch-count in any
+  // Step 3 artefact — only one current-t snapshot per class was ever
+  // computed. A prior version of this function scaled the early-warning
+  // curve by roster size to fill that gap; that produced two charts on one
+  // screen drawn from the same series, which reads as corroborating
+  // evidence it isn't (docs/12 §7: never falsely confident). See
+  // ClassReportsResponse's doc comment in api/client.ts. The route renders
+  // an honest "not enough history yet" state for that section instead.
 
   return {
     classLearningProgress: {
       sessionNumbers: progressValues.map((_, i) => i + 1),
       values: progressValues,
     },
-    studentsToWatchOverTime,
     earlyWarningTrend: {
       sessionNumbers: EARLY_WARNING_TREND.map((p) => p.sessionNumber),
       flagRates: EARLY_WARNING_TREND.map((p) => p.flagRate),

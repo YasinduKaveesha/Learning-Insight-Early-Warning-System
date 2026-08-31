@@ -8,22 +8,22 @@ export interface StatTileProps {
 
 export function StatTile({ label, value, caption, infoText }: StatTileProps) {
   return (
-    <div className="flex min-h-[44px] flex-col gap-1 rounded-lg border border-slate-200 bg-white p-3">
-      <div className="flex items-center gap-1 text-xs font-medium text-slate-500">
+    <div className="flex min-h-[44px] flex-col gap-1 rounded-lg border border-border bg-surface1 p-3">
+      <div className="flex items-center gap-1 text-xs font-medium text-ink-secondary">
         <span>{label}</span>
         {infoText ? (
           <span
             role="img"
             aria-label={infoText}
             title={infoText}
-            className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[10px] leading-none text-slate-500"
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-border-strong text-[10px] leading-none text-ink-secondary"
           >
             i
           </span>
         ) : null}
       </div>
-      <div className="text-2xl font-semibold text-slate-900">{value}</div>
-      {caption ? <div className="text-xs text-slate-500">{caption}</div> : null}
+      <div className="text-2xl font-semibold text-ink-primary">{value}</div>
+      {caption ? <div className="text-xs text-ink-secondary">{caption}</div> : null}
     </div>
   );
 }

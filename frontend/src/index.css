@@ -1,3 +1,11 @@
+/* Self-hosted Nunito (Step 8) — @fontsource, not a Google Fonts runtime
+   request. Weights: 600 (body, this brand's default — deliberately not
+   400), 700 (bold), 800 (display), 900 (heavy). */
+@import "@fontsource/nunito/600.css";
+@import "@fontsource/nunito/700.css";
+@import "@fontsource/nunito/800.css";
+@import "@fontsource/nunito/900.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,4 +19,25 @@ body,
 body {
   margin: 0;
   overflow-x: hidden;
+  /* The brand's body weight is 600, not the browser default 400 — see
+     tailwind.config.js's fontFamily/fontSize comments and the Step 8
+     report. Utility classes (font-bold, font-extrabold, ...) still apply
+     normally on top of this for headings and emphasis. Colour comes
+     through the Tailwind theme layer (@apply), never a raw hex — same
+     rule as every component. */
+  font-weight: 600;
+  @apply bg-background font-sans text-ink-primary;
+}
+
+/* Ported focusRing token, applied in ONE place rather than per-component.
+   MEASURED AND FLAGGED (see src/theme/tokens.ts and the Step 8 report):
+   focusRing (#3ca6f8) alone measures ~2.4-2.6:1 against background/surface1,
+   below WCAG 1.4.11's 3:1 non-text-contrast threshold for a focus
+   indicator. The 2px offset below adds a visible gap against the
+   underlying surface, which helps in practice, but the ring colour alone
+   does not clear 3:1 — ported as given, not silently strengthened. */
+@layer base {
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-focus-ring;
+  }
 }

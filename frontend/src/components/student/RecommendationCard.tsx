@@ -28,20 +28,20 @@ export function RecommendationCard({
   const modifyFieldId = useId();
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4">
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-900">
+        <span className="text-sm font-semibold text-ink-primary">
           {recommendationLabel(recommendation.kind)} — {recommendation.targetSkillDisplayName}
         </span>
       </div>
 
       {/* Evidence shown WITH the action, never behind a tap (docs/12 §6). */}
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-ink-primary">
         <span className="font-medium">Why: </span>
         {recommendation.evidenceSummary}
       </p>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-secondary">
         {recommendation.status === "pending" ? "Not yet applied" : statusLabel(recommendation)}
         {" · "}
         Expires after session {recommendation.expiresAfterSession}
@@ -49,14 +49,14 @@ export function RecommendationCard({
 
       {isModifying ? (
         <div className="flex flex-col gap-2">
-          <label htmlFor={modifyFieldId} className="text-xs font-medium text-slate-700">
+          <label htmlFor={modifyFieldId} className="text-xs font-medium text-ink-primary">
             What should this be changed to?
           </label>
           <textarea
             id={modifyFieldId}
             value={modifiedText}
             onChange={(e) => setModifiedText(e.target.value)}
-            className="min-h-[44px] rounded-lg border border-slate-300 p-2 text-sm"
+            className="min-h-[44px] rounded-lg border border-border-strong p-2 text-sm"
           />
           <div className="flex gap-2">
             <button
@@ -66,14 +66,14 @@ export function RecommendationCard({
                 setIsModifying(false);
               }}
               disabled={modifiedText.trim().length === 0}
-              className="min-h-[44px] flex-1 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white disabled:opacity-40"
+              className="min-h-[44px] flex-1 rounded-lg bg-primary px-3 text-sm font-bold text-foreground disabled:opacity-40"
             >
               Save change
             </button>
             <button
               type="button"
               onClick={() => setIsModifying(false)}
-              className="min-h-[44px] rounded-lg border border-slate-300 px-3 text-sm"
+              className="min-h-[44px] rounded-lg border border-border-strong px-3 text-sm"
             >
               Cancel
             </button>
@@ -95,22 +95,27 @@ export function RecommendationCard({
           <button
             type="button"
             onClick={() => onAccept(recommendation.recommendationId)}
-            className="min-h-[44px] w-full rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white"
+            className="min-h-[44px] w-full rounded-lg bg-primary px-3 text-sm font-bold text-foreground"
           >
             Accept
           </button>
           <button
             type="button"
             onClick={() => setIsModifying(true)}
-            className="min-h-[44px] w-full rounded-lg border-2 border-slate-400 px-3 text-sm font-semibold text-slate-800"
+            className="min-h-[44px] w-full rounded-lg border-2 border-border-strong px-3 text-sm font-semibold text-ink-primary"
           >
             Modify
           </button>
-          <div className="mt-2 border-t border-slate-200 pt-3">
+          <div className="mt-2 border-t border-border pt-3">
+            {/* danger.soft + foreground text, never a bare danger-red fill
+                or red text — reserved for genuinely destructive actions
+                (docs/12 §7), and dangerForeground/danger measures only
+                3.52:1 (fails AA), so the text stays on the safe dark
+                foreground token instead of white-on-red. */}
             <button
               type="button"
               onClick={() => onDismiss(recommendation.recommendationId)}
-              className="min-h-[44px] w-full rounded-lg px-3 text-sm font-medium text-slate-600 underline underline-offset-2"
+              className="min-h-[44px] w-full rounded-lg bg-danger-soft px-3 text-sm font-medium text-foreground underline underline-offset-2"
             >
               Dismiss
             </button>

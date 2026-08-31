@@ -65,7 +65,7 @@ export default function ClassroomRoute() {
         <Link
           to="/classes"
           aria-label="Back to classes"
-          className="flex h-11 min-w-[44px] items-center gap-1 text-sm font-medium text-slate-700"
+          className="flex h-11 min-w-[44px] items-center gap-1 text-sm font-medium text-ink-primary"
         >
           ← {isPending ? "" : (data?.className ?? "Class")}
         </Link>
@@ -74,7 +74,7 @@ export default function ClassroomRoute() {
           aria-label="Class info"
           onClick={() => setIsInfoOpen(true)}
           disabled={!data}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-slate-700 disabled:opacity-40"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary disabled:opacity-40"
         >
           ⓘ
         </button>
@@ -127,7 +127,7 @@ export default function ClassroomRoute() {
           {data.pendingRequestCount > 0 ? (
             <Link
               to={`/classes/${classId}/requests`}
-              className="flex min-h-[44px] items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700"
+              className="flex min-h-[44px] items-center justify-between rounded-lg border border-border bg-surface2 px-3 text-sm text-ink-primary"
             >
               <span>
                 ⚑ {data.pendingRequestCount} join request

@@ -66,7 +66,7 @@ export default function HomeRoute() {
             setNameError(undefined);
             setIsCreateOpen(true);
           }}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-xl text-slate-700"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-xl text-ink-primary"
         >
           ⊕
         </button>
@@ -74,7 +74,7 @@ export default function HomeRoute() {
         <Link
           to="/profile"
           aria-label="Profile"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-slate-700"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
           ◯
         </Link>
@@ -153,7 +153,7 @@ export default function HomeRoute() {
           </div>
 
           <section>
-            <h2 className="px-1 py-2 text-base font-semibold text-slate-900">Your Classes</h2>
+            <h2 className="px-1 py-2 text-base font-semibold text-ink-primary">Your Classes</h2>
             {data.classes.length === 0 ? (
               <button
                 type="button"
@@ -161,7 +161,7 @@ export default function HomeRoute() {
                   setNameError(undefined);
                   setIsCreateOpen(true);
                 }}
-                className="flex min-h-[44px] w-full items-center justify-center rounded-lg border-2 border-dashed border-slate-300 p-6 text-sm font-medium text-slate-700"
+                className="flex min-h-[44px] w-full items-center justify-center rounded-lg border-2 border-dashed border-border-strong p-6 text-sm font-medium text-ink-primary"
               >
                 Create your first class to get started.
               </button>

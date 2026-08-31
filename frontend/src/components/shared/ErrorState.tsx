@@ -6,12 +6,12 @@ export interface ErrorStateProps {
 
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-6 text-center">
-      <p className="text-sm text-slate-600">{message}</p>
+    <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface2 p-6 text-center">
+      <p className="text-sm text-ink-secondary">{message}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="min-h-[44px] rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700"
+        className="min-h-[44px] rounded-lg border border-border-strong px-4 text-sm font-medium text-ink-primary"
       >
         Try again
       </button>

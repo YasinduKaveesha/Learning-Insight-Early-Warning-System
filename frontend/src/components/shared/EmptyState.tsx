@@ -5,8 +5,8 @@ export interface EmptyStateProps {
 
 export function EmptyState({ message }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 p-6 text-center">
-      <p className="text-sm text-slate-600">{message}</p>
+    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border-strong p-6 text-center">
+      <p className="text-sm text-ink-secondary">{message}</p>
     </div>
   );
 }

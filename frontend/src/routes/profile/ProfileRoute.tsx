@@ -19,7 +19,7 @@ export default function ProfileRoute() {
 
   return (
     <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
-      <h1 className="text-lg font-semibold text-slate-900">Profile</h1>
+      <h1 className="text-lg font-semibold text-ink-primary">Profile</h1>
 
       {isPending ? (
         <LoadingSkeleton rows={2} rowHeight={44} />
@@ -30,10 +30,10 @@ export default function ProfileRoute() {
         />
       ) : (
         <>
-          <p className="text-base text-slate-800">{data.teacherName}</p>
+          <p className="text-base text-ink-primary">{data.teacherName}</p>
           <button
             type="button"
-            className="mt-4 min-h-[44px] w-full rounded-lg border border-slate-300 text-sm font-medium text-slate-700"
+            className="mt-4 min-h-[44px] w-full rounded-lg border border-border-strong text-sm font-medium text-ink-primary"
           >
             Sign out
           </button>

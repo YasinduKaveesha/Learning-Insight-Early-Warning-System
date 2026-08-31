@@ -26,17 +26,14 @@ export function SkillProgressRow({ skill, bounds }: SkillProgressRowProps) {
   return (
     <div className="flex flex-col gap-1 py-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-800">{skill.displayName}</span>
-        <span className="text-xs text-slate-500">{skillDirectionLabel(skill.direction)}</span>
+        <span className="text-sm text-ink-primary">{skill.displayName}</span>
+        <span className="text-xs text-ink-secondary">{skillDirectionLabel(skill.direction)}</span>
       </div>
       {position === null ? (
-        <p className="text-xs text-slate-400">Not enough data</p>
+        <p className="text-xs text-ink-secondary">Not enough data</p>
       ) : (
-        <div className="h-2 w-full rounded-full bg-slate-100">
-          <div
-            className="h-2 rounded-full bg-slate-500"
-            style={{ width: `${position}%` }}
-          />
+        <div className="h-2 w-full rounded-full bg-surface2">
+          <div className="h-2 rounded-full bg-foreground" style={{ width: `${position}%` }} />
         </div>
       )}
     </div>
@@ -50,7 +47,7 @@ export interface SkillProgressListProps {
 
 export function SkillProgressList({ skills, bounds }: SkillProgressListProps) {
   return (
-    <div className="flex flex-col divide-y divide-slate-100">
+    <div className="flex flex-col divide-y divide-border">
       {skills.map((skill) => (
         <SkillProgressRow
           key={skill.skillId}

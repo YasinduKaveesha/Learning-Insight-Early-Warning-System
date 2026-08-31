@@ -29,14 +29,16 @@ describe("MockClient — getClassReports (Step 7)", () => {
     for (const term of FORBIDDEN_TERMS) expect(serialised).not.toContain(term);
   });
 
-  it("returns four real, non-empty sections for a class with a roster", async () => {
+  it("returns real, non-empty data for a class with a roster, and no dead studentsToWatchOverTime field", async () => {
     const client = new MockClient();
     const reports = await client.getClassReports("class-3blue");
     expect(reports.classLearningProgress.values.length).toBeGreaterThan(0);
-    expect(reports.studentsToWatchOverTime.counts.length).toBeGreaterThan(0);
     expect(reports.earlyWarningTrend.flagRates.length).toBeGreaterThan(0);
     expect(reports.participation.length).toBe(3);
     expect(reports.earlyWarningTrend.explanation.length).toBeGreaterThan(0);
+    // Step 8 fix: removed entirely, not just unused — no dead data left
+    // behind for a screen to accidentally render as a second chart.
+    expect(reports).not.toHaveProperty("studentsToWatchOverTime");
   });
 
   it("participation counts sum to no more than the class roster size", async () => {

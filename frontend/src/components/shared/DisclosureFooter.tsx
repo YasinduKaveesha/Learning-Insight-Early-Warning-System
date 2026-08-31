@@ -6,5 +6,5 @@ export interface DisclosureFooterProps {
 }
 
 export function DisclosureFooter({ disclosure }: DisclosureFooterProps) {
-  return <p className="px-4 py-3 text-center text-xs text-slate-400">{disclosure}</p>;
+  return <p className="px-4 py-3 text-center text-xs text-ink-secondary">{disclosure}</p>;
 }

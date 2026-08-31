@@ -6,5 +6,5 @@ import { FRAMING_LINE } from "../../lib/presentation";
  * can only happen in one place.
  */
 export function FramingLine() {
-  return <p className="text-sm font-medium text-slate-600">{FRAMING_LINE}</p>;
+  return <p className="text-sm font-medium text-ink-secondary">{FRAMING_LINE}</p>;
 }

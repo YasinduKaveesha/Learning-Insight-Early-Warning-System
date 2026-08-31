@@ -29,7 +29,7 @@ export function SearchField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder ?? label}
-        className="min-h-[44px] w-full rounded-lg border border-slate-300 px-3 text-base"
+        className="min-h-[44px] w-full rounded-lg border border-border-strong px-3 text-base"
       />
       {resultCount !== undefined ? (
         <p role="status" aria-live="polite" className="sr-only">

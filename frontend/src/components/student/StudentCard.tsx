@@ -21,15 +21,15 @@ export function StudentCard({ snapshot, onClick }: StudentCardProps) {
     <Wrapper
       onClick={onClick}
       type={onClick ? "button" : undefined}
-      className="flex w-full min-h-[44px] flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 text-left"
+      className="flex w-full min-h-[44px] flex-col gap-2 rounded-lg border border-border bg-surface1 p-3 text-left"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-semibold text-slate-900">{snapshot.displayName}</span>
+        <span className="text-sm font-semibold text-ink-primary">{snapshot.displayName}</span>
         <WatchStatusBadge status={status} />
       </div>
 
       {status.kind === "getting_started" ? (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-secondary">
           {status.sessionsCompleted} of {status.sessionsRequired} sessions
         </p>
       ) : (
@@ -39,7 +39,7 @@ export function StudentCard({ snapshot, onClick }: StudentCardProps) {
         </div>
       )}
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-ink-secondary">
         Last active {formatRelativeDate(snapshot.lastActiveDate)}
       </p>
     </Wrapper>

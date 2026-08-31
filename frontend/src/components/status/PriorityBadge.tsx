@@ -14,11 +14,11 @@ export interface PriorityBadgeProps {
 export function PriorityBadge({ priority, context }: PriorityBadgeProps) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-sm font-semibold text-slate-900">
+      <span className="text-sm font-semibold text-ink-primary">
         Priority {priority}
         {context ? ` ${context}` : ""}
       </span>
-      <span className="text-xs text-slate-500">{SNAPSHOT_FRAMING}</span>
+      <span className="text-xs text-ink-secondary">{SNAPSHOT_FRAMING}</span>
     </div>
   );
 }

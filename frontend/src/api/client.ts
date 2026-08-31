@@ -35,18 +35,29 @@ export interface CohortResponse {
 
 /**
  * PROVISIONAL, in the same spirit as CohortResponse's added fields (Step 5)
- * and PendingRequestDisplay (Step 6) — plan §4.6 names the four sections a
+ * and PendingRequestDisplay (Step 6) — plan §4.6 names the sections a
  * Reports screen must have, but there is no reports endpoint or response
- * spec behind any of it. Shaped from what Step 3's real artefacts can
- * actually support: `earlyWarningTrend` is the unmodified real
+ * spec behind any of it. `earlyWarningTrend` is the unmodified real
  * early-detection curve (56_early_detection_curve.csv, teacher/cohort-wide,
  * not per-class — there is only one real curve, so every class's Reports
  * screen shows the same one, labelled "across the study" rather than
- * falsely scoped to one classroom). `classLearningProgress`,
- * `studentsToWatchOverTime` and `participation` ARE per-class, derived from
- * that class's own roster fixtures — see fixtures/authored.ts's
- * classReportsFor() for exactly how, including where a value is a scaled
- * approximation rather than a directly-measured one.
+ * falsely scoped to one classroom). `classLearningProgress` and
+ * `participation` ARE per-class, derived from that class's own roster
+ * fixtures — see fixtures/authored.ts's classReportsFor().
+ *
+ * REMOVED (Step 8 review): a `studentsToWatchOverTime` field used to exist
+ * here, computed by scaling `earlyWarningTrend`'s own flag-rate curve by
+ * this class's roster size. On screen that produced two charts on one
+ * report — "Students to watch" and "Early-warning trend" — drawn from the
+ * SAME underlying series, with nothing telling a teacher that. Two charts
+ * that silently agree because they are the same data read as
+ * corroborating evidence, which manufactures apparent confidence docs/12
+ * §7 forbids ("never falsely confident"). There is no real per-class
+ * longitudinal watch-count in any Step 3 artefact — only one current-t
+ * snapshot was ever computed — so rather than fabricate or duplicate,
+ * plan §4.6's "students to watch over time" section now renders an honest
+ * not-enough-history state instead of a chart. See
+ * ClassroomReportsRoute.tsx.
  */
 export interface ClassReportsResponse {
   disclosure: string;
@@ -55,7 +66,6 @@ export interface ClassReportsResponse {
   // describeTrend), the same pattern StudentRoute uses for its charts — the
   // mock only returns raw derived values, never pre-written prose.
   classLearningProgress: { sessionNumbers: number[]; values: number[] };
-  studentsToWatchOverTime: { sessionNumbers: number[]; counts: number[] };
   earlyWarningTrend: {
     sessionNumbers: number[];
     flagRates: number[];

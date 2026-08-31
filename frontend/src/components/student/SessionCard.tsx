@@ -16,18 +16,18 @@ export function SessionCard({ session }: SessionCardProps) {
   const gamesGap = sessionComponentGapLabel(session.games);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
+    <div className="rounded-lg border border-border bg-surface1 p-3">
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-sm font-semibold text-slate-900">
+        <span className="text-sm font-semibold text-ink-primary">
           Session {session.sessionNumber}
         </span>
-        <span className="text-xs text-slate-500">{formatDate(session.date)}</span>
+        <span className="text-xs text-ink-secondary">{formatDate(session.date)}</span>
       </div>
 
-      <div className="border-t border-slate-100 pt-2">
-        <p className="text-xs font-medium text-slate-500">Practice (B)</p>
+      <div className="border-t border-border pt-2">
+        <p className="text-xs font-medium text-ink-secondary">Practice (B)</p>
         {session.practice.present ? (
-          <p className="text-sm text-slate-800">
+          <p className="text-sm text-ink-primary">
             {session.practice.accuracy !== null
               ? `Accuracy ${Math.round(session.practice.accuracy * 100)}%`
               : "Accuracy not available"}
@@ -37,16 +37,16 @@ export function SessionCard({ session }: SessionCardProps) {
               : ""}
           </p>
         ) : (
-          <p className="text-sm text-slate-500">No activity recorded</p>
+          <p className="text-sm text-ink-secondary">No activity recorded</p>
         )}
       </div>
 
-      <div className="mt-2 border-t border-slate-100 pt-2">
-        <p className="text-xs font-medium text-slate-500">Games (C)</p>
+      <div className="mt-2 border-t border-border pt-2">
+        <p className="text-xs font-medium text-ink-secondary">Games (C)</p>
         {gamesGap ? (
-          <p className="text-sm text-slate-500">{gamesGap}</p>
+          <p className="text-sm text-ink-secondary">{gamesGap}</p>
         ) : (
-          <p className="text-sm text-slate-800">
+          <p className="text-sm text-ink-primary">
             {session.games.engagementDriver
               ? `Engagement: ${session.games.engagementDriver}`
               : "Engagement data not available"}

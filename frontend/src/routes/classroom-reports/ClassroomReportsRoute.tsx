@@ -6,6 +6,7 @@ import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { NeutralNotice } from "../../components/shared/NeutralNotice";
 import { SectionHeader } from "../../components/shared/SectionHeader";
 import { StatTile } from "../../components/shared/StatTile";
 import { describeTrend } from "../../lib/format";
@@ -37,11 +38,11 @@ export default function ClassroomReportsRoute() {
         <Link
           to={classId ? `/classes/${classId}` : "/classes"}
           aria-label="Back to class"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-slate-700"
+          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
         >
           ←
         </Link>
-        <h1 className="text-base font-semibold text-slate-900">
+        <h1 className="text-base font-semibold text-ink-primary">
           {data ? `${data.className} · Reports` : "Reports"}
         </h1>
       </header>
@@ -75,19 +76,21 @@ export default function ClassroomReportsRoute() {
 
           <section>
             <SectionHeader title="Students to watch over time" />
-            <Chart
-              title="Students to watch"
-              values={data.studentsToWatchOverTime.counts}
-              trendSentence={describeTrend(
-                "The number of students to watch",
-                data.studentsToWatchOverTime.counts,
-              )}
-            />
+            {/* Step 8 fix: this used to be a chart scaled from the SAME
+                series the Early-warning trend section renders directly
+                below — two charts agreeing because they were one curve,
+                which manufactures apparent evidence (docs/12 §7). There is
+                no real per-class longitudinal watch-count in any artefact,
+                so this renders an honest absence instead of a guess. */}
+            <NeutralNotice title="Not enough history yet">
+              This class has one snapshot of watch data; this section will fill in as more
+              sessions are completed.
+            </NeutralNotice>
           </section>
 
           <section>
             <SectionHeader title="Early-warning trend" />
-            <p className="text-sm text-slate-600">{data.earlyWarningTrend.explanation}</p>
+            <p className="text-sm text-ink-secondary">{data.earlyWarningTrend.explanation}</p>
             <div className="mt-2">
               <Chart
                 title="Share of students flagged, across the study"

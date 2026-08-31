@@ -31,10 +31,6 @@ const REPORTS = {
   disclosure: "Literature-informed synthetic data — not clinical evidence.",
   className: "Grade 3 Blue",
   classLearningProgress: { sessionNumbers: [1, 2, 3, 4, 5], values: [0.5, 0.52, 0.55, 0.58, 0.6] },
-  studentsToWatchOverTime: {
-    sessionNumbers: [3, 5, 7, 9, 11],
-    counts: [0, 1, 2, 3, 4],
-  },
   earlyWarningTrend: {
     sessionNumbers: [3, 5, 7, 9, 11],
     flagRates: [0.04, 0.2, 0.4, 0.5, 0.6],
@@ -81,12 +77,9 @@ describe("ClassroomReportsRoute — four sections", () => {
     vi.mocked(client.getClassReports).mockResolvedValue(REPORTS);
     const { container } = renderReports();
     await waitFor(() => expect(screen.getByText("Class learning progress")).toBeInTheDocument());
-    // Three Chart components render (progress, watch-over-time, early-warning).
-    const sentences = [
-      /Class average practice accuracy/,
-      /number of students to watch/,
-      /share of students flagged/,
-    ];
+    // Two Chart components render (progress, early-warning) — "students to
+    // watch over time" is a NeutralNotice, not a chart (Step 8 fix below).
+    const sentences = [/Class average practice accuracy/, /share of students flagged/];
     for (const pattern of sentences) {
       expect(container.textContent).toMatch(pattern);
     }
@@ -98,6 +91,32 @@ describe("ClassroomReportsRoute — four sections", () => {
     await waitFor(() => expect(screen.getByText("1–2 sessions")).toBeInTheDocument());
     expect(screen.getByText("3–5 sessions")).toBeInTheDocument();
     expect(screen.getByText("6+ sessions")).toBeInTheDocument();
+  });
+});
+
+describe("ClassroomReportsRoute — Step 8 fix: 'students to watch over time' is not a chart", () => {
+  it("renders an honest not-enough-history notice instead of a second chart", async () => {
+    vi.mocked(client.getClassReports).mockResolvedValue(REPORTS);
+    renderReports();
+    await waitFor(() => expect(screen.getByText("Not enough history yet")).toBeInTheDocument());
+    expect(
+      screen.getByText(/This class has one snapshot of watch data/),
+    ).toBeInTheDocument();
+  });
+
+  it("the response shape carries no studentsToWatchOverTime field to derive a second chart from", () => {
+    expect(REPORTS).not.toHaveProperty("studentsToWatchOverTime");
+  });
+
+  it("no two charts on the page share the same underlying series (only one Chart derives from flagRates)", async () => {
+    vi.mocked(client.getClassReports).mockResolvedValue(REPORTS);
+    const { container } = renderReports();
+    await waitFor(() => expect(screen.getByText("Class learning progress")).toBeInTheDocument());
+    // Exactly two chart containers (recharts ResponsiveContainer) should
+    // exist: class learning progress and early-warning trend. A third
+    // would mean a duplicate-series chart crept back in.
+    const chartContainers = container.querySelectorAll(".recharts-responsive-container");
+    expect(chartContainers.length).toBe(2);
   });
 });
 

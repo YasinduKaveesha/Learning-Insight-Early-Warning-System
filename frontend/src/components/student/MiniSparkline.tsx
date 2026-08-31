@@ -1,4 +1,5 @@
 import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { chart } from "../../theme/tokens";
 
 export interface MiniSparklineProps {
   values: number[];
@@ -21,7 +22,7 @@ export function MiniSparkline({ values, width = 64, height = 24 }: MiniSparkline
           <Line
             type="monotone"
             dataKey="value"
-            stroke="#64748b"
+            stroke={chart.lineMuted}
             strokeWidth={1.5}
             dot={false}
             isAnimationActive={false}

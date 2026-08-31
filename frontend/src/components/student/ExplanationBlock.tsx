@@ -12,8 +12,8 @@ export function ExplanationBlock({ explanation }: ExplanationBlockProps) {
   if (!explanation) return null;
   return (
     <div>
-      <h3 className="text-sm font-semibold text-slate-900">Why?</h3>
-      <p className="mt-1 text-sm text-slate-700">{explanation}</p>
+      <h3 className="text-sm font-semibold text-ink-primary">Why?</h3>
+      <p className="mt-1 text-sm text-ink-primary">{explanation}</p>
     </div>
   );
 }

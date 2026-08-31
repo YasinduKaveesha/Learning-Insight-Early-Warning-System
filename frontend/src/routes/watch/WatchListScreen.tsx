@@ -49,11 +49,11 @@ export function WatchListScreen({ classId }: WatchListScreenProps) {
         <Link
           to={classId ? `/classes/${classId}` : "/"}
           aria-label="Back"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-slate-700"
+          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
         >
           ←
         </Link>
-        <h1 className="text-base font-semibold text-slate-900">Students to Watch</h1>
+        <h1 className="text-base font-semibold text-ink-primary">Students to Watch</h1>
       </header>
       <FramingLine />
 
@@ -69,10 +69,10 @@ export function WatchListScreen({ classId }: WatchListScreenProps) {
         />
       ) : (
         <>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-secondary">
             {watchQuery.data!.students.length} of {watchQuery.data!.totalStudents} students
           </p>
-          <p className="text-xs text-slate-500">{SNAPSHOT_FRAMING}</p>
+          <p className="text-xs text-ink-secondary">{SNAPSHOT_FRAMING}</p>
 
           {watchQuery.data!.students.length === 0 ? (
             <EmptyState message="No students are currently flagged for review." />
@@ -119,7 +119,7 @@ function GroupedWatchList({
     <div className="flex flex-col gap-4">
       {Array.from(byClass.entries()).map(([classId, group]) => (
         <div key={classId} className="flex flex-col gap-2">
-          <h2 className="px-1 text-sm font-semibold text-slate-700">
+          <h2 className="px-1 text-sm font-semibold text-ink-primary">
             {classNames.get(classId) ?? classId}
           </h2>
           <div className="flex flex-col gap-3">
@@ -139,17 +139,17 @@ function WatchCard({ snapshot }: { snapshot: LearnerSnapshot }) {
   return (
     <Link
       to={`/students/${snapshot.studentId}`}
-      className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4"
+      className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4"
     >
       {priority !== null ? <PriorityBadge priority={priority} /> : null}
       <div className="mt-1 flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-slate-900">{snapshot.displayName}</span>
+        <span className="text-sm font-semibold text-ink-primary">{snapshot.displayName}</span>
         <WatchStatusBadge status={status} />
       </div>
       <div className="mt-2">
         <ExplanationBlock explanation={snapshot.explanation} />
       </div>
-      <p className="mt-2 text-xs text-slate-400">
+      <p className="mt-2 text-xs text-ink-secondary">
         Last active {formatRelativeDate(snapshot.lastActiveDate)}
       </p>
     </Link>

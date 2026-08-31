@@ -10,7 +10,7 @@ export interface TrajectoryChipProps {
  * always returns "Practice accuracy: <state>", never a bare state. */
 export function TrajectoryChip({ trajectory }: TrajectoryChipProps) {
   return (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+    <span className="inline-flex items-center rounded-full border border-border bg-surface2 px-2.5 py-1 text-xs font-medium text-ink-primary">
       {practiceTrajectoryLabel(trajectory)}
     </span>
   );
