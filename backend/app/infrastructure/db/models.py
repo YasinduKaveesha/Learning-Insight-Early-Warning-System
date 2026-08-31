@@ -423,6 +423,46 @@ _TRIGGER_COMMENT = (
 )
 
 
+class DemoLearnerMap(ProvenanceMixin, Base):
+    """`t3_demo_learner_map` -- demo learner-id <-> research-student-id bridge (B4.1).
+
+    `app.application.t3_loader.SqlLearnerResolver` matches the research dataset's
+    `student_id` ("STU-0001", ...) against `b_learners.name` -- documented in its own
+    docstring as "the seam" for live-integration wiring, not yet connected. Live `name`
+    values are empty/unrelated, so zero panel rows have ever actually been written. This
+    table is a demo-only bridge; `DemoMapLearnerResolver` reads it instead.
+
+    Both directions are unique on purpose -- a many-to-one mapping in either direction could
+    misattribute one child's analytics to another: `learner_id` is the PRIMARY KEY (at most
+    one research id per learner) and `research_student_id` carries a UNIQUE constraint (at
+    most one learner per research id). The CHECK enforces the exact research id format.
+
+    Carries the full six-column `ProvenanceMixin`, the same choice as `t3_classroom_keys`:
+    `learner_id` is a foreign key into the `b_learners` shadow, not a pipeline output, so
+    there is no PK member available to stand in for the sixth provenance column.
+    """
+
+    __tablename__ = "t3_demo_learner_map"
+    __table_args__ = (
+        # Bare name -> naming convention -> `ck_t3_demo_learner_map_format`.
+        CheckConstraint("research_student_id ~ '^STU-[0-9]{4}$'", name="format"),
+        source_class_check(),
+    )
+
+    learner_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey(
+            "b_learners.learner_id",
+            name="fk_t3_demo_learner_map_learner_id_b_learners",
+            ondelete="RESTRICT",
+        ),
+        primary_key=True,
+    )
+    research_student_id: Mapped[str] = mapped_column(
+        String(16), nullable=False, unique=True
+    )
+
+
 class Recommendation(ProvenanceCoreMixin, Base):
     """`t3_recommendations` -- the teacher-facing recommendation envelope (plan section 4.6;
     `docs/13`). One row per recommendation, keyed by `recommendation_id`.

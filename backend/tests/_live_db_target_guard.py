@@ -21,6 +21,7 @@ import itself must not explode the collection phase.
 
 from __future__ import annotations
 
+import socket
 import sys
 from urllib.parse import urlsplit
 
@@ -31,6 +32,17 @@ _ALLOWED_DB_NAME = "upadya_test"
 
 class UnsafeLiveDbTarget(RuntimeError):
     """T3_LIVE_DB_URL does not point at the disposable test database. Refuse to proceed."""
+
+
+class LiveDbUnreachable(RuntimeError):
+    """T3_LIVE_DB_URL names a valid, safe target, but nothing answers on host:port.
+
+    Work order B4.1: the local Docker DB publishes its port only through an opt-in
+    docker-compose override (`docker/compose.c3-test-db.yaml`); a plain `docker compose up`
+    run by the student-app team does not publish it. That is a reason unrelated to Component
+    3, so it must SKIP the live-db suite, never fail it, the way a wrong/unsafe target
+    (caught by :func:`assert_safe_live_target` above) correctly does.
+    """
 
 
 def _redact(url: str) -> str:
@@ -91,3 +103,46 @@ def assert_safe_live_target(url: str) -> None:
             f"{_ALLOWED_DB_NAME!r} test database. This project has already had a shared "
             "database wiped once by a misdirected test run. Refusing to proceed."
         )
+
+
+def check_live_target_reachable(url: str, *, timeout: float = 2.0) -> None:
+    """Raise :class:`LiveDbUnreachable` if nothing accepts a TCP connection at ``url``'s
+    host/port. Call only AFTER :func:`assert_safe_live_target` has already approved the
+    target -- this function does not repeat the name/pooler checks, it only tests whether the
+    (already-approved) target is currently listening.
+    """
+
+    parts = urlsplit(url)
+    host = parts.hostname or "127.0.0.1"
+    port = parts.port or 5432
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return
+    except OSError as exc:
+        redacted = _redact(url)
+        raise LiveDbUnreachable(
+            f"T3_LIVE_DB_URL ({redacted}) is a valid, safe target, but nothing is listening "
+            f"on {host}:{port} ({exc}). This is the c3-test-db docker-compose override port "
+            "(README 'Live database gates' step 2) -- published only while that override "
+            "file is passed to `docker compose up`. Skipping the live-db tests rather than "
+            "failing the suite for a reason unrelated to Component 3."
+        ) from exc
+
+
+def assert_safe_and_reachable_live_target(url: str) -> None:
+    """The guard every live test module should call: refuse loudly on a wrong/unsafe target
+    (calls :func:`assert_safe_live_target` -- unchanged, still a hard failure), then SKIP the
+    whole module (not fail it) if the target is safe but simply unreachable right now.
+
+    Must be called at module level (not inside a test function) so the ``pytest.skip`` is
+    ``allow_module_level=True``, matching how the existing ``pytestmark_live`` skip already
+    behaves for a module without ``T3_LIVE_DB_URL`` set at all.
+    """
+
+    assert_safe_live_target(url)
+    try:
+        check_live_target_reachable(url)
+    except LiveDbUnreachable as exc:
+        import pytest
+
+        pytest.skip(str(exc), allow_module_level=True)

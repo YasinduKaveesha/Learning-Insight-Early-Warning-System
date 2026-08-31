@@ -41,7 +41,7 @@ from typing import Any, Protocol
 
 import re
 
-from sqlalchemy import insert, text
+from sqlalchemy import func, insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure import bc_adapter
@@ -53,10 +53,12 @@ __all__ = [
     "PARAMETER_SOURCE_STATUS",
     "LearnerResolutionError",
     "AuditLabelLeakError",
+    "PanelRowCountMismatchError",
     "LoadResult",
     "LearnerResolver",
     "DictLearnerResolver",
     "SqlLearnerResolver",
+    "DemoMapLearnerResolver",
     "assert_no_audit_labels",
     "partition_by_resolution",
     "run_load",
@@ -87,6 +89,26 @@ class LearnerResolutionError(RuntimeError):
 
 class AuditLabelLeakError(RuntimeError):
     """A mapped record carried ``population`` or ``dd_subtype``. Abort the whole load."""
+
+
+class PanelRowCountMismatchError(RuntimeError):
+    """The row count read back from ``t3_panel`` for this ``pipeline_run_id`` does not match
+    the expected number of resolvable records.
+
+    B0.1's mutation testing proved dropping a row from the loader still leaves the test suite
+    green -- there was no automated assertion on row count. This is that assertion: a hard
+    failure, not a log line, and it aborts (rolls back) the whole load rather than leaving a
+    partial generation behind.
+    """
+
+    def __init__(self, pipeline_run_id: uuid.UUID, expected: int, actual: int) -> None:
+        self.pipeline_run_id = pipeline_run_id
+        self.expected = expected
+        self.actual = actual
+        super().__init__(
+            f"t3_panel row count for pipeline_run_id={pipeline_run_id} is {actual}, "
+            f"expected {expected}; aborting and rolling back the load."
+        )
 
 
 @dataclass(frozen=True)
@@ -144,6 +166,32 @@ class SqlLearnerResolver:
                 f"SELECT {self._match_column} AS k, learner_id "  # noqa: S608 - validated ident
                 "FROM b_learners WHERE "
                 f"{self._match_column} = ANY(:ids)"
+            ),
+            {"ids": list(student_ids)},
+        )
+        return {str(key): value for key, value in rows.all()}
+
+
+class DemoMapLearnerResolver:
+    """Resolve via the demo bridge table ``t3_demo_learner_map`` (work order B4.1).
+
+    ``SqlLearnerResolver`` matches ``student_id`` against ``b_learners.name`` -- live names
+    are empty/unrelated, so it aborts every load for now. This resolver reads the explicit
+    demo bridge instead: ``research_student_id -> learner_id``, both directions unique by
+    construction (the table's PK and UNIQUE constraint). It is additive -- ``SqlLearnerResolver``
+    is untouched and still the one live-integration work will eventually replace or repoint.
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def resolve(self, student_ids: set[str]) -> dict[str, uuid.UUID]:
+        if not student_ids:
+            return {}
+        rows = await self._session.execute(
+            text(
+                "SELECT research_student_id AS k, learner_id "
+                "FROM t3_demo_learner_map WHERE research_student_id = ANY(:ids)"
             ),
             {"ids": list(student_ids)},
         )
@@ -208,12 +256,21 @@ async def run_load(
     }
 
     student_ids = {r["student_id"] for r in records}
-    id_map = await resolver.resolve(student_ids)
-    resolvable, unresolved = partition_by_resolution(records, id_map)
-    if unresolved:
-        raise LearnerResolutionError(unresolved)
 
+    # `resolver.resolve` executes a query against `session` (`SqlLearnerResolver` /
+    # `DemoMapLearnerResolver` both do). SQLAlchemy's AsyncSession autobegins a transaction on
+    # first use, so that query must happen INSIDE the same `session.begin()` block as the
+    # writes below -- calling `resolver.resolve` first and then `session.begin()` raises
+    # ``InvalidRequestError: A transaction is already begun on this Session`` the moment a
+    # resolver that actually touches the database (as opposed to `DictLearnerResolver`, which
+    # never has) is used. Resolution still happens, and still aborts, before any panel row is
+    # written -- it is simply the first statement inside the transaction rather than before it.
     async with session.begin():
+        id_map = await resolver.resolve(student_ids)
+        resolvable, unresolved = partition_by_resolution(records, id_map)
+        if unresolved:
+            raise LearnerResolutionError(unresolved)
+
         await session.execute(
             insert(PipelineRun).values(
                 pipeline_run_id=pipeline_run_id,
@@ -236,6 +293,21 @@ async def run_load(
         ]
         if rows:
             await session.execute(insert(Panel), rows)
+
+        # Hard, asserted row-count check (work order B4.1): read the actual count back from
+        # the database for this pipeline_run_id, not the length of the in-memory `rows` list
+        # that was just inserted -- a mismatch here means the database's view of what was
+        # written disagrees with what the loader intended, which is exactly what B0.1's
+        # mutation testing found nothing was checking. A mismatch raises inside the
+        # transaction block, so `session.begin()` rolls the whole load back; this must be a
+        # hard failure, never a log/warning.
+        actual_count = await session.scalar(
+            select(func.count()).select_from(Panel).where(
+                Panel.pipeline_run_id == pipeline_run_id
+            )
+        )
+        if actual_count != len(rows):
+            raise PanelRowCountMismatchError(pipeline_run_id, len(rows), actual_count or 0)
 
     return LoadResult(
         pipeline_run_id=pipeline_run_id,

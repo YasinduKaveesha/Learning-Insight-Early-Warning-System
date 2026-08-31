@@ -26,9 +26,9 @@ import asyncpg  # noqa: E402
 _LIVE_URL = os.environ.get("T3_LIVE_DB_URL")
 
 if _LIVE_URL:
-    from tests._live_db_target_guard import assert_safe_live_target
+    from tests._live_db_target_guard import assert_safe_and_reachable_live_target
 
-    assert_safe_live_target(_LIVE_URL)
+    assert_safe_and_reachable_live_target(_LIVE_URL)
 
 pytestmark = pytest.mark.skipif(
     not _LIVE_URL,
@@ -92,7 +92,8 @@ def test_gate1_table_exists_and_student_app_untouched() -> None:
                 "and table_type='BASE TABLE' and table_name not like 't3_%'"
             )
             assert non_t3 == 36, non_t3
-            assert await conn.fetchval("select version_num from t3_alembic_version") == "0006_recommendations"
+            # Updated for each new migration -- work order B4.1 added 0007_demo_learner_map.
+            assert await conn.fetchval("select version_num from t3_alembic_version") == "0007_demo_learner_map"
         finally:
             await conn.close()
 
