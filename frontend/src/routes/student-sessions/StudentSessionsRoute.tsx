@@ -39,7 +39,7 @@ export default function StudentSessionsRoute() {
   const isError = overviewQuery.isError || sessionsQuery.isError;
 
   return (
-    <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
       <header className="flex items-center gap-2">
         <Link
           to={studentId ? `/students/${studentId}` : "/classes"}
@@ -53,14 +53,16 @@ export default function StudentSessionsRoute() {
         </h1>
       </header>
 
+      {/* Hardening-pass fix: matches StudentRoute.tsx's tab-bar fix — was
+          sized to text only (pb-2), under the 44px touch-target minimum. */}
       <div className="flex gap-4 border-b border-border text-sm">
         <Link
           to={studentId ? `/students/${studentId}` : "/classes"}
-          className="pb-2 text-ink-secondary"
+          className="flex min-h-[44px] items-center text-ink-secondary"
         >
           Overview
         </Link>
-        <span className="border-b-2 border-foreground pb-2 font-medium text-ink-primary">
+        <span className="flex min-h-[44px] items-center border-b-2 border-foreground font-medium text-ink-primary">
           Sessions
         </span>
       </div>

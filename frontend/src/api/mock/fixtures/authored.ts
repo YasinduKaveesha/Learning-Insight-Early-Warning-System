@@ -30,7 +30,6 @@ import realSnapshotsAtT7 from "./realSnapshotsAtT7.json";
 import rosterStudentIds from "./rosterStudentIds.json";
 import skillBoundsAtT7 from "./skillBoundsAtT7.json";
 import skillProgressByStudent from "./skillProgressByStudent.json";
-import twoSignalExemplar from "./twoSignalExemplarId.json";
 
 export const DISCLOSURE = "Literature-informed synthetic data — not clinical evidence.";
 export const TEACHER_NAME = "Ms Perera";
@@ -41,8 +40,6 @@ type RealSnapshot = Omit<LearnerSnapshot, "displayName" | "classId" | "lastActiv
 const REAL_SNAPSHOTS = realSnapshotsAtT7 as unknown as RealSnapshot[];
 const REAL_SNAPSHOT_BY_ID = new Map(REAL_SNAPSHOTS.map((s) => [s.studentId, s]));
 const ROSTER_IDS = rosterStudentIds as string[];
-export const TWO_SIGNAL_EXEMPLAR_ID: string = (twoSignalExemplar as { studentId: string | null })
-  .studentId!;
 
 // --- Classes and roster (D2: GRADE_2 / GRADE_3 only) ------------------------
 
@@ -67,8 +64,6 @@ const SEED_CLASSES: ClassRecord[] = [
 // state only — there is no persistence layer, so this resets on reload,
 // same as every other in-memory mutation in this mock client.
 const CREATED_CLASSES: ClassRecord[] = [];
-
-export const CLASSES: readonly ClassRecord[] = SEED_CLASSES;
 
 export function allClasses(): ClassRecord[] {
   return [...SEED_CLASSES, ...CREATED_CLASSES];
@@ -287,9 +282,11 @@ function authoredSession(studentId: string, sessionNumber: number, mostRecent: n
 /**
  * Generates a student's most recent sessions (up to 5) as plain, normal
  * sessions. Callers needing the two hand-authored gap states splice them in
- * — see NIMAL_SESSIONS_WITH_GAPS below, the one place those two states exist.
+ * — see sessionsForStudent below, the one place those two states exist.
+ * Not exported (hardening pass: was exported with no external consumer) —
+ * sessionsForStudent and sessionsForGettingStarted are the public API.
  */
-export function authoredSessionsFor(studentId: string, sessionsCompleted: number): SessionEntry[] {
+function authoredSessionsFor(studentId: string, sessionsCompleted: number): SessionEntry[] {
   const count = Math.min(sessionsCompleted, 5);
   const start = Math.max(1, sessionsCompleted - count + 1);
   const sessions: SessionEntry[] = [];

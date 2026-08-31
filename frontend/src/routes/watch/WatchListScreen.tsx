@@ -44,7 +44,7 @@ export function WatchListScreen({ classId }: WatchListScreenProps) {
   const isError = watchQuery.isError || (!classId && homeQuery.isError);
 
   return (
-    <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
       <header className="flex items-center gap-2">
         <Link
           to={classId ? `/classes/${classId}` : "/"}

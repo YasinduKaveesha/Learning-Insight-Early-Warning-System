@@ -46,6 +46,17 @@
  *    chip. `dangerText` is a darkened red measured at 5.56:1 on
  *    `surface1`, used ONLY for that kind of inline error text — never for
  *    a watch status or anything describing a child.
+ * 5. `focusRing` (hardening-pass fix, was flagged not fixed in Step 8): the
+ *    literal MathMingo value (#3ca6f8, same as `accentBlue`) measures only
+ *    ~2.4:1 against `background` and ~2.6:1 against `surface1` — Step 8
+ *    explicitly declined to override an unnamed token on its own judgment
+ *    and flagged it instead. Now authorised and fixed: darkened to
+ *    #2589dc, which measures 3.36:1 / 3.69:1 against the same two
+ *    backgrounds — clears WCAG 1.4.11's 3:1 non-text threshold against
+ *    BOTH with margin, while staying recognisably the same blue hue. This
+ *    is a DASHBOARD-LOCAL override, not a re-port — `accentBlue` elsewhere
+ *    in this file keeps the original literal value; only the focus
+ *    indicator, which plan §9 requires to be visible and AA, is darkened.
  * ============================================================================
  */
 
@@ -97,17 +108,10 @@ export const colors = {
 
   border: "#e2e4e8",
   borderStrong: "#cdcfd5",
-  // Ported as-is. MEASURED AND FLAGGED (see Step 8 report): as a 2px focus
-  // outline against `background`/`surface1`, this measures ~2.4–2.6:1,
-  // below WCAG 1.4.11's 3:1 non-text-contrast threshold for focus
-  // indicators. The source design system does not provide an alternative,
-  // and the instruction set for this port did not authorise substituting
-  // one (unlike textMuted and the watch-status colours, which it named
-  // explicitly). Browsers' own default focus outline and this app's
-  // focus-visible ring-offset (see tailwind.config.js) add a further
-  // contrast edge in practice, but the ring colour ALONE does not clear
-  // 3:1 — flagged rather than silently patched.
-  focusRing: "#3ca6f8",
+  // DASHBOARD-LOCAL OVERRIDE (deviation 5 below) — darkened from the
+  // source palette's #3ca6f8 to clear WCAG 1.4.11's 3:1 non-text
+  // threshold. See the file header for the measured ratios and rationale.
+  focusRing: "#2589dc",
 
   // --- Derived, NOT in the source palette (deviations 3 & 4 above) ---------
   successSoft: "#eaf9f1",
@@ -133,8 +137,12 @@ export const chart = {
   lineMuted: colors.textSecondary,
 } as const;
 
-export const radius = { sm: "8px", md: "12px", lg: "20px", xl: "28px" } as const;
-
-export const motion = { fast: "80ms", normal: "200ms", slow: "350ms" } as const;
+// radius and motion durations are NOT re-exported as JS constants here
+// (hardening pass: an earlier version had them, unused by any component) —
+// they're consumed entirely through Tailwind's borderRadius/
+// transitionDuration extensions in tailwind.config.js, which is the only
+// place anything needs a class name from. Unlike `colors`, no component
+// needs a literal radius/duration string in a JS prop (recharts is the
+// only such consumer, and it needs colours, not spacing).
 
 export type ThemeColors = typeof colors;

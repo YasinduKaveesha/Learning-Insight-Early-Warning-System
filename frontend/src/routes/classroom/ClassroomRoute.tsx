@@ -60,15 +60,24 @@ export default function ClassroomRoute() {
   const allOthers = filtered.filter((s) => toWatchStatus(s).kind !== "watching");
 
   return (
-    <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
+      {/* Hardening-pass fix: the back link's aria-label was overriding its
+          own visible text, so the class name inside it never reached
+          assistive tech at all — a screen-reader user heard only "Back to
+          classes" with the class name silently dropped. Split into a
+          plain back link plus a real h1 (docs/11 §8: "sane heading
+          hierarchy") that actually carries the class name. */}
       <header className="flex items-center justify-between gap-2">
         <Link
           to="/classes"
           aria-label="Back to classes"
-          className="flex h-11 min-w-[44px] items-center gap-1 text-sm font-medium text-ink-primary"
+          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
         >
-          ← {isPending ? "" : (data?.className ?? "Class")}
+          ←
         </Link>
+        <h1 className="flex-1 truncate text-base font-semibold text-ink-primary">
+          {isPending ? "" : (data?.className ?? "Class")}
+        </h1>
         <button
           type="button"
           aria-label="Class info"

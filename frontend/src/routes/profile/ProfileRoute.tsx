@@ -18,7 +18,7 @@ export default function ProfileRoute() {
   });
 
   return (
-    <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
       <h1 className="text-lg font-semibold text-ink-primary">Profile</h1>
 
       {isPending ? (

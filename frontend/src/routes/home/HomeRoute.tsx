@@ -57,7 +57,12 @@ export default function HomeRoute() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
+      {/* Hardening-pass fix: this screen had no page-level heading at all —
+          the visible title design is just the ⊕/framing/profile row, so a
+          screen-reader-only h1 supplies the landmark without changing the
+          visual layout (docs/11 §8: "sane heading hierarchy"). */}
+      <h1 className="sr-only">Home</h1>
       <header className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -166,7 +171,11 @@ export default function HomeRoute() {
                 Create your first class to get started.
               </button>
             ) : (
-              <div className="flex flex-col gap-2">
+              // Hardening-pass fix: plan §8 requires a two-column class
+              // grid at 640-1023 — this was flex-col (single column) at
+              // every width. sm:grid-cols-2 is additive; below 640 it's
+              // still the same single-column stack.
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {data.classes.map((c) => (
                   <Link key={c.classId} to={`/classes/${c.classId}`} className="block">
                     <ClassCard

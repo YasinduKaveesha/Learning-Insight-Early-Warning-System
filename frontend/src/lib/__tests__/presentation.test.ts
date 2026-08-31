@@ -102,10 +102,10 @@ describe("toWatchStatus", () => {
 describe("trajectoryLabel", () => {
   it("always includes the source prefix", () => {
     expect(trajectoryLabel({ source: "practice_accuracy", state: "needs_attention" })).toBe(
-      "Practice accuracy: needs attention ↓",
+      "Practice accuracy: ↓ needs attention",
     );
     expect(trajectoryLabel({ source: "game_engagement", state: "stable" })).toBe(
-      "Game engagement: stable →",
+      "Game engagement: → stable",
     );
   });
 

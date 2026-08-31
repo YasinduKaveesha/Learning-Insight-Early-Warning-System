@@ -134,10 +134,15 @@ const TRAJECTORY_SOURCE_LABEL: Record<Trajectory["source"], string> = {
   game_engagement: "Game engagement",
 };
 
+// Hardening-pass copy-lint fix: was word-then-arrow ("improving ↑"); plan §6's
+// terminology table and every wireframe mockup (§4.2, §4.4) consistently use
+// arrow-FIRST ordering ("↑ improving", "↓ needs attention"). Word-first had
+// been the rendered form since Step 4 — this brings it into line with the
+// contract plan §6 names explicitly.
 const TRAJECTORY_STATE_LABEL: Record<Trajectory["state"], string> = {
-  improving: "improving ↑",
-  stable: "stable →",
-  needs_attention: "needs attention ↓",
+  improving: "↑ improving",
+  stable: "→ stable",
+  needs_attention: "↓ needs attention",
   unknown: "not enough data",
 };
 
@@ -212,10 +217,6 @@ export function sessionComponentGapLabel(component: {
   if (!component.present) return "No activity recorded";
   if (component.dataComplete === false) return "Activity data incomplete for this session";
   return null;
-}
-
-export function gamesGapLabel(games: SessionEntry["games"]): string | null {
-  return sessionComponentGapLabel(games);
 }
 
 // --- Recommendations (D7) -------------------------------------------------

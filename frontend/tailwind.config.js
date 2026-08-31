@@ -89,10 +89,14 @@ export default {
           DEFAULT: "#e2e4e8",
           strong: "#cdcfd5",
         },
-        // Ported as-is; measured below WCAG 1.4.11's 3:1 non-text threshold
-        // as a bare outline colour — see tokens.ts header. Flagged in the
-        // Step 8 report, not silently substituted.
-        "focus-ring": "#3ca6f8",
+        // DASHBOARD-LOCAL OVERRIDE (hardening pass): darkened from the
+        // source palette's #3ca6f8 (same as accent.blue) to clear WCAG
+        // 1.4.11's 3:1 non-text threshold — measures 3.36:1 against
+        // `background` and 3.69:1 against `surface1`. Step 8 flagged this
+        // rather than substituting a colour on its own judgment; this pass
+        // is the authorised fix. See tokens.ts header for the full
+        // rationale and ratios.
+        "focus-ring": "#2589dc",
 
         // Watch status — reassigned away from red (docs/12 §7: never
         // alarming; "Worth watching right now" is an invitation to look,

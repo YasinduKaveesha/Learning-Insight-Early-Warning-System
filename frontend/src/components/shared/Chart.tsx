@@ -23,7 +23,12 @@ export function Chart({ title, values, trendSentence }: ChartProps) {
     <div>
       <h3 className="text-sm font-medium text-ink-primary">{title}</h3>
       {data.length >= 2 ? (
-        <div style={{ width: "100%", height: 80 }} aria-hidden="true">
+        // Hardening-pass fix: was a fixed 80px height at every width. Plan
+        // §8 requires charts to "gain height" from 640px up — h-20/28/32
+        // (80/112/128px) via Tailwind's responsive classes instead of an
+        // inline style, since ResponsiveContainer needs a real class to
+        // pick up the breakpoint change.
+        <div className="h-20 w-full sm:h-28 lg:h-32" aria-hidden="true">
           <ResponsiveContainer>
             <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
               <YAxis hide domain={["dataMin", "dataMax"]} />

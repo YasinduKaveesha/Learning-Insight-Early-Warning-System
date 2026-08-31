@@ -29,13 +29,12 @@ body {
   @apply bg-background font-sans text-ink-primary;
 }
 
-/* Ported focusRing token, applied in ONE place rather than per-component.
-   MEASURED AND FLAGGED (see src/theme/tokens.ts and the Step 8 report):
-   focusRing (#3ca6f8) alone measures ~2.4-2.6:1 against background/surface1,
-   below WCAG 1.4.11's 3:1 non-text-contrast threshold for a focus
-   indicator. The 2px offset below adds a visible gap against the
-   underlying surface, which helps in practice, but the ring colour alone
-   does not clear 3:1 — ported as given, not silently strengthened. */
+/* focusRing token, applied in ONE place rather than per-component.
+   Hardening-pass fix (defect A, see src/theme/tokens.ts): darkened from the
+   MathMingo source's #3ca6f8 (which measured ~2.4-2.6:1 against
+   background/surface1 — below WCAG 1.4.11's 3:1 non-text threshold) to
+   #2589dc, which measures 3.36:1 / 3.69:1 against the same two
+   backgrounds. A dashboard-local override, recognisably the same blue. */
 @layer base {
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-focus-ring;

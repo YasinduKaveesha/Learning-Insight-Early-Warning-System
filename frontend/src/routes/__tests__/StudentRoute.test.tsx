@@ -111,9 +111,9 @@ describe("StudentRoute — watching student", () => {
     expect(screen.getByText("Game engagement")).toBeInTheDocument();
     // The withheld 3-state chip vocabulary must never appear attached to
     // "Game engagement" — only the practice chip carries those words.
-    expect(screen.queryByText("Game engagement: needs attention ↓")).not.toBeInTheDocument();
-    expect(screen.queryByText("Game engagement: improving ↑")).not.toBeInTheDocument();
-    expect(screen.queryByText("Game engagement: stable →")).not.toBeInTheDocument();
+    expect(screen.queryByText("Game engagement: ↓ needs attention")).not.toBeInTheDocument();
+    expect(screen.queryByText("Game engagement: ↑ improving")).not.toBeInTheDocument();
+    expect(screen.queryByText("Game engagement: → stable")).not.toBeInTheDocument();
   });
 });
 
@@ -132,7 +132,7 @@ describe("StudentRoute — the two-signal path (plan §10)", () => {
     });
     renderStudent("s-1");
     await waitFor(() => expect(screen.getByText("Worth watching right now")).toBeInTheDocument());
-    expect(screen.getByText("Practice accuracy: improving ↑")).toBeInTheDocument();
+    expect(screen.getByText("Practice accuracy: ↑ improving")).toBeInTheDocument();
     // Both render side by side; neither element's text claims the other.
     expect(screen.queryByText(/no concern/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/confirms/i)).not.toBeInTheDocument();

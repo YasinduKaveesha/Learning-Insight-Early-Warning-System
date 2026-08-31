@@ -57,6 +57,12 @@ const TEXT_PAIRS: { name: string; fg: string; bg: string; min: number }[] = [
 // WCAG 1.4.11 sets a lower 3:1 bar for these, not 4.5:1.
 const GRAPHICAL_PAIRS: { name: string; fg: string; bg: string; min: number }[] = [
   { name: "foreground bar fill / surface2 track", fg: colors.foreground, bg: colors.surface2, min: AA_LARGE_TEXT_OR_UI },
+  // Hardening-pass fix (defect A): focusRing was darkened from the source
+  // palette's #3ca6f8 to #2589dc specifically so both of these pass —
+  // plan §9 requires visible, AA-compliant focus indication. Must-pass now,
+  // not a documented failure.
+  { name: "focusRing / background", fg: colors.focusRing, bg: colors.background, min: AA_LARGE_TEXT_OR_UI },
+  { name: "focusRing / surface1", fg: colors.focusRing, bg: colors.surface1, min: AA_LARGE_TEXT_OR_UI },
 ];
 
 describe("Step 8: WCAG AA contrast — every text/background pair in the theme layer", () => {
@@ -89,8 +95,11 @@ describe("Step 8: WCAG AA contrast — every text/background pair in the theme l
     expect(ratio).toBeLessThan(AA_NORMAL_TEXT);
   });
 
-  it("documents that focusRing FAILS the 3:1 non-text threshold against background/surface1 (ported as-is, flagged)", () => {
-    expect(contrastRatio(colors.focusRing, colors.background)).toBeLessThan(AA_LARGE_TEXT_OR_UI);
-    expect(contrastRatio(colors.focusRing, colors.surface1)).toBeLessThan(AA_LARGE_TEXT_OR_UI);
+  it("documents that the SOURCE palette's literal blue (#3ca6f8) would have failed 3:1 — why focusRing is a local override", () => {
+    // Not colors.focusRing (now fixed) — the original MathMingo value,
+    // asserted directly so this test keeps meaning even if focusRing's
+    // hex changes again later.
+    expect(contrastRatio("#3ca6f8", colors.background)).toBeLessThan(AA_LARGE_TEXT_OR_UI);
+    expect(contrastRatio("#3ca6f8", colors.surface1)).toBeLessThan(AA_LARGE_TEXT_OR_UI);
   });
 });

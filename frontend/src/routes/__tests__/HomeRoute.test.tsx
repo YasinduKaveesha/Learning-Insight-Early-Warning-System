@@ -159,6 +159,23 @@ describe("HomeRoute — create class (Step 6)", () => {
   });
 });
 
+describe("HomeRoute — hardening pass: heading hierarchy and responsive layout", () => {
+  it("has exactly one h1 landmark heading", async () => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+    renderHome();
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument());
+  });
+
+  it("the class list is a two-column grid at sm (plan §8), single column below it", async () => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+    const { container } = renderHome();
+    await waitFor(() => expect(screen.getByText("Grade 3 Blue")).toBeInTheDocument());
+    const grid = container.querySelector(".grid.grid-cols-1");
+    expect(grid).not.toBeNull();
+    expect(grid!.className).toMatch(/sm:grid-cols-2/);
+  });
+});
+
 describe("HomeRoute — four states", () => {
   it("loading renders skeletons, not a spinner", () => {
     vi.mocked(client.getHome).mockReturnValue(new Promise(() => {}));

@@ -208,6 +208,21 @@ describe("ClassroomRoute — empty cohort shows the class key", () => {
   });
 });
 
+describe("ClassroomRoute — hardening pass: heading hierarchy", () => {
+  it("the class name is a real h1, reachable by assistive tech (not hidden inside an aria-label)", async () => {
+    // Regression test for a real bug: the back link's aria-label used to
+    // override its own visible text, so a screen reader heard only "Back
+    // to classes" — the class name inside it was completely inaccessible.
+    mockCohort(ORDERED_COHORT);
+    renderClassroom();
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1, name: "Grade 3 Blue" })).toBeInTheDocument(),
+    );
+    // The back link's accessible name no longer swallows the class name.
+    expect(screen.getByRole("link", { name: "Back to classes" })).toBeInTheDocument();
+  });
+});
+
 describe("ClassroomRoute — search", () => {
   it("filters both sections live on name and preserves each result's status", async () => {
     mockCohort(ORDERED_COHORT);

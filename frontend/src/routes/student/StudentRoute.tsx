@@ -58,7 +58,7 @@ export default function StudentRoute() {
   const isError = overviewQuery.isError;
 
   return (
-    <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
+    <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
       <header className="flex items-center gap-2">
         <Link
           to={overviewQuery.data ? `/classes/${overviewQuery.data.snapshot.classId}` : "/classes"}
@@ -72,13 +72,17 @@ export default function StudentRoute() {
         </h1>
       </header>
 
+      {/* Hardening-pass fix: these tabs were sized to their text
+          (pb-2 only), well under the 44px touch-target minimum — fixed
+          with a flex+min-h wrapper on each tab rather than changing what
+          they say or do. */}
       <div className="flex gap-4 border-b border-border text-sm">
-        <span className="border-b-2 border-foreground pb-2 font-medium text-ink-primary">
+        <span className="flex min-h-[44px] items-center border-b-2 border-foreground font-medium text-ink-primary">
           Overview
         </span>
         <Link
           to={studentId ? `/students/${studentId}/sessions` : "#"}
-          className="pb-2 text-ink-secondary"
+          className="flex min-h-[44px] items-center text-ink-secondary"
         >
           Sessions
         </Link>
