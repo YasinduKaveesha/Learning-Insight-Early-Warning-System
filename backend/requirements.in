@@ -13,3 +13,8 @@ joblib
 pandas
 pytest
 httpx
+
+# Migrations (work order B3.1). SQLAlchemy async + asyncpg, direct connection only.
+alembic
+sqlalchemy>=2
+asyncpg
