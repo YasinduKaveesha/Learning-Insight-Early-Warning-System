@@ -16,6 +16,26 @@ vi.mock("../../api/client", () => ({
   },
 }));
 
+/** Overrides window.matchMedia for the >=1024px master-detail query for the
+ * duration of one test, restoring the mobile-default mock (see
+ * testSetup.ts) afterwards. */
+function mockDesktopViewport() {
+  const original = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: query === "(min-width: 1024px)",
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = original;
+  };
+}
+
 const { client } = await import("../../api/client");
 
 function makeSnapshot(overrides: Partial<LearnerSnapshot>): LearnerSnapshot {
@@ -163,6 +183,117 @@ describe("WatchListScreen — teacher-wide (/watch)", () => {
     );
     expect(screen.queryByText(/500/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+});
+
+describe("WatchListScreen — >=1024px master-detail (plan §8, hardening-pass gap 2)", () => {
+  const SKILLS = [
+    { skillId: "counting", displayName: "Counting", direction: "improving" as const, relativeLevel: 0.1, practiceCount: 4 },
+  ];
+  const BOUNDS = { counting: { min: -0.3, max: 0.3 } };
+
+  beforeEach(() => {
+    vi.mocked(client.getStudentOverview).mockReset();
+    vi.mocked(client.getStudentRecommendations).mockReset();
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([]);
+  });
+
+  it("below 1024px, a card still links straight to /students/:id — unchanged from before", async () => {
+    vi.mocked(client.getWatchList).mockResolvedValue({
+      totalStudents: 24,
+      disclosure: "d",
+      students: [AMARA],
+    });
+    vi.mocked(client.getHome).mockResolvedValue({
+      teacherName: "Ms Perera",
+      studentsToWatch: 1,
+      activeStudents: 24,
+      classCount: 1,
+      gettingStarted: 0,
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      disclosure: "d",
+    });
+    renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: /Amara/ })).toHaveAttribute("href", "/students/s-amara");
+  });
+
+  it("at >=1024px, a card links to /watch/:studentId (teacher-wide) instead of the standalone route", async () => {
+    const restore = mockDesktopViewport();
+    vi.mocked(client.getWatchList).mockResolvedValue({
+      totalStudents: 24,
+      disclosure: "d",
+      students: [AMARA],
+    });
+    vi.mocked(client.getHome).mockResolvedValue({
+      teacherName: "Ms Perera",
+      studentsToWatch: 1,
+      activeStudents: 24,
+      classCount: 1,
+      gettingStarted: 0,
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      disclosure: "d",
+    });
+    renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: /Amara/ })).toHaveAttribute("href", "/watch/s-amara");
+    restore();
+  });
+
+  it("at >=1024px with no selection, the right pane says what to do instead of being blank", async () => {
+    const restore = mockDesktopViewport();
+    vi.mocked(client.getWatchList).mockResolvedValue({
+      totalStudents: 24,
+      disclosure: "d",
+      students: [AMARA],
+    });
+    vi.mocked(client.getHome).mockResolvedValue({
+      teacherName: "Ms Perera",
+      studentsToWatch: 1,
+      activeStudents: 24,
+      classCount: 1,
+      gettingStarted: 0,
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      disclosure: "d",
+    });
+    renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
+    await waitFor(() =>
+      expect(
+        screen.getByText("Select a student from the list to see their detail."),
+      ).toBeInTheDocument(),
+    );
+    restore();
+  });
+
+  it("selection is URL-driven: selectedStudentId renders that student's detail in the right pane", async () => {
+    const restore = mockDesktopViewport();
+    vi.mocked(client.getWatchList).mockResolvedValue({
+      totalStudents: 24,
+      disclosure: "d",
+      students: [AMARA],
+    });
+    vi.mocked(client.getHome).mockResolvedValue({
+      teacherName: "Ms Perera",
+      studentsToWatch: 1,
+      activeStudents: 24,
+      classCount: 1,
+      gettingStarted: 0,
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      disclosure: "d",
+    });
+    vi.mocked(client.getStudentOverview).mockResolvedValue({
+      snapshot: AMARA,
+      skills: SKILLS,
+      disclosure: "d",
+      className: "Grade 3 Blue",
+      skillBounds: BOUNDS,
+    });
+    renderRoute(<WatchListScreen selectedStudentId="s-amara" />, { path: "/watch", initialPath: "/watch" });
+    await waitFor(() => expect(screen.getByText("Worth watching right now")).toBeInTheDocument());
+    // The detail pane's own tab bar is omitted (no sub-route to switch to
+    // inline) — only the list's "Amara" name and the detail's heading exist.
+    expect(screen.queryByText("Sessions")).not.toBeInTheDocument();
+    restore();
   });
 });
 

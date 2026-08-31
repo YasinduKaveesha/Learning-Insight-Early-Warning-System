@@ -20,12 +20,12 @@ function App() {
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/classes" element={<ClassesRoute />} />
-          <Route path="/watch" element={<WatchRoute />} />
+          <Route path="/watch/:studentId?" element={<WatchRoute />} />
           <Route path="/profile" element={<ProfileRoute />} />
 
           <Route path="/classes/:classId" element={<ClassroomRoute />} />
           <Route
-            path="/classes/:classId/watch"
+            path="/classes/:classId/watch/:studentId?"
             element={<ClassroomWatchRoute />}
           />
           <Route
