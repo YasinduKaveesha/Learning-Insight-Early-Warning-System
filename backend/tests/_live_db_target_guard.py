@@ -25,9 +25,21 @@ import socket
 import sys
 from urllib.parse import urlsplit
 
-#: The only database this project's live tests may target. Never `upadya`, never a
+#: The only database this project's MUTATING live tests may target. Never `upadya`, never a
 #: Supabase project database reached directly.
 _ALLOWED_DB_NAME = "upadya_test"
+
+#: B2.4 adds one narrow exception: gate 1 of the shared data-access layer must be
+#: demonstrated against the counts quoted in its work order (47 REAL / 94 TEST
+#: `b_learners` rows), which only exist in `upadya` -- `upadya_test`'s seed data has a
+#: different split (42/105). `assert_safe_readonly_live_target` (below) allows `upadya` in
+#: addition to `upadya_test`, but ONLY for callers that also open the connection with
+#: `execution_options={"postgresql_readonly": True}` (see
+#: `tests/test_data_access_readonly_live.py`), so Postgres itself -- not just review --
+#: refuses any write the code might accidentally attempt. `assert_safe_live_target` above is
+#: unchanged and still refuses `upadya` outright; this is a separate, additive function, not
+#: a relaxation of it.
+_READONLY_ALLOWED_DB_NAMES = frozenset({"upadya_test", "upadya"})
 
 
 class UnsafeLiveDbTarget(RuntimeError):
@@ -105,6 +117,36 @@ def assert_safe_live_target(url: str) -> None:
         )
 
 
+def assert_safe_readonly_live_target(url: str, *, env_var: str = "T3_LIVE_DB_URL_READONLY") -> None:
+    """Raise :class:`UnsafeLiveDbTarget` unless ``url`` is a direct connection to
+    ``upadya_test`` OR ``upadya``. Narrower purpose, wider allow-list than
+    :func:`assert_safe_live_target`: used only by test modules that never write -- every
+    connection they open must additionally be opened with
+    ``execution_options={"postgresql_readonly": True}`` so a coding mistake cannot mutate
+    ``upadya`` even if this check is somehow satisfied. ``env_var`` is used only in the
+    printed/raised messages, so a refusal names the variable the caller actually read.
+    """
+
+    redacted = _redact(url)
+    sys.stderr.write(f"\n[B2.4 read-only live-db guard] {env_var} target: {redacted}\n")
+    sys.stderr.flush()
+
+    parts = urlsplit(url)
+    db_name = (parts.path or "/").lstrip("/")
+
+    if _is_pooler(url):
+        raise UnsafeLiveDbTarget(
+            f"{env_var} ({redacted}) resolves to the Supabase transaction pooler "
+            "(port 6543 or a 'pooler' host). Refusing to proceed."
+        )
+
+    if db_name not in _READONLY_ALLOWED_DB_NAMES:
+        raise UnsafeLiveDbTarget(
+            f"{env_var} ({redacted}) names database {db_name!r}, not one of "
+            f"{sorted(_READONLY_ALLOWED_DB_NAMES)}. Refusing to proceed."
+        )
+
+
 def check_live_target_reachable(url: str, *, timeout: float = 2.0) -> None:
     """Raise :class:`LiveDbUnreachable` if nothing accepts a TCP connection at ``url``'s
     host/port. Call only AFTER :func:`assert_safe_live_target` has already approved the
@@ -140,6 +182,22 @@ def assert_safe_and_reachable_live_target(url: str) -> None:
     """
 
     assert_safe_live_target(url)
+    try:
+        check_live_target_reachable(url)
+    except LiveDbUnreachable as exc:
+        import pytest
+
+        pytest.skip(str(exc), allow_module_level=True)
+
+
+def assert_safe_and_reachable_readonly_live_target(
+    url: str, *, env_var: str = "T3_LIVE_DB_URL_READONLY"
+) -> None:
+    """Read-only counterpart of :func:`assert_safe_and_reachable_live_target`: refuses a
+    wrong/unsafe target via :func:`assert_safe_readonly_live_target`, then SKIPs (does not
+    fail) the module if the target is safe but currently unreachable."""
+
+    assert_safe_readonly_live_target(url, env_var=env_var)
     try:
         check_live_target_reachable(url)
     except LiveDbUnreachable as exc:

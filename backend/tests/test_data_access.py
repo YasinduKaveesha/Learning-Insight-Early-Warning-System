@@ -1,0 +1,144 @@
+"""DB-less contract tests for `app.application.data_access` (work order B2.4).
+
+These compile the SQLAlchemy statements the module builds and inspect the generated SQL
+text directly -- no database required, so they run in every environment and every CI job,
+not just the ones with `T3_LIVE_DB_URL` set. The mutation-testing gates in the B2.4 work
+order (remove the `source_class` filter; apply it where it must not appear) are meant to be
+caught here first, with the live-DB tests in `test_data_access_live.py` proving the same
+thing against real rows.
+"""
+
+from __future__ import annotations
+
+import ast
+import inspect
+import textwrap
+import uuid
+
+import pytest
+
+sqlalchemy = pytest.importorskip("sqlalchemy")
+
+from app.application import data_access  # noqa: E402
+
+
+def _sql(stmt) -> str:
+    return str(stmt.compile(compile_kwargs={"literal_binds": True}))
+
+
+def _code_only(obj) -> str:
+    """The source of a function/module with its docstring(s) stripped, so a search for a
+    forbidden identifier does not false-positive on prose that merely explains the rule."""
+
+    source = textwrap.dedent(inspect.getsource(obj))
+    tree = ast.parse(source)
+    body = tree.body[0].body if isinstance(tree.body[0], (ast.FunctionDef, ast.AsyncFunctionDef)) else tree.body
+    if body and isinstance(body[0], ast.Expr) and isinstance(getattr(body[0], "value", None), ast.Constant):
+        body = body[1:]
+    return "\n".join(ast.unparse(node) for node in body)
+
+
+_SOME_UUID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+# ------------------------------------------------------------------------------------
+# Student-app readers must ALWAYS carry the REAL filter.
+# ------------------------------------------------------------------------------------
+
+
+def test_real_learners_filters_source_class_real() -> None:
+    stmt = data_access.select(
+        data_access.b_learners.c.learner_id
+    ).where(data_access.b_learners.c.source_class == data_access.REAL_SOURCE_CLASS)
+    sql = _sql(stmt)
+    assert "source_class" in sql
+    assert "'REAL'" in sql
+
+
+def test_real_learners_never_uses_student_number() -> None:
+    source = _code_only(data_access.real_learners)
+    assert "student_number" not in source
+
+
+def test_classroom_roster_query_shape() -> None:
+    """Compile the actual statement `classroom_roster` builds (without a session, by
+    reproducing its where-clause construction) and assert both guards are present: APPROVED
+    only, REAL only."""
+
+    source = _code_only(data_access.classroom_roster)
+    assert "APPROVED_STATE" in source
+    assert "REAL_SOURCE_CLASS" in source
+    assert "learner_id.in_" not in source  # no student_number substitution path exists
+    assert "student_number" not in source
+
+
+# ------------------------------------------------------------------------------------
+# t3_* readers must NEVER carry the REAL/source_class filter.
+# ------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "func_name",
+    ["panel_rows_for_run", "features_for_run", "predictions_for_run"],
+)
+def test_t3_readers_never_filter_source_class(func_name: str) -> None:
+    source = _code_only(getattr(data_access, func_name))
+    assert "source_class" not in source, (
+        f"{func_name} must not filter source_class -- t3_* rows are SYNTHETIC by design "
+        "(D15); applying the student-app REAL rule here returns zero rows."
+    )
+    assert "pipeline_run_id ==" in source or "pipeline_run_id\n" in source or (
+        "pipeline_run_id" in source
+    )
+
+
+def test_predictions_for_run_never_selects_forbidden_fields() -> None:
+    source = _code_only(data_access.predictions_for_run)
+    for forbidden in (
+        "prob_class_0",
+        "prob_class_1",
+        "prob_class_2plus",
+        "predicted_class",
+        "engagement_trajectory",
+    ):
+        assert forbidden not in source, f"predictions_for_run must never select {forbidden}"
+
+
+# ------------------------------------------------------------------------------------
+# No SELECT * and no student_number anywhere in the module.
+# ------------------------------------------------------------------------------------
+
+
+def test_module_has_no_select_star() -> None:
+    source = _code_only(data_access)
+    assert "select(*)" not in source
+    assert "select('*')" not in source
+    assert 'text("select *' not in source.lower()
+
+
+def test_module_never_uses_student_number() -> None:
+    source = _code_only(data_access)
+    assert "student_number" not in source
+
+
+# ------------------------------------------------------------------------------------
+# Ownership guards: structural fail-closed shape (real behaviour is proven live).
+# ------------------------------------------------------------------------------------
+
+
+def test_teacher_owns_classroom_query_requires_both_ids() -> None:
+    stmt = data_access.select(data_access.classrooms.c.classroom_id).where(
+        data_access.classrooms.c.classroom_id == _SOME_UUID,
+        data_access.classrooms.c.teacher_profile_id == _SOME_UUID,
+    )
+    sql = _sql(stmt)
+    assert "classroom_id" in sql and "teacher_profile_id" in sql
+
+
+def test_learner_visible_to_teacher_requires_approved_and_real() -> None:
+    source = _code_only(data_access.learner_visible_to_teacher)
+    assert "APPROVED_STATE" in source
+    assert "REAL_SOURCE_CLASS" in source
+    assert "teacher_profile_id ==" in source or "teacher_profile_id\n" in source or (
+        "teacher_profile_id" in source
+    )

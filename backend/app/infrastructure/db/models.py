@@ -49,14 +49,17 @@ from app.infrastructure.db.provenance import (
 
 # --------------------------------------------------------------------------------------
 # Shadows of student-app tables. Component 3 never creates, alters or drops these -- they
-# belong to the live app. Each one-column stand-in exists only so a foreign key from a
-# `t3_` table can be expressed in metadata. `component3_include_object` excludes them from
-# every migration by name; the guard-check probe proves that.
+# belong to the live app. `component3_include_object` excludes every non-`t3_` table from
+# every migration by name (the guard-check probe proves that), so adding a column here can
+# never emit DDL against the real table -- it only widens what `app/application/data_access.py`
+# (B2.4) is allowed to `SELECT`. Only columns that module actually reads belong here; this is
+# not a general-purpose reflection of the student app's schema.
 # --------------------------------------------------------------------------------------
 classrooms = Table(
     "classrooms",
     Base.metadata,
     Column("classroom_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("teacher_profile_id", PgUUID(as_uuid=True)),
     info={"component3_shadow": True},
 )
 
@@ -64,6 +67,20 @@ b_learners = Table(
     "b_learners",
     Base.metadata,
     Column("learner_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("name", String(255)),
+    Column("grade", String(16)),
+    Column("status", String(64)),
+    Column("source_class", String(16)),
+    info={"component3_shadow": True},
+)
+
+classroom_memberships = Table(
+    "classroom_memberships",
+    Base.metadata,
+    Column("classroom_membership_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("classroom_id", PgUUID(as_uuid=True)),
+    Column("learner_id", PgUUID(as_uuid=True)),
+    Column("state", String(16)),
     info={"component3_shadow": True},
 )
 
