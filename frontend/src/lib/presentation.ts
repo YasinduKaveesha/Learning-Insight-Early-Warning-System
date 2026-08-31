@@ -333,6 +333,17 @@ export interface PendingRequestDisplay {
 
 export const SNAPSHOT_FRAMING = "Based on recent learning activity";
 
+// --- Reports (plan §4.6) ---------------------------------------------------
+
+/**
+ * The one-line plain-language explanation required beside the early-warning
+ * trend (plan §4.6) — most readers will not have met an early-detection
+ * curve before. Written for a teacher, not a reviewer: describes what the
+ * line means, not how it was computed, and names no metric.
+ */
+export const EARLY_WARNING_TREND_EXPLANATION =
+  "This shows the share of students the system would have flagged for review by each point in the study — it rises as more activity builds up, not because more students are struggling.";
+
 // --- Explanation filters (plan §7, defence in depth) ------------------------
 
 // 1. The time / observation index is never a reason.

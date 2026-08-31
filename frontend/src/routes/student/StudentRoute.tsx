@@ -72,14 +72,16 @@ export default function StudentRoute() {
         </h1>
       </header>
 
-      {/* Sessions screen is Step 7 — this tab is inert. */}
       <div className="flex gap-4 border-b border-slate-200 text-sm">
         <span className="border-b-2 border-slate-900 pb-2 font-medium text-slate-900">
           Overview
         </span>
-        <span aria-disabled="true" className="pb-2 text-slate-400">
+        <Link
+          to={studentId ? `/students/${studentId}/sessions` : "#"}
+          className="pb-2 text-slate-500"
+        >
           Sessions
-        </span>
+        </Link>
       </div>
 
       <FramingLine />

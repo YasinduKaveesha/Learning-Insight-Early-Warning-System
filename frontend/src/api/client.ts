@@ -33,6 +33,40 @@ export interface CohortResponse {
   classKey: string;
 }
 
+/**
+ * PROVISIONAL, in the same spirit as CohortResponse's added fields (Step 5)
+ * and PendingRequestDisplay (Step 6) — plan §4.6 names the four sections a
+ * Reports screen must have, but there is no reports endpoint or response
+ * spec behind any of it. Shaped from what Step 3's real artefacts can
+ * actually support: `earlyWarningTrend` is the unmodified real
+ * early-detection curve (56_early_detection_curve.csv, teacher/cohort-wide,
+ * not per-class — there is only one real curve, so every class's Reports
+ * screen shows the same one, labelled "across the study" rather than
+ * falsely scoped to one classroom). `classLearningProgress`,
+ * `studentsToWatchOverTime` and `participation` ARE per-class, derived from
+ * that class's own roster fixtures — see fixtures/authored.ts's
+ * classReportsFor() for exactly how, including where a value is a scaled
+ * approximation rather than a directly-measured one.
+ */
+export interface ClassReportsResponse {
+  disclosure: string;
+  className: string;
+  // Trend sentences are computed at render time (lib/format.ts's
+  // describeTrend), the same pattern StudentRoute uses for its charts — the
+  // mock only returns raw derived values, never pre-written prose.
+  classLearningProgress: { sessionNumbers: number[]; values: number[] };
+  studentsToWatchOverTime: { sessionNumbers: number[]; counts: number[] };
+  earlyWarningTrend: {
+    sessionNumbers: number[];
+    flagRates: number[];
+    /** The one-line plain-language explanation of what this curve shows —
+     * most readers will not have met an early-detection curve before
+     * (plan §4.6). Written for a teacher, not a reviewer. */
+    explanation: string;
+  };
+  participation: { bucketLabel: string; studentCount: number }[];
+}
+
 export interface CreateClassResult {
   classId: string;
   className: string;
@@ -90,6 +124,14 @@ export interface ApiClient {
   getJoinRequests(classId: string): Promise<PendingRequestDisplay[]>;
   approveJoinRequest(classId: string, requestId: string): Promise<void>;
   rejectJoinRequest(classId: string, requestId: string): Promise<void>;
+
+  // --- Step 7: Reports ------------------------------------------------------
+
+  /** PROVISIONAL — see ClassReportsResponse's doc comment. Never returns a
+   * research metric (precision, recall, F1, AUC, lift, calibration, a
+   * confusion matrix, or a breakdown by research cohort group) — those are evidence
+   * for what the product may do, not content for a teacher (plan §4.6). */
+  getClassReports(classId: string): Promise<ClassReportsResponse>;
 }
 
 // Fixtures land in Step 3; this stub keeps the seam typed and importable now.

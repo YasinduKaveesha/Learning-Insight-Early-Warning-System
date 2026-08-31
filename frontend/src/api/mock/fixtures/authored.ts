@@ -20,7 +20,12 @@ import type {
   SkillProgress,
 } from "../../types";
 import type { PendingRequestDisplay, RecommendationDisplay } from "../../../lib/presentation";
-import { DuplicateClassNameError, type Grade } from "../../../lib/presentation";
+import {
+  DuplicateClassNameError,
+  EARLY_WARNING_TREND_EXPLANATION,
+  type Grade,
+} from "../../../lib/presentation";
+import earlyWarningTrendJson from "./earlyWarningTrend.json";
 import realSnapshotsAtT7 from "./realSnapshotsAtT7.json";
 import rosterStudentIds from "./rosterStudentIds.json";
 import skillBoundsAtT7 from "./skillBoundsAtT7.json";
@@ -343,24 +348,70 @@ export function sessionsForGettingStarted(): SessionEntry[] {
 //
 // PROVISIONAL, per Step 4 review ruling B (see RecommendationDisplay's doc
 // comment in lib/presentation.ts) — there is no recommendation endpoint or
-// dataset behind this. One demo recommendation on the roster's first
-// watched student (Amara / STU-0001) so the Suggestions section has
-// something real to render on the primary journey; every other student
-// gets an empty list, which is a legitimate "no suggestions" state, not a
-// missing-data gap.
-const DEMO_RECOMMENDATION: RecommendationDisplay = {
-  recommendationId: "demo-rec-1",
-  kind: "review",
-  targetSkillDisplayName: "Place value",
-  evidenceSummary:
-    "Subtraction has been practised for four sessions without improvement, and place value is still developing.",
-  status: "pending",
-  modifiedActionSummary: null,
-  expiresAfterSession: 14,
+// dataset behind this. D7 froze the action VOCABULARY (Practice · Review ·
+// Try Again · Monitor Progress), not a trigger → action MAPPING — these
+// five demo rows are illustrative content for the primary journey, not a
+// rule for when a real backend should emit any particular kind.
+//
+// Reaches all four known kinds plus one deliberately UNRECOGNISED kind
+// (Step 7), all on real roster students in Grade 3 Blue so they're walkable
+// from one class: Amara (review), Nimal (practice), Kavya (try_again),
+// Sanduni (monitor_progress), Tharindu (an invented kind proving the
+// RecommendationCard/recommendationLabel fallback renders rather than
+// crashing). Every other student gets an empty list — a legitimate "no
+// suggestions" state, not a missing-data gap.
+const DEMO_RECOMMENDATIONS: Record<string, RecommendationDisplay> = {
+  "STU-0001": {
+    recommendationId: "demo-rec-review",
+    kind: "review",
+    targetSkillDisplayName: "Place value",
+    evidenceSummary:
+      "Subtraction has been practised for four sessions without improvement, and place value is still developing.",
+    status: "pending",
+    modifiedActionSummary: null,
+    expiresAfterSession: 14,
+  },
+  "STU-0004": {
+    recommendationId: "demo-rec-practice",
+    kind: "practice",
+    targetSkillDisplayName: "Counting",
+    evidenceSummary: "Counting has fewer practice attempts than the other skills this month.",
+    status: "pending",
+    modifiedActionSummary: null,
+    expiresAfterSession: 12,
+  },
+  "STU-0008": {
+    recommendationId: "demo-rec-tryagain",
+    kind: "try_again",
+    targetSkillDisplayName: "Addition",
+    evidenceSummary: "The last addition session ended with several unfinished questions.",
+    status: "pending",
+    modifiedActionSummary: null,
+    expiresAfterSession: 10,
+  },
+  "STU-0010": {
+    recommendationId: "demo-rec-monitor",
+    kind: "monitor_progress",
+    targetSkillDisplayName: "Number sense",
+    evidenceSummary: "No change yet — number sense practice is steady and needs another session or two to read.",
+    status: "pending",
+    modifiedActionSummary: null,
+    expiresAfterSession: 15,
+  },
+  "STU-0012": {
+    recommendationId: "demo-rec-unknown-kind",
+    kind: "adjust_difficulty", // deliberately unrecognised — see file header
+    targetSkillDisplayName: "Multiplication",
+    evidenceSummary: "Recent multiplication sessions have been completed quickly with high accuracy.",
+    status: "pending",
+    modifiedActionSummary: null,
+    expiresAfterSession: 11,
+  },
 };
 
 export function recommendationsForStudent(studentId: string): RecommendationDisplay[] {
-  return studentId === "STU-0001" ? [DEMO_RECOMMENDATION] : [];
+  const recommendation = DEMO_RECOMMENDATIONS[studentId];
+  return recommendation ? [recommendation] : [];
 }
 
 // --- Hand-authored: Join requests (docs/11 §4, Step 6) ----------------------
@@ -418,4 +469,92 @@ export function approveJoinRequest(classId: string, requestId: string): void {
 
 export function rejectJoinRequest(classId: string, requestId: string): void {
   removeJoinRequest(classId, requestId);
+}
+
+// --- Hand-authored: Reports (plan §4.6, Step 7) -----------------------------
+//
+// See ClassReportsResponse's doc comment in api/client.ts for what is real
+// vs. derived here. Never computes or stores precision, recall, F1, AUC,
+// lift, calibration, a confusion matrix, or any breakdown by research cohort group —
+// those are evidence for what the product may do, not content for a
+// teacher (plan §4.6), and nothing in this codebase has ever needed them
+// since Step 3 dropped every probability column at the source.
+
+interface EarlyWarningPoint {
+  sessionNumber: number;
+  flagRate: number;
+  sampleSize: number;
+}
+const EARLY_WARNING_TREND = earlyWarningTrendJson as EarlyWarningPoint[];
+
+const PARTICIPATION_BUCKETS = [
+  { bucketLabel: "1–2 sessions", min: 1, max: 2 },
+  { bucketLabel: "3–5 sessions", min: 3, max: 5 },
+  { bucketLabel: "6+ sessions", min: 6, max: Infinity },
+];
+
+export interface ClassReportsData {
+  classLearningProgress: { sessionNumbers: number[]; values: number[] };
+  studentsToWatchOverTime: { sessionNumbers: number[]; counts: number[] };
+  earlyWarningTrend: { sessionNumbers: number[]; flagRates: number[]; explanation: string };
+  participation: { bucketLabel: string; studentCount: number }[];
+}
+
+export function classReportsFor(classId: string): ClassReportsData {
+  const roster = ALL_CLASS_STUDENTS[classId] ?? [];
+
+  // Class learning progress: the class's own real per-student accuracy
+  // series (score_avg_recent, see scripts/build-fixtures.mjs), averaged
+  // index-aligned across the roster's trailing sessions. Real numbers,
+  // averaged — not a fabricated trend.
+  const maxLen = Math.max(0, ...roster.map((s) => s.accuracySparkline.length));
+  const progressValues: number[] = [];
+  for (let i = 0; i < maxLen; i++) {
+    const valuesAtIndex = roster
+      .map((s) => {
+        const offset = maxLen - s.accuracySparkline.length;
+        return i >= offset ? s.accuracySparkline[i - offset] : undefined;
+      })
+      .filter((v): v is number => v !== undefined);
+    if (valuesAtIndex.length > 0) {
+      progressValues.push(valuesAtIndex.reduce((a, b) => a + b, 0) / valuesAtIndex.length);
+    }
+  }
+
+  // Participation: a real histogram of this class's own sessionsCompleted —
+  // not derived from anything approximate.
+  const participation = PARTICIPATION_BUCKETS.map((b) => ({
+    bucketLabel: b.bucketLabel,
+    studentCount: roster.filter((s) => s.sessionsCompleted >= b.min && s.sessionsCompleted <= b.max)
+      .length,
+  }));
+
+  // Students to watch over time: THERE IS NO real per-class longitudinal
+  // watch-count in the research artefacts — only one current-t snapshot per
+  // class was ever computed (Step 3). This is the real, cohort-wide
+  // flag-rate curve (56_early_detection_curve.csv, same curve the
+  // Early-warning trend section shows) scaled to this class's own roster
+  // size and rounded to a whole student count. It is an APPROXIMATION,
+  // clearly derived from real data rather than invented from nothing, but
+  // it is not a measured per-class trend — flagged here and in the Step 7
+  // report rather than presented as more precise than it is.
+  const rosterSize = roster.length;
+  const studentsToWatchOverTime = {
+    sessionNumbers: EARLY_WARNING_TREND.map((p) => p.sessionNumber),
+    counts: EARLY_WARNING_TREND.map((p) => Math.round(p.flagRate * rosterSize)),
+  };
+
+  return {
+    classLearningProgress: {
+      sessionNumbers: progressValues.map((_, i) => i + 1),
+      values: progressValues,
+    },
+    studentsToWatchOverTime,
+    earlyWarningTrend: {
+      sessionNumbers: EARLY_WARNING_TREND.map((p) => p.sessionNumber),
+      flagRates: EARLY_WARNING_TREND.map((p) => p.flagRate),
+      explanation: EARLY_WARNING_TREND_EXPLANATION,
+    },
+    participation,
+  };
 }

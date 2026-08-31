@@ -1,6 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { LearnerSnapshot } from "../../lib/presentation";
+import type { LearnerSnapshot, RecommendationDisplay } from "../../lib/presentation";
 import StudentRoute from "../student/StudentRoute";
 import { renderRoute } from "./testUtils";
 
@@ -13,6 +14,11 @@ vi.mock("../../api/client", () => ({
     getStudentOverview: vi.fn(),
     getStudentSessions: vi.fn(),
     getStudentRecommendations: vi.fn(),
+    createClass: vi.fn(),
+    getJoinRequests: vi.fn(),
+    approveJoinRequest: vi.fn(),
+    rejectJoinRequest: vi.fn(),
+    getClassReports: vi.fn(),
   },
 }));
 
@@ -169,6 +175,94 @@ describe("StudentRoute — Getting Started variant", () => {
     // is always available (plan §4.4, §8).
     expect(screen.getByText("Skill progress")).toBeInTheDocument();
     expect(screen.getByText("Recent activity")).toBeInTheDocument();
+  });
+});
+
+describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () => {
+  const BASE_REC: RecommendationDisplay = {
+    recommendationId: "rec-1",
+    kind: "practice",
+    targetSkillDisplayName: "Counting",
+    evidenceSummary: "Counting has fewer practice attempts than other skills this month.",
+    status: "pending",
+    modifiedActionSummary: null,
+    expiresAfterSession: 12,
+  };
+
+  function overviewFor(studentId: string) {
+    return {
+      snapshot: makeSnapshot({ studentId }),
+      skills: SKILLS,
+      disclosure: "d",
+      className: "Grade 3 Blue",
+      skillBounds: BOUNDS,
+    };
+  }
+
+  it.each(["practice", "review", "try_again", "monitor_progress"])(
+    "renders the known kind '%s' through the lookup",
+    async (kind) => {
+      vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+      vi.mocked(client.getStudentRecommendations).mockResolvedValue([{ ...BASE_REC, kind }]);
+      renderStudent("s-1");
+      await waitFor(() => expect(screen.getByText("Suggestions")).toBeInTheDocument());
+      expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument();
+    },
+  );
+
+  it("an unrecognised kind falls back to a readable label and does not throw", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([
+      { ...BASE_REC, kind: "adjust_difficulty" },
+    ]);
+    expect(() => renderStudent("s-1")).not.toThrow();
+    await waitFor(() => expect(screen.getByText("Suggestions")).toBeInTheDocument());
+    expect(screen.getByText(/^Suggestion —/)).toBeInTheDocument();
+  });
+
+  it("evidence is inline with the action, expiry is shown, and it is marked 'Not yet applied'", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
+    expect(screen.getByText(/Not yet applied/)).toBeInTheDocument();
+    expect(screen.getByText(/Expires after session 12/)).toBeInTheDocument();
+  });
+
+  it("there is no 'Accept all' control anywhere on the screen", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([
+      BASE_REC,
+      { ...BASE_REC, recommendationId: "rec-2", kind: "review" },
+    ]);
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText("Suggestions")).toBeInTheDocument());
+    expect(screen.queryByText(/accept all/i)).not.toBeInTheDocument();
+  });
+
+  it("Modify captures what the teacher changed it to", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await userEvent.type(screen.getByRole("textbox"), "Try place value instead");
+    await userEvent.click(screen.getByRole("button", { name: "Save change" }));
+
+    await waitFor(() => expect(screen.getByText(/Modified: Try place value instead/)).toBeInTheDocument());
+  });
+
+  it("Accept/Modify/Dismiss are equally weighted and visually distinct", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
+    const accept = screen.getByRole("button", { name: "Accept" });
+    const modify = screen.getByRole("button", { name: "Modify" });
+    const dismiss = screen.getByRole("button", { name: "Dismiss" });
+    expect(accept.className).not.toBe(modify.className);
+    expect(modify.className).not.toBe(dismiss.className);
   });
 });
 

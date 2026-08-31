@@ -5,6 +5,7 @@
 import type { HomeSummary, LearnerSnapshot, SessionEntry } from "../types";
 import type {
   ApiClient,
+  ClassReportsResponse,
   CohortResponse,
   CreateClassResult,
   StudentOverviewResponse,
@@ -21,6 +22,7 @@ import {
   TEACHER_NAME,
   allClasses,
   approveJoinRequest as approveJoinRequestFixture,
+  classReportsFor,
   createClassRecord,
   joinRequestsForClass,
   pendingRequestCountForClass,
@@ -190,5 +192,15 @@ export class MockClient implements ApiClient {
   rejectJoinRequest(classId: string, requestId: string): Promise<void> {
     rejectJoinRequestFixture(classId, requestId);
     return delay(undefined);
+  }
+
+  getClassReports(classId: string): Promise<ClassReportsResponse> {
+    const classInfo = allClasses().find((c) => c.classId === classId);
+    const data = classReportsFor(classId);
+    return delay({
+      disclosure: DISCLOSURE,
+      className: classInfo?.name ?? classId,
+      ...data,
+    });
   }
 }
