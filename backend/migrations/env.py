@@ -23,12 +23,13 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
-from sqlalchemy import MetaData, pool
+from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from app.infrastructure.db import metadata as target_metadata  # noqa: E402
 from app.infrastructure.migration_guard import (  # noqa: E402
     OWNED_VERSION_TABLE,
     assert_direct_connection,
@@ -41,11 +42,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Component 3 owns zero tables at B3.1. An empty MetaData (rather than None) still lets
-# `--autogenerate` run -- it compares nothing against the whole database, and
-# `component3_include_object` filters every student-app object out of the diff. That is the
-# guard-check demonstration.
-target_metadata = MetaData()
+# `target_metadata` is `app.infrastructure.db.metadata` -- every `t3_` table Component 3
+# owns, plus a one-column `classrooms` shadow used only to anchor a foreign key.
+# `component3_include_object` still filters autogenerate and upgrade down to `t3_` objects,
+# so no student-app table (the shadow included) can be created, altered or dropped here.
 
 _BANNER_SHOWN = False
 
