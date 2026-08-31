@@ -7,7 +7,14 @@ Importing this package registers every `t3_` table (and the `classrooms` shadow)
 from __future__ import annotations
 
 from app.infrastructure.db.base import Base, metadata
-from app.infrastructure.db.models import ClassroomKey, PipelineRun, classrooms
+from app.infrastructure.db.models import (
+    ClassroomKey,
+    FeaturesAtT,
+    Panel,
+    PipelineRun,
+    b_learners,
+    classrooms,
+)
 from app.infrastructure.db.provenance import (
     ProvenanceCoreMixin,
     ProvenanceMixin,
@@ -17,9 +24,12 @@ from app.infrastructure.db.provenance import (
 __all__ = [
     "Base",
     "ClassroomKey",
+    "FeaturesAtT",
+    "Panel",
     "PipelineRun",
     "ProvenanceCoreMixin",
     "ProvenanceMixin",
+    "b_learners",
     "classrooms",
     "metadata",
     "source_class_check",
