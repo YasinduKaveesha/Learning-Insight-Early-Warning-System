@@ -31,7 +31,7 @@ export function ClassKeyDialog({
       <div className="my-4">
         <ClassKeyDisplay classKey={classKey} size="large" />
       </div>
-      <p className="text-xs text-ink-secondary">
+      <p className="text-sm text-ink-secondary">
         Give this key to your students so they can join the class.
       </p>
       {onGoToClass ? (

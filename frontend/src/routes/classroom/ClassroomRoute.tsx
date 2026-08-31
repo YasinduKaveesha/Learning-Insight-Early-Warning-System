@@ -1,23 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, House, KeyRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
 import { ClassInfoDialog } from "../../components/class/ClassInfoDialog";
-import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { SearchField } from "../../components/shared/SearchField";
 import { SectionHeader } from "../../components/shared/SectionHeader";
 import { StatTile } from "../../components/shared/StatTile";
 import { StudentCard } from "../../components/student/StudentCard";
-import {
-  SNAPSHOT_FRAMING,
-  sortCohortOrder,
-  type LearnerSnapshot,
-  toWatchStatus,
-} from "../../lib/presentation";
+import { sortCohortOrder, type Grade, type LearnerSnapshot, toWatchStatus } from "../../lib/presentation";
+
+// Same grade -> pill colour as the /watch page's class-name pill
+// (WatchListScreen.tsx's GRADE_PILL_CLASSES), so the two screens agree.
+const GRADE_PILL_CLASSES: Record<Grade, string> = {
+  GRADE_2: "bg-watch-watching-fg text-white",
+  GRADE_3: "bg-watch-noConcern-fg text-white",
+};
 
 /**
  * Classroom / Cohort (plan §4.2) — the main working screen. Ordering
@@ -66,17 +67,31 @@ export default function ClassroomRoute() {
           assistive tech at all — a screen-reader user heard only "Back to
           classes" with the class name silently dropped. Split into a
           plain back link plus a real h1 (docs/11 §8: "sane heading
-          hierarchy") that actually carries the class name. */}
+          hierarchy") that actually carries the class name.
+
+          UI-refinement pass: back now goes to Home (not /classes) — /classes
+          is no longer reachable from the bottom nav (removed) and Home
+          already shows every class, so Home is the actual "back" a teacher
+          expects. The Home icon marks that this isn't a plain "go back"
+          arrow (per-page convention, see WatchListScreen.tsx). */}
       <header className="flex items-center justify-between gap-2">
         <Link
-          to="/classes"
-          aria-label="Back to classes"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
+          to="/"
+          aria-label="Home"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
-          ←
+          <House aria-hidden="true" size={22} />
         </Link>
-        <h1 className="flex-1 truncate text-base font-semibold text-ink-primary">
-          {isPending ? "" : (data?.className ?? "Class")}
+        <h1 className="flex flex-1 items-center justify-center truncate">
+          {/* UI-refinement pass: same coloured pill as the /watch page's
+              class-name pill (grade-coloured, solid fill, white text). */}
+          {!isPending && data ? (
+            <span
+              className={`truncate rounded-full px-4 py-1.5 text-base font-semibold ${GRADE_PILL_CLASSES[data.grade]}`}
+            >
+              {data.className}
+            </span>
+          ) : null}
         </h1>
         <button
           type="button"
@@ -85,10 +100,9 @@ export default function ClassroomRoute() {
           disabled={!data}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary disabled:opacity-40"
         >
-          ⓘ
+          <KeyRound aria-hidden="true" size={22} />
         </button>
       </header>
-      <FramingLine />
 
       {data ? (
         <ClassInfoDialog
@@ -127,29 +141,37 @@ export default function ClassroomRoute() {
             resultCount={filtered.length}
           />
 
+          {/* UI-refinement pass: same coloured/bold/bottom-right-value style
+              as Home's stat tiles (StatTile's `tone` prop). */}
           <div className="grid grid-cols-3 gap-2">
-            <StatTile label="Students" value={data.studentCount} />
-            <StatTile label="To Watch" value={data.toWatchCount} />
-            <StatTile label="Getting Started" value={data.gettingStartedCount} />
+            <StatTile label="Students" value={data.studentCount} tone="blue" />
+            <StatTile label="To Watch" value={data.toWatchCount} tone="green" />
+            <StatTile label="Getting Started" value={data.gettingStartedCount} tone="amber" />
           </div>
 
           {data.pendingRequestCount > 0 ? (
+            // UI-refinement pass: soft-red tint (danger.soft) instead of
+            // neutral grey — same "soft tint" lightness/pattern as
+            // secondarySoft elsewhere in the app, just red. This is an
+            // administrative action-needed banner, not a student watch
+            // status, so docs/12 §7's "never red for a watch status" rule
+            // doesn't apply here.
             <Link
               to={`/classes/${classId}/requests`}
-              className="flex min-h-[44px] items-center justify-between rounded-lg border border-border bg-surface2 px-3 text-sm text-ink-primary"
+              className="flex min-h-[44px] items-center justify-between rounded-lg border border-danger bg-danger-soft px-3 text-sm text-danger-text"
             >
               <span>
                 ⚑ {data.pendingRequestCount} join request
                 {data.pendingRequestCount === 1 ? "" : "s"} pending
               </span>
-              <span aria-hidden="true">→</span>
+              <ArrowRight aria-hidden="true" size={18} />
             </Link>
           ) : null}
 
           <section>
-            <SectionHeader title="Students to Watch" subtitle={SNAPSHOT_FRAMING} />
+            <SectionHeader title="Students to Watch" />
             {watching.length === 0 ? (
-              <EmptyState message="No students in this class are currently flagged for review." />
+              <EmptyState message="No students in this class are currently flagged for review." tone="blue" />
             ) : (
               <StudentCardList students={watching} />
             )}
@@ -163,8 +185,6 @@ export default function ClassroomRoute() {
               <StudentCardList students={allOthers} />
             )}
           </section>
-
-          <DisclosureFooter disclosure={data.disclosure} />
         </>
       )}
     </div>

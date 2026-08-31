@@ -22,12 +22,12 @@ export function GettingStartedNotice({
   name,
 }: GettingStartedNoticeProps) {
   return (
-    <NeutralNotice title="Getting Started">
+    <NeutralNotice title="Getting Started" tone={name ? "green" : "neutral"}>
       {name
         ? `${name} is still building a learning history — ${sessionsCompleted} of ${sessionsRequired} sessions completed. More activity is needed before the system can identify a clear learning pattern.`
         : "This student is still building a learning history. More activity is needed before the system can identify a clear learning pattern."}
       {!name ? (
-        <span className="mt-2 block text-xs text-ink-secondary">
+        <span className="mt-2 block text-sm text-ink-secondary">
           {sessionsCompleted} of {sessionsRequired} sessions
         </span>
       ) : null}

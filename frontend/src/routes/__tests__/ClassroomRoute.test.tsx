@@ -219,7 +219,10 @@ describe("ClassroomRoute — hardening pass: heading hierarchy", () => {
       expect(screen.getByRole("heading", { level: 1, name: "Grade 3 Blue" })).toBeInTheDocument(),
     );
     // The back link's accessible name no longer swallows the class name.
-    expect(screen.getByRole("link", { name: "Back to classes" })).toBeInTheDocument();
+    // UI-refinement pass: back now goes to Home, labelled "Home".
+    const backLink = screen.getByRole("link", { name: "Home" });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink).toHaveAttribute("href", "/");
   });
 });
 
@@ -238,8 +241,10 @@ describe("ClassroomRoute — search", () => {
     expect(screen.queryByText("Priya")).not.toBeInTheDocument();
     expect(screen.queryByText("Nimal")).not.toBeInTheDocument();
 
-    // Kavya's status (No current concern) is preserved through the filter.
-    expect(screen.getByText("No current concern identified")).toBeInTheDocument();
+    // UI-refinement pass: StudentCard no longer shows a watch-status
+    // badge — Kavya's trajectory word ("Stable", from her fixture) is
+    // still visible on her card, preserved through the filter.
+    expect(screen.getByText("Stable")).toBeInTheDocument();
   });
 });
 
@@ -273,20 +278,25 @@ describe("ClassroomRoute — four states", () => {
     renderClassroom();
     await waitFor(() => expect(screen.getByText("Nimal")).toBeInTheDocument());
     const card = screen.getByText("Nimal").closest("a")!;
-    expect(within(card).getByText("Getting Started")).toBeInTheDocument();
+    // UI-refinement pass: no watch-status badge on this card any more —
+    // the Getting Started state still renders as its own first-class line
+    // ("N of 3 sessions"), not an error or empty state.
+    expect(within(card).getByText("1 of 3 sessions")).toBeInTheDocument();
   });
 });
 
 describe("ClassroomRoute — framing, disclosure, and forbidden vocabulary", () => {
-  it("renders the framing line and the API-sourced disclosure", async () => {
+  // UI-refinement pass: both the framing line and the disclosure footer
+  // were removed from this screen at explicit direction (the same scoped
+  // exception as Home).
+  it("does not render the framing line or the disclosure footer", async () => {
     mockCohort(ORDERED_COHORT);
     renderClassroom();
-    expect(screen.getByText("The system flags learners for teacher review.")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        screen.getByText("Literature-informed synthetic data — not clinical evidence."),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    expect(screen.queryByText("The system flags learners for teacher review.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Literature-informed synthetic data — not clinical evidence."),
+    ).not.toBeInTheDocument();
   });
 
   const FORBIDDEN = [

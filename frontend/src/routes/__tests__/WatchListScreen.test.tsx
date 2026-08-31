@@ -92,16 +92,18 @@ describe("WatchListScreen — teacher-wide (/watch)", () => {
       classCount: 2,
       gettingStarted: 1,
       classes: [
-        { classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 },
-        { classId: "class-2", name: "Grade 3 Green", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 },
+        { classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 },
+        { classId: "class-2", name: "Grade 3 Green", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 },
       ],
       disclosure: "Literature-informed synthetic data — not clinical evidence.",
     });
     renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
 
     await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
-    expect(screen.getByText("2 of 24 students")).toBeInTheDocument();
-    // Grouped by class — both class-name headings render.
+    expect(screen.getByText("Kavindu")).toBeInTheDocument();
+    // UI-refinement pass: the section heading between groups is removed —
+    // each card carries its own class name (top-right) and grade colour
+    // instead, so "Grade 3 Blue" still appears, just on Amara's own card.
     expect(screen.getByText("Grade 3 Blue")).toBeInTheDocument();
     expect(screen.getByText("Grade 3 Green")).toBeInTheDocument();
   });
@@ -118,7 +120,7 @@ describe("WatchListScreen — teacher-wide (/watch)", () => {
       activeStudents: 24,
       classCount: 1,
       gettingStarted: 0,
-      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 }],
       disclosure: "d",
     });
     renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
@@ -128,7 +130,7 @@ describe("WatchListScreen — teacher-wide (/watch)", () => {
     ).toBeInTheDocument();
   });
 
-  it("a 'Priority N' badge appears here, and nowhere outside a watch list", async () => {
+  it("UI-refinement pass: 'Priority N' text is removed from watch-list cards", async () => {
     vi.mocked(client.getWatchList).mockResolvedValue({
       totalStudents: 24,
       disclosure: "d",
@@ -140,11 +142,12 @@ describe("WatchListScreen — teacher-wide (/watch)", () => {
       activeStudents: 24,
       classCount: 1,
       gettingStarted: 0,
-      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 }],
       disclosure: "d",
     });
     renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
-    await waitFor(() => expect(screen.getByText(/Priority 1/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    expect(screen.queryByText(/Priority 1/)).not.toBeInTheDocument();
   });
 
   it("renders the empty state neutrally when nobody is flagged", async () => {
@@ -210,7 +213,7 @@ describe("WatchListScreen — >=1024px master-detail (plan §8, hardening-pass g
       activeStudents: 24,
       classCount: 1,
       gettingStarted: 0,
-      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 }],
       disclosure: "d",
     });
     renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
@@ -231,7 +234,7 @@ describe("WatchListScreen — >=1024px master-detail (plan §8, hardening-pass g
       activeStudents: 24,
       classCount: 1,
       gettingStarted: 0,
-      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 }],
       disclosure: "d",
     });
     renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
@@ -253,7 +256,7 @@ describe("WatchListScreen — >=1024px master-detail (plan §8, hardening-pass g
       activeStudents: 24,
       classCount: 1,
       gettingStarted: 0,
-      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 }],
       disclosure: "d",
     });
     renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
@@ -278,7 +281,7 @@ describe("WatchListScreen — >=1024px master-detail (plan §8, hardening-pass g
       activeStudents: 24,
       classCount: 1,
       gettingStarted: 0,
-      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1 }],
+      classes: [{ classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 }],
       disclosure: "d",
     });
     vi.mocked(client.getStudentOverview).mockResolvedValue({
@@ -289,7 +292,9 @@ describe("WatchListScreen — >=1024px master-detail (plan §8, hardening-pass g
       skillBounds: BOUNDS,
     });
     renderRoute(<WatchListScreen selectedStudentId="s-amara" />, { path: "/watch", initialPath: "/watch" });
-    await waitFor(() => expect(screen.getByText("Worth watching right now")).toBeInTheDocument());
+    // UI-refinement pass: the "Worth watching right now" badge is removed
+    // from this card — the priority line is the signal it rendered now.
+    await waitFor(() => expect(screen.getByText(/Priority 1 in Grade 3 Blue/)).toBeInTheDocument());
     // The detail pane's own tab bar is omitted (no sub-route to switch to
     // inline) — only the list's "Amara" name and the detail's heading exist.
     expect(screen.queryByText("Sessions")).not.toBeInTheDocument();
@@ -305,12 +310,23 @@ describe("WatchListScreen — per class (/classes/:classId/watch)", () => {
       disclosure: "d",
       students,
     });
+    vi.mocked(client.getCohort).mockResolvedValue({
+      classId: "class-1",
+      className: "Grade 3 Blue",
+      studentCount: 8,
+      toWatchCount: 2,
+      gettingStartedCount: 0,
+      pendingRequestCount: 0,
+      students,
+      disclosure: "d",
+      grade: "GRADE_3",
+      classKey: "9K3P21",
+    });
     renderRoute(<WatchListScreen classId="class-1" />, {
       path: "/classes/:classId/watch",
       initialPath: "/classes/class-1/watch",
     });
     await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
     expect(screen.getByText("Third")).toBeInTheDocument();
-    expect(screen.getByText("2 of 8 students")).toBeInTheDocument();
   });
 });

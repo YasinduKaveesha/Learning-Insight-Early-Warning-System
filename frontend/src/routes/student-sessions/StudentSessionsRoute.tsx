@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, House } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
-import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { SessionCard } from "../../components/student/SessionCard";
 
@@ -40,34 +39,41 @@ export default function StudentSessionsRoute() {
 
   return (
     <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
-      <header className="flex items-center gap-2">
+      <header className="flex items-center justify-between gap-2">
         <Link
           to={studentId ? `/students/${studentId}` : "/classes"}
           aria-label="Back"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
-          ←
+          <ArrowLeft aria-hidden="true" size={22} />
         </Link>
-        <h1 className="text-base font-semibold text-ink-primary">
+        <h1 className="flex-1 truncate text-center text-[18px] font-bold text-ink-primary">
           {overviewQuery.data?.snapshot.displayName ?? "Student"}
         </h1>
+        <Link
+          to="/"
+          aria-label="Home"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+        >
+          <House aria-hidden="true" size={22} />
+        </Link>
       </header>
 
-      {/* Hardening-pass fix: matches StudentRoute.tsx's tab-bar fix — was
-          sized to text only (pb-2), under the 44px touch-target minimum. */}
-      <div className="flex gap-4 border-b border-border text-sm">
+      {/* Hardening-pass fix: matches StudentDetail's tab-bar fix — was
+          sized to text only (pb-2), under the 44px touch-target minimum.
+          UI-refinement pass: pill-shaped, coloured, centered — matching
+          StudentDetail's Overview/Sessions tabs. */}
+      <div className="flex justify-center gap-3">
         <Link
           to={studentId ? `/students/${studentId}` : "/classes"}
-          className="flex min-h-[44px] items-center text-ink-secondary"
+          className="flex min-h-[44px] items-center justify-center rounded-full bg-surface2 px-5 text-base font-bold text-ink-secondary"
         >
           Overview
         </Link>
-        <span className="flex min-h-[44px] items-center border-b-2 border-foreground font-medium text-ink-primary">
+        <span className="flex min-h-[44px] items-center justify-center rounded-full bg-watch-watching-bg px-5 text-base font-bold text-watch-watching-fg">
           Sessions
         </span>
       </div>
-
-      <FramingLine />
 
       {isPending ? (
         <LoadingSkeleton rows={3} rowHeight={140} />
@@ -82,14 +88,11 @@ export default function StudentSessionsRoute() {
       ) : sessionsQuery.data!.length === 0 ? (
         <EmptyState message="No sessions recorded yet." />
       ) : (
-        <>
-          <div className="flex flex-col gap-3">
-            {sessionsQuery.data!.map((session) => (
-              <SessionCard key={session.sessionNumber} session={session} />
-            ))}
-          </div>
-          <DisclosureFooter disclosure={overviewQuery.data!.disclosure} />
-        </>
+        <div className="flex flex-col gap-3">
+          {sessionsQuery.data!.map((session) => (
+            <SessionCard key={session.sessionNumber} session={session} />
+          ))}
+        </div>
       )}
     </div>
   );

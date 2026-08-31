@@ -90,6 +90,10 @@ export class MockClient implements ApiClient {
         grade: c.grade,
         studentCount: students.length,
         toWatchCount: students.filter((s) => toWatchStatus(s).kind === "watching").length,
+        // UI-refinement pass: Home's class cards show a pending-request
+        // dot — this was already computed per-class for the Classroom
+        // screen (pendingRequestCountForClass), just not surfaced here.
+        pendingRequestCount: pendingRequestCountForClass(c.classId),
       };
     });
     return delay({

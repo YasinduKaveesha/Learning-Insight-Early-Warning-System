@@ -31,7 +31,11 @@ export default {
     },
     extend: {
       colors: {
-        background: "#f4f4f6",
+        // UI-refinement pass: was a light grey, changed to white at
+        // explicit direction — this is the same value as surface1 now, so
+        // the app background and card surfaces are visually flush. See
+        // tokens.ts header for the note this supersedes.
+        background: "#ffffff",
         foreground: "#2f3136",
         surface1: "#ffffff",
         surface2: "#eaebee",
@@ -117,6 +121,50 @@ export default {
             border: "#cdcfd5", // border.strong
             fg: "#686d76", // ink.secondary
           },
+        },
+
+        // UI-refinement pass: a third soft-tint colour for Home's stat
+        // tiles (Getting Started), alongside watch.watching (blue) and
+        // watch.noConcern (green) reused for the other two. New tint, not
+        // a re-port — foreground (#2f3136) on this bg measures 11.72:1,
+        // clearing AA with margin.
+        statAmber: {
+          bg: "#fdf3d0",
+          border: "#f2cd38", // accentYellow
+          fg: "#2f3136", // foreground
+        },
+
+        // UI-refinement pass: 5-colour categorical palette for skill-
+        // progress bars, exact values given — one hue per row, cycling
+        // (rows 6-7 repeat rows 2-3's colours). coral/blue/green reuse
+        // primary/accentBlue/accentGreen; amber and purple are new.
+        // FLAGGED, not substituted: measured against `surface2` (the bar
+        // track) these are ~1.5-2.3:1, under WCAG 1.4.11's 3:1 for a
+        // meaningful non-text graphic (purple, ~3.35:1, is the exception).
+        // Not overridden without asking, per this app's established
+        // pattern for a flagged-but-given colour.
+        skillBar: {
+          1: "#ff6b68", // coral = primary
+          2: "#3ca6f8", // blue = accentBlue
+          3: "#7bd3aa", // green = accentGreen
+          4: "#ffb51f", // amber
+          5: "#9a64df", // purple
+        },
+
+        // UI-refinement pass: soft-purple card tint for Suggestions —
+        // same bg/border/fg shape as watch.watching / watch.noConcern /
+        // statAmber, built from the skillBar purple hue so the palette
+        // stays internally consistent. foreground on this bg measures
+        // 10.93:1, clearing AA with margin.
+        suggestionPurple: {
+          bg: "#f0e8fb",
+          border: "#9a64df", // same hue as skillBar.5
+          fg: "#2f3136", // foreground
+          // Accept: solid dark purple, white text — 7.38:1. Dismiss: a
+          // slightly deeper purple tint than the card's own bg (so it
+          // still reads as its own surface), foreground text — 9.27:1.
+          accept: "#6b3fa0",
+          dismissBg: "#e4d3f7",
         },
       },
 

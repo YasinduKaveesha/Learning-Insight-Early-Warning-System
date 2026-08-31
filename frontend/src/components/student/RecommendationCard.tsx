@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { recommendationLabel, type RecommendationDisplay } from "../../lib/presentation";
+import type { RecommendationDisplay } from "../../lib/presentation";
 
 export interface RecommendationCardProps {
   recommendation: RecommendationDisplay;
@@ -10,8 +10,9 @@ export interface RecommendationCardProps {
 
 /**
  * PRESENTATIONAL ONLY — calls its callbacks and performs no persistence of
- * its own. Kind is rendered through recommendationLabel()'s lookup, which
- * has a readable fallback, so an unknown kind can never crash this card.
+ * its own. UI-refinement pass: the "{kind} — " prefix (via
+ * recommendationLabel()) is dropped from the visible title; only the
+ * target skill name renders now.
  *
  * No "Accept all" control exists anywhere in this file or its callers —
  * batch-approving suggestions about individual children defeats the point
@@ -28,28 +29,24 @@ export function RecommendationCard({
   const modifyFieldId = useId();
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4">
+    <div className="flex flex-col gap-2 rounded-lg border border-suggestionPurple-border bg-suggestionPurple-bg p-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-ink-primary">
-          {recommendationLabel(recommendation.kind)} — {recommendation.targetSkillDisplayName}
+        {/* UI-refinement pass: dropped the "{kind} — " prefix (e.g.
+            "Practice — ") — just the skill name now, matching the plain
+            text style used elsewhere (e.g. skill progress rows). */}
+        <span className="text-[17px] font-bold text-ink-primary">
+          {recommendation.targetSkillDisplayName}
         </span>
       </div>
 
-      {/* Evidence shown WITH the action, never behind a tap (docs/12 §6). */}
-      <p className="text-sm text-ink-primary">
-        <span className="font-medium">Why: </span>
-        {recommendation.evidenceSummary}
-      </p>
-
-      <p className="text-xs text-ink-secondary">
-        {recommendation.status === "pending" ? "Not yet applied" : statusLabel(recommendation)}
-        {" · "}
-        Expires after session {recommendation.expiresAfterSession}
-      </p>
+      {/* Evidence shown WITH the action, never behind a tap (docs/12 §6).
+          UI-refinement pass: the "Why: " label is dropped — just the
+          evidence text now. */}
+      <p className="text-sm text-ink-primary">{recommendation.evidenceSummary}</p>
 
       {isModifying ? (
         <div className="flex flex-col gap-2">
-          <label htmlFor={modifyFieldId} className="text-xs font-medium text-ink-primary">
+          <label htmlFor={modifyFieldId} className="text-sm font-medium text-ink-primary">
             What should this be changed to?
           </label>
           <textarea
@@ -92,10 +89,12 @@ export function RecommendationCard({
         // making the tap targets unmistakably separate finger-hits, not
         // about ranking the choices.
         <div className="flex flex-col gap-3 pt-1">
+          {/* UI-refinement pass: solid dark purple matching the card's own
+              theme (suggestionPurple.accept), white text — 7.38:1. */}
           <button
             type="button"
             onClick={() => onAccept(recommendation.recommendationId)}
-            className="min-h-[44px] w-full rounded-lg bg-primary px-3 text-sm font-bold text-foreground"
+            className="min-h-[44px] w-full rounded-lg bg-suggestionPurple-accept px-3 text-sm font-bold text-white"
           >
             Accept
           </button>
@@ -107,15 +106,14 @@ export function RecommendationCard({
             Modify
           </button>
           <div className="mt-2 border-t border-border pt-3">
-            {/* danger.soft + foreground text, never a bare danger-red fill
-                or red text — reserved for genuinely destructive actions
-                (docs/12 §7), and dangerForeground/danger measures only
-                3.52:1 (fails AA), so the text stays on the safe dark
-                foreground token instead of white-on-red. */}
+            {/* UI-refinement pass: a deeper purple tint than the card's own
+                background (suggestionPurple.dismissBg), foreground text —
+                9.27:1 — replacing the previous danger-soft/pink pairing so
+                Dismiss reads as part of this card's own colour family. */}
             <button
               type="button"
               onClick={() => onDismiss(recommendation.recommendationId)}
-              className="min-h-[44px] w-full rounded-lg bg-danger-soft px-3 text-sm font-medium text-foreground underline underline-offset-2"
+              className="min-h-[44px] w-full rounded-lg bg-suggestionPurple-dismissBg px-3 text-sm font-medium text-foreground underline underline-offset-2"
             >
               Dismiss
             </button>
@@ -124,19 +122,4 @@ export function RecommendationCard({
       )}
     </div>
   );
-}
-
-function statusLabel(recommendation: RecommendationDisplay): string {
-  switch (recommendation.status) {
-    case "accepted":
-      return "Accepted";
-    case "dismissed":
-      return "Dismissed";
-    case "modified":
-      return recommendation.modifiedActionSummary
-        ? `Modified: ${recommendation.modifiedActionSummary}`
-        : "Modified";
-    default:
-      return "Not yet applied";
-  }
 }

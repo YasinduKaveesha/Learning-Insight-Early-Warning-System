@@ -74,31 +74,29 @@ describe("StudentRoute — watching student", () => {
       skillBounds: BOUNDS,
     });
     const { container } = renderStudent("s-1");
-    await waitFor(() => expect(screen.getByText("Worth watching right now")).toBeInTheDocument());
-
-    expect(screen.getByText(/Priority 1 in Grade 3 Blue/)).toBeInTheDocument();
-    expect(screen.getByText("Why?")).toBeInTheDocument();
+    // UI-refinement pass: the "Worth watching right now" badge and the
+    // "Why?" heading are removed from this card — the priority line and
+    // the explanation text (unlabelled now) are still present and ordered.
+    await waitFor(() => expect(screen.getByText(/Priority 1 in Grade 3 Blue/)).toBeInTheDocument());
+    expect(screen.queryByText("Worth watching right now")).not.toBeInTheDocument();
+    expect(screen.queryByText("Why?")).not.toBeInTheDocument();
     expect(
       screen.getByText("Subtraction has not improved across the last four sessions."),
     ).toBeInTheDocument();
     expect(screen.getByText("Skill progress")).toBeInTheDocument();
-    expect(screen.getByText("Recent activity")).toBeInTheDocument();
 
-    // Order: status block before "Why?" before "Skill progress" before
-    // "Recent activity" before "Suggestions".
+    // Order: status block before "Skill progress" before "Suggestions".
     const text = container.textContent!;
-    const iStatus = text.indexOf("Worth watching right now");
-    const iWhy = text.indexOf("Why?");
+    const iStatus = text.indexOf("Priority 1 in Grade 3 Blue");
     const iSkill = text.indexOf("Skill progress");
-    const iActivity = text.indexOf("Recent activity");
     const iSuggestions = text.indexOf("Suggestions");
-    expect(iStatus).toBeLessThan(iWhy);
-    expect(iWhy).toBeLessThan(iSkill);
-    expect(iSkill).toBeLessThan(iActivity);
-    expect(iActivity).toBeLessThan(iSuggestions);
+    expect(iStatus).toBeLessThan(iSkill);
+    expect(iSkill).toBeLessThan(iSuggestions);
   });
 
-  it("renders the practice trajectory chip and NO engagement trajectory state chip, only the series", async () => {
+  // UI-refinement pass: the entire "Recent activity" section (trajectory
+  // chip + both charts) is removed from this screen at explicit direction.
+  it("does not render the Recent activity section at all", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue({
       snapshot: makeSnapshot({}),
       skills: SKILLS,
@@ -107,13 +105,10 @@ describe("StudentRoute — watching student", () => {
       skillBounds: BOUNDS,
     });
     renderStudent("s-1");
-    await waitFor(() => expect(screen.getByText(/Practice accuracy:/)).toBeInTheDocument());
-    expect(screen.getByText("Game engagement")).toBeInTheDocument();
-    // The withheld 3-state chip vocabulary must never appear attached to
-    // "Game engagement" — only the practice chip carries those words.
-    expect(screen.queryByText("Game engagement: ↓ needs attention")).not.toBeInTheDocument();
-    expect(screen.queryByText("Game engagement: ↑ improving")).not.toBeInTheDocument();
-    expect(screen.queryByText("Game engagement: → stable")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Skill progress")).toBeInTheDocument());
+    expect(screen.queryByText("Recent activity")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Practice accuracy:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Game engagement")).not.toBeInTheDocument();
   });
 });
 
@@ -130,17 +125,24 @@ describe("StudentRoute — the two-signal path (plan §10)", () => {
       className: "Grade 3 Blue",
       skillBounds: BOUNDS,
     });
+    // FLAGGED REGRESSION: plan §10's two-signal path required BOTH the
+    // flagged status AND the improving-trajectory chip to render together
+    // on this screen, precisely so neither implies the other. Removing the
+    // whole "Recent activity" section (UI-refinement pass, explicit
+    // direction) removed the trajectory-chip half of that signal — it no
+    // longer renders anywhere on Student Overview. This test now only
+    // confirms the remaining half (the flagged status) and that nothing
+    // reassuring leaks in; it can no longer verify the two-signal
+    // acceptance criterion as originally written.
     renderStudent("s-1");
-    await waitFor(() => expect(screen.getByText("Worth watching right now")).toBeInTheDocument());
-    expect(screen.getByText("Practice accuracy: ↑ improving")).toBeInTheDocument();
-    // Both render side by side; neither element's text claims the other.
+    await waitFor(() => expect(screen.getByText(/Priority 4 in Grade 3 Blue/)).toBeInTheDocument());
     expect(screen.queryByText(/no concern/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/confirms/i)).not.toBeInTheDocument();
   });
 });
 
 describe("StudentRoute — Getting Started variant", () => {
-  it("shows the personalised notice instead of a status block, and STILL renders skill progress and recent activity", async () => {
+  it("shows the personalised notice instead of a status block, and STILL renders skill progress", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue({
       snapshot: makeSnapshot({
         displayName: "Nimal",
@@ -171,10 +173,11 @@ describe("StudentRoute — Getting Started variant", () => {
     expect(screen.queryByText("No current concern identified")).not.toBeInTheDocument();
     expect(screen.queryByText("Why?")).not.toBeInTheDocument();
 
-    // Skill progress and recent activity still render — descriptive data
-    // is always available (plan §4.4, §8).
+    // Skill progress still renders — descriptive data is always available
+    // (plan §4.4, §8). "Recent activity" no longer exists on this screen
+    // (UI-refinement pass, explicit direction).
     expect(screen.getByText("Skill progress")).toBeInTheDocument();
-    expect(screen.getByText("Recent activity")).toBeInTheDocument();
+    expect(screen.queryByText("Recent activity")).not.toBeInTheDocument();
   });
 });
 
@@ -210,23 +213,26 @@ describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () 
     },
   );
 
-  it("an unrecognised kind falls back to a readable label and does not throw", async () => {
+  it("an unrecognised kind does not throw (UI-refinement pass: the card no longer renders a kind-derived label at all)", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
     vi.mocked(client.getStudentRecommendations).mockResolvedValue([
       { ...BASE_REC, kind: "adjust_difficulty" },
     ]);
     expect(() => renderStudent("s-1")).not.toThrow();
     await waitFor(() => expect(screen.getByText("Suggestions")).toBeInTheDocument());
-    expect(screen.getByText(/^Suggestion —/)).toBeInTheDocument();
+    // "Counting" also appears in the skill-progress list — this just
+    // confirms the recommendation card itself rendered without crashing.
+    expect(screen.getAllByText(BASE_REC.targetSkillDisplayName).length).toBeGreaterThan(0);
   });
 
-  it("evidence is inline with the action, expiry is shown, and it is marked 'Not yet applied'", async () => {
+  it("evidence is inline with the action (UI-refinement pass: no status/expiry line, no 'Why:' label)", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
     vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
     renderStudent("s-1");
     await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
-    expect(screen.getByText(/Not yet applied/)).toBeInTheDocument();
-    expect(screen.getByText(/Expires after session 12/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not yet applied/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Expires after session/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Why:")).not.toBeInTheDocument();
   });
 
   it("there is no 'Accept all' control anywhere on the screen", async () => {
@@ -240,7 +246,12 @@ describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () 
     expect(screen.queryByText(/accept all/i)).not.toBeInTheDocument();
   });
 
-  it("Modify captures what the teacher changed it to", async () => {
+  // UI-refinement pass: the status/expiry line (which used to show
+  // "Modified: ...") is removed entirely, so this now only confirms the
+  // modify flow completes (the textarea closes, back to Accept/Modify/
+  // Dismiss) — not that the modified text renders anywhere, since it no
+  // longer does.
+  it("Modify closes the input and returns to the action buttons after saving", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
     vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
     renderStudent("s-1");
@@ -250,7 +261,8 @@ describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () 
     await userEvent.type(screen.getByRole("textbox"), "Try place value instead");
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
 
-    await waitFor(() => expect(screen.getByText(/Modified: Try place value instead/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("textbox")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Accept" })).toBeInTheDocument();
   });
 
   it("Accept/Modify/Dismiss are equally weighted and visually distinct", async () => {
@@ -283,7 +295,9 @@ describe("StudentRoute — four states", () => {
 });
 
 describe("StudentRoute — framing, disclosure, forbidden vocabulary", () => {
-  it("renders the framing line and the API-sourced disclosure", async () => {
+  // UI-refinement pass: both the framing line and the disclosure footer
+  // are removed from this screen at explicit direction.
+  it("does not render the framing line or the disclosure footer", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue({
       snapshot: makeSnapshot({}),
       skills: SKILLS,
@@ -292,12 +306,11 @@ describe("StudentRoute — framing, disclosure, forbidden vocabulary", () => {
       skillBounds: BOUNDS,
     });
     renderStudent("s-1");
-    expect(screen.getByText("The system flags learners for teacher review.")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        screen.getByText("Literature-informed synthetic data — not clinical evidence."),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("Skill progress")).toBeInTheDocument());
+    expect(screen.queryByText("The system flags learners for teacher review.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Literature-informed synthetic data — not clinical evidence."),
+    ).not.toBeInTheDocument();
   });
 
   const FORBIDDEN = [

@@ -25,8 +25,8 @@ const HOME_SUMMARY = {
   classCount: 2,
   gettingStarted: 9,
   classes: [
-    { classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3" as const, studentCount: 28, toWatchCount: 6 },
-    { classId: "class-2", name: "Grade 2 Sunshine", grade: "GRADE_2" as const, studentCount: 20, toWatchCount: 1 },
+    { classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3" as const, studentCount: 28, toWatchCount: 6, pendingRequestCount: 0 },
+    { classId: "class-2", name: "Grade 2 Sunshine", grade: "GRADE_2" as const, studentCount: 20, toWatchCount: 1, pendingRequestCount: 0 },
   ],
   disclosure: "Literature-informed synthetic data — not clinical evidence.",
 };

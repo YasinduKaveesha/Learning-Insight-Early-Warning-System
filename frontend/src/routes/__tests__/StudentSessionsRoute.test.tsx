@@ -240,15 +240,16 @@ describe("StudentSessionsRoute — four states", () => {
 });
 
 describe("StudentSessionsRoute — framing, disclosure, forbidden vocabulary", () => {
-  it("renders the framing line and the API-sourced disclosure", async () => {
+  // UI-refinement pass: both the framing line and the disclosure footer
+  // are removed from this screen at explicit direction.
+  it("does not render the framing line or the disclosure footer", async () => {
     vi.mocked(client.getStudentSessions).mockResolvedValue([makeSession({ sessionNumber: 1 })]);
     renderSessions();
-    expect(screen.getByText("The system flags learners for teacher review.")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        screen.getByText("Literature-informed synthetic data — not clinical evidence."),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("Session 1")).toBeInTheDocument());
+    expect(screen.queryByText("The system flags learners for teacher review.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Literature-informed synthetic data — not clinical evidence."),
+    ).not.toBeInTheDocument();
   });
 
   const FORBIDDEN = [

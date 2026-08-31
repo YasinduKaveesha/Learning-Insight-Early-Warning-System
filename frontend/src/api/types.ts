@@ -107,6 +107,9 @@ export interface HomeSummary {
     grade: "GRADE_2" | "GRADE_3";
     studentCount: number;
     toWatchCount: number;
+    // UI-refinement pass: added so Home's class cards can show a
+    // pending-join-request indicator without a second round trip.
+    pendingRequestCount: number;
   }[];
   disclosure: string; // rendered as-is, never hard-coded
 }

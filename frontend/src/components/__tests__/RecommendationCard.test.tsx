@@ -24,7 +24,7 @@ describe("RecommendationCard", () => {
     }
   });
 
-  it("an unknown kind falls back and does not throw", () => {
+  it("an unknown kind does not throw (UI-refinement pass: the card no longer renders a kind-derived label at all)", () => {
     expect(() =>
       render(
         <RecommendationCard
@@ -35,7 +35,7 @@ describe("RecommendationCard", () => {
         />,
       ),
     ).not.toThrow();
-    expect(screen.getByText(/Suggestion/)).toBeInTheDocument();
+    expect(screen.getByText(BASE.targetSkillDisplayName)).toBeInTheDocument();
   });
 
   it("shows the evidence WITH the action, not behind a tap", () => {
@@ -43,10 +43,14 @@ describe("RecommendationCard", () => {
     expect(screen.getByText(new RegExp(BASE.evidenceSummary))).toBeInTheDocument();
   });
 
-  it("marks a pending recommendation as 'Not yet applied' and shows expiry", () => {
+  // UI-refinement pass: the "Not yet applied · Expires after session N"
+  // status/expiry line is removed from the card entirely, at explicit
+  // direction — that also removes the only place "Accepted" / "Dismissed"
+  // / "Modified: ..." feedback rendered for an already-actioned card.
+  it("does not render a status/expiry line", () => {
     render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
-    expect(screen.getByText(/Not yet applied/)).toBeInTheDocument();
-    expect(screen.getByText(/Expires after session 14/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not yet applied/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Expires after session/)).not.toBeInTheDocument();
   });
 
   it("Accept, Modify and Dismiss are labelled distinctly and are visually separated, not merely adjacent siblings", () => {

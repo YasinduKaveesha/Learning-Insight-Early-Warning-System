@@ -168,7 +168,7 @@ function GallerySection({ title, children }: { title: string; children: React.Re
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs text-ink-secondary">{label}</p>
+      <p className="text-sm text-ink-secondary">{label}</p>
       {children}
     </div>
   );

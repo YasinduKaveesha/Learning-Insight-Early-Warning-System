@@ -25,10 +25,10 @@ export function ClassInfoDialog({
   return (
     <Dialog isOpen={isOpen} onClose={onClose} titleId="class-info-title" title="Class Info">
       <p className="text-sm text-ink-primary">{className}</p>
-      <p className="text-xs text-ink-secondary">
+      <p className="text-sm text-ink-secondary">
         {GRADE_LABEL[grade]} · {studentCount} student{studentCount === 1 ? "" : "s"}
       </p>
-      <p className="mt-3 text-xs font-medium text-ink-primary">Class key</p>
+      <p className="mt-3 text-sm font-medium text-ink-primary">Class key</p>
       <div className="mt-1">
         <ClassKeyDisplay classKey={classKey} size="compact" />
       </div>

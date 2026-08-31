@@ -36,7 +36,7 @@ export function CreateClassDialog({
     <Dialog isOpen={isOpen} onClose={onClose} titleId="create-class-title" title="Create Class">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
-          <label htmlFor={nameFieldId} className="text-xs font-medium text-ink-primary">
+          <label htmlFor={nameFieldId} className="text-sm font-medium text-ink-primary">
             Class name
           </label>
           <input
@@ -49,25 +49,44 @@ export function CreateClassDialog({
             className="mt-1 min-h-[44px] w-full rounded-lg border border-border-strong px-3 text-base"
           />
           {nameError ? (
-            <p id={errorId} className="mt-1 text-xs text-danger-text">
+            <p id={errorId} className="mt-1 text-sm text-danger-text">
               {nameError}
             </p>
           ) : null}
         </div>
 
         <div>
-          <label htmlFor={gradeFieldId} className="text-xs font-medium text-ink-primary">
+          <span id={gradeFieldId} className="text-sm font-medium text-ink-primary">
             Grade
-          </label>
-          <select
-            id={gradeFieldId}
-            value={grade}
-            onChange={(e) => setGrade(e.target.value as Grade)}
-            className="mt-1 min-h-[44px] w-full rounded-lg border border-border-strong px-3 text-base"
-          >
-            <option value="GRADE_2">Grade 2</option>
-            <option value="GRADE_3">Grade 3</option>
-          </select>
+          </span>
+          {/* Two side-by-side buttons instead of a dropdown — both choices
+              are visible at once rather than hidden behind a click. */}
+          <div role="group" aria-labelledby={gradeFieldId} className="mt-1 flex gap-2">
+            <button
+              type="button"
+              aria-pressed={grade === "GRADE_2"}
+              onClick={() => setGrade("GRADE_2")}
+              className={`min-h-[44px] flex-1 rounded-lg border px-3 text-base font-medium ${
+                grade === "GRADE_2"
+                  ? "border-primary bg-primary text-foreground"
+                  : "border-border-strong text-ink-primary"
+              }`}
+            >
+              Grade 2
+            </button>
+            <button
+              type="button"
+              aria-pressed={grade === "GRADE_3"}
+              onClick={() => setGrade("GRADE_3")}
+              className={`min-h-[44px] flex-1 rounded-lg border px-3 text-base font-medium ${
+                grade === "GRADE_3"
+                  ? "border-primary bg-primary text-foreground"
+                  : "border-border-strong text-ink-primary"
+              }`}
+            >
+              Grade 3
+            </button>
+          </div>
         </div>
 
         <button

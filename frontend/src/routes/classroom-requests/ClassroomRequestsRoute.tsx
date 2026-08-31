@@ -108,7 +108,7 @@ function RequestCard({
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4">
       <div>
         <p className="text-sm font-semibold text-ink-primary">{request.studentDisplayName}</p>
-        <p className="text-xs text-ink-secondary">Requested {formatDate(request.requestedDate)}</p>
+        <p className="text-sm text-ink-secondary">Requested {formatDate(request.requestedDate)}</p>
       </div>
 
       {/* Approve / Reject: ≥44px, NEVER ADJACENT, distinguished by label —

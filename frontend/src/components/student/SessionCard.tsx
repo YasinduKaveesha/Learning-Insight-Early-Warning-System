@@ -21,11 +21,11 @@ export function SessionCard({ session }: SessionCardProps) {
         <span className="text-sm font-semibold text-ink-primary">
           Session {session.sessionNumber}
         </span>
-        <span className="text-xs text-ink-secondary">{formatDate(session.date)}</span>
+        <span className="text-sm text-ink-secondary">{formatDate(session.date)}</span>
       </div>
 
       <div className="border-t border-border pt-2">
-        <p className="text-xs font-medium text-ink-secondary">Practice (B)</p>
+        <p className="text-sm font-medium text-ink-secondary">Practice (B)</p>
         {session.practice.present ? (
           <p className="text-sm text-ink-primary">
             {session.practice.accuracy !== null
@@ -42,7 +42,7 @@ export function SessionCard({ session }: SessionCardProps) {
       </div>
 
       <div className="mt-2 border-t border-border pt-2">
-        <p className="text-xs font-medium text-ink-secondary">Games (C)</p>
+        <p className="text-sm font-medium text-ink-secondary">Games (C)</p>
         {gamesGap ? (
           <p className="text-sm text-ink-secondary">{gamesGap}</p>
         ) : (

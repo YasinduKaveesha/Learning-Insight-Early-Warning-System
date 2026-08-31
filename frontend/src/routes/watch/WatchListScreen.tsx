@@ -1,18 +1,37 @@
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, House } from "lucide-react";
 import { Link } from "react-router-dom";
 import { client } from "../../api/client";
 import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { StudentDetail } from "../../components/student/StudentDetail";
 import { ExplanationBlock } from "../../components/student/ExplanationBlock";
-import { PriorityBadge } from "../../components/status/PriorityBadge";
-import { WatchStatusBadge } from "../../components/status/WatchStatusBadge";
 import { formatRelativeDate } from "../../lib/format";
 import { IS_DESKTOP_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
-import { SNAPSHOT_FRAMING, toWatchStatus, type LearnerSnapshot } from "../../lib/presentation";
+import { type Grade, type LearnerSnapshot } from "../../lib/presentation";
+
+// Same grade -> colour mapping as Home's class cards, so the two screens
+// agree with each other. Undefined (grade not yet known/resolved) falls
+// back to the original neutral surface1 card.
+const GRADE_TONE_CLASSES: Record<Grade, string> = {
+  GRADE_2: "border-watch-watching-border bg-watch-watching-bg text-watch-watching-fg",
+  GRADE_3: "border-watch-noConcern-border bg-watch-noConcern-bg text-watch-noConcern-fg",
+};
+
+// The class-name pill's own background — the card's fill is already a
+// SOFT tint of this same grade colour, so the pill uses the solid
+// foreground shade instead (with white text) to stay visible on top of it.
+const GRADE_PILL_CLASSES: Record<Grade, string> = {
+  GRADE_2: "bg-watch-watching-fg text-white",
+  GRADE_3: "bg-watch-noConcern-fg text-white",
+};
+
+interface ClassInfo {
+  grade: Grade;
+  name: string;
+}
 
 export interface WatchListScreenProps {
   /** Omitted for the teacher-wide /watch route (grouped by class). Set for
@@ -47,12 +66,21 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
     queryFn: () => (classId ? client.getClassWatchList(classId) : client.getWatchList()),
   });
 
-  // Only the teacher-wide variant needs class names to group by — the
-  // per-class variant is already scoped, so this query is skipped there.
+  // Only the teacher-wide variant needs class names (and grades, for the
+  // per-grade card colour) to group by — the per-class variant is already
+  // scoped, so this query is skipped there.
   const homeQuery = useQuery({
     queryKey: ["home"],
     queryFn: () => client.getHome(),
     enabled: !classId,
+  });
+
+  // The per-class variant needs its own class's grade for the same card
+  // colour — cohort already carries it.
+  const cohortQuery = useQuery({
+    queryKey: ["cohort", classId],
+    queryFn: () => client.getCohort(classId!),
+    enabled: !!classId,
   });
 
   const isPending = watchQuery.isPending || (!classId && homeQuery.isPending);
@@ -62,16 +90,27 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
     <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8 lg:max-w-[1200px] lg:flex-row lg:items-start lg:gap-6">
       <div className="flex flex-1 flex-col gap-4 lg:max-w-[420px]">
         <header className="flex items-center gap-2">
+          {/* Back-navigation icon convention (going forward): the arrow
+              means "back", so it should never point somewhere that isn't
+              actually back — when the destination IS Home, show the Home
+              icon instead of an arrow that would be misleading there. */}
           <Link
             to={classId ? `/classes/${classId}` : "/"}
-            aria-label="Back"
-            className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
+            aria-label={classId ? "Back" : "Home"}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
           >
-            ←
+            {classId ? (
+              <ArrowLeft aria-hidden="true" size={22} />
+            ) : (
+              <House aria-hidden="true" size={22} />
+            )}
           </Link>
-          <h1 className="text-base font-semibold text-ink-primary">Students to Watch</h1>
+          {/* UI-refinement pass: the visible title, framing line, and
+              count/proportion lines are removed at explicit direction —
+              the h1 stays for screen readers only (sr-only) so the page
+              keeps its heading landmark (docs/11 §8). */}
+          <h1 className="sr-only">Students to Watch</h1>
         </header>
-        <FramingLine />
 
         {isPending ? (
           <LoadingSkeleton rows={4} rowHeight={140} />
@@ -85,19 +124,25 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
           />
         ) : (
           <>
-            <p className="text-sm text-ink-secondary">
-              {watchQuery.data!.students.length} of {watchQuery.data!.totalStudents} students
-            </p>
-            <p className="text-xs text-ink-secondary">{SNAPSHOT_FRAMING}</p>
-
             {watchQuery.data!.students.length === 0 ? (
               <EmptyState message="No students are currently flagged for review." />
             ) : classId ? (
-              <FlatWatchList students={watchQuery.data!.students} classId={classId} isDesktop={isDesktop} />
+              <FlatWatchList
+                students={watchQuery.data!.students}
+                classId={classId}
+                classInfo={
+                  cohortQuery.data
+                    ? { grade: cohortQuery.data.grade, name: cohortQuery.data.className }
+                    : undefined
+                }
+                isDesktop={isDesktop}
+              />
             ) : (
               <GroupedWatchList
                 students={watchQuery.data!.students}
-                classNames={new Map(homeQuery.data!.classes.map((c) => [c.classId, c.name]))}
+                classInfos={
+                  new Map(homeQuery.data!.classes.map((c) => [c.classId, { grade: c.grade, name: c.name }]))
+                }
                 isDesktop={isDesktop}
               />
             )}
@@ -126,16 +171,24 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
 function FlatWatchList({
   students,
   classId,
+  classInfo,
   isDesktop,
 }: {
   students: LearnerSnapshot[];
   classId?: string;
+  classInfo?: ClassInfo;
   isDesktop: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3">
       {students.map((s) => (
-        <WatchCard key={s.studentId} snapshot={s} classId={classId} isDesktop={isDesktop} />
+        <WatchCard
+          key={s.studentId}
+          snapshot={s}
+          classId={classId}
+          classInfo={classInfo}
+          isDesktop={isDesktop}
+        />
       ))}
     </div>
   );
@@ -143,35 +196,26 @@ function FlatWatchList({
 
 function GroupedWatchList({
   students,
-  classNames,
+  classInfos,
   isDesktop,
 }: {
   students: LearnerSnapshot[];
-  classNames: Map<string, string>;
+  classInfos: Map<string, ClassInfo>;
   isDesktop: boolean;
 }) {
-  const byClass = new Map<string, LearnerSnapshot[]>();
-  for (const s of students) {
-    const group = byClass.get(s.classId) ?? [];
-    group.push(s);
-    byClass.set(s.classId, group);
-  }
+  // UI-refinement pass: the class-name heading between groups is removed —
+  // each card now carries its own grade colour AND a grade/class-name line
+  // (same blue/green as Home) instead of a section heading. Grouping by
+  // class still determines card ORDER, just not a visible section break.
   return (
-    <div className="flex flex-col gap-4">
-      {Array.from(byClass.entries()).map(([classId, group]) => (
-        <div key={classId} className="flex flex-col gap-2">
-          <h2 className="px-1 text-sm font-semibold text-ink-primary">
-            {classNames.get(classId) ?? classId}
-          </h2>
-          <div className="flex flex-col gap-3">
-            {group.map((s) => (
-              // The teacher-wide list is never itself scoped to a class, so
-              // its desktop selection link is always /watch/:studentId,
-              // even though each card here belongs to a class group.
-              <WatchCard key={s.studentId} snapshot={s} isDesktop={isDesktop} />
-            ))}
-          </div>
-        </div>
+    <div className="flex flex-col gap-3">
+      {students.map((s) => (
+        <WatchCard
+          key={s.studentId}
+          snapshot={s}
+          classInfo={classInfos.get(s.classId)}
+          isDesktop={isDesktop}
+        />
       ))}
     </div>
   );
@@ -180,14 +224,14 @@ function GroupedWatchList({
 function WatchCard({
   snapshot,
   classId,
+  classInfo,
   isDesktop,
 }: {
   snapshot: LearnerSnapshot;
   classId?: string;
+  classInfo?: ClassInfo;
   isDesktop: boolean;
 }) {
-  const status = toWatchStatus(snapshot);
-  const priority = status.kind === "watching" ? status.priority : null;
   // Below 1024px there is no detail pane, so the card goes straight to the
   // standalone student route — unchanged from before this gap was closed.
   // At >=1024px it instead selects the student IN THIS LIST via the URL,
@@ -197,20 +241,28 @@ function WatchCard({
       ? `/classes/${classId}/watch/${snapshot.studentId}`
       : `/watch/${snapshot.studentId}`
     : `/students/${snapshot.studentId}`;
+  const toneClasses = classInfo ? GRADE_TONE_CLASSES[classInfo.grade] : "border-border bg-surface1";
+  // UI-refinement pass: every card the same height regardless of how long
+  // its explanation is — a fixed min-height plus a 3-line clamp on the
+  // explanation (below) together keep the layout from growing per-card.
   return (
-    <Link
-      to={to}
-      className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4"
-    >
-      {priority !== null ? <PriorityBadge priority={priority} /> : null}
-      <div className="mt-1 flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-ink-primary">{snapshot.displayName}</span>
-        <WatchStatusBadge status={status} />
+    <Link to={to} className={`flex min-h-[220px] flex-col gap-2 rounded-lg border p-4 ${toneClasses}`}>
+      {/* UI-refinement pass: the "Worth watching right now" status badge is
+          removed entirely — replaced by just the class name, top-right. */}
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[17px] font-bold text-ink-primary">{snapshot.displayName}</span>
+        {classInfo ? (
+          <span
+            className={`flex items-center justify-center rounded-full px-3 py-1 text-center text-[15px] font-medium ${GRADE_PILL_CLASSES[classInfo.grade]}`}
+          >
+            {classInfo.name}
+          </span>
+        ) : null}
       </div>
       <div className="mt-2">
-        <ExplanationBlock explanation={snapshot.explanation} />
+        <ExplanationBlock explanation={snapshot.explanation} showHeading={false} clampLines={3} />
       </div>
-      <p className="mt-2 text-xs text-ink-secondary">
+      <p className="mt-2 text-sm text-ink-secondary">
         Last active {formatRelativeDate(snapshot.lastActiveDate)}
       </p>
     </Link>

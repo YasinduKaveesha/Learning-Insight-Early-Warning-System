@@ -1,5 +1,4 @@
 import { Route, Routes } from "react-router-dom";
-import { AppNav } from "./components/shared/AppNav";
 import ClassroomReportsRoute from "./routes/classroom-reports/ClassroomReportsRoute";
 import ClassroomRequestsRoute from "./routes/classroom-requests/ClassroomRequestsRoute";
 import ClassroomRoute from "./routes/classroom/ClassroomRoute";
@@ -15,8 +14,7 @@ import WatchRoute from "./routes/watch/WatchRoute";
 function App() {
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      <AppNav />
-      <main className="flex-1 pb-[44px] lg:pb-0">
+      <main className="flex-1">
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/classes" element={<ClassesRoute />} />

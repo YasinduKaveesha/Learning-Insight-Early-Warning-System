@@ -1,4 +1,5 @@
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { client, isDuplicateClassNameError } from "../../api/client";
@@ -63,9 +64,9 @@ export default function ClassesRoute() {
           type="button"
           aria-label="Add class"
           onClick={openCreate}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-xl text-ink-primary"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
-          ⊕
+          <Plus aria-hidden="true" size={22} />
         </button>
       </header>
 

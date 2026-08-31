@@ -21,10 +21,12 @@
  * THREE DELIBERATE DEVIATIONS FROM A LITERAL PORT (see the Step 8 report for
  * the full contrast-ratio table):
  *
- * 1. `textMuted` (#9398a1) measures ~2.6:1 against #f4f4f6 — fails WCAG AA's
- *    4.5:1 for text. It is kept here for parity with the source palette but
- *    MUST NOT be used for any meaningful text; `textSecondary` (~4.7:1)
- *    replaces it everywhere prose needs a secondary tone.
+ * 1. `textMuted` (#9398a1) measures ~2.6:1 against `background` (originally
+ *    a light grey; the UI-refinement pass that changed `background` to
+ *    white made this measure worse still) — fails WCAG AA's 4.5:1 for text
+ *    either way. It is kept here for parity with the source palette but
+ *    MUST NOT be used for any meaningful text; `textSecondary` (~4.7:1,
+ *    ~5.2:1 on white) replaces it everywhere prose needs a secondary tone.
  * 2. The watch-status colours (`watchWatching`, `watchNoConcern`,
  *    `watchGettingStarted`) are NOT in the source palette at all — they are
  *    assembled from non-red brand families (secondary/blue, success/green,
@@ -62,7 +64,9 @@
 
 export const colors = {
   // --- Ported directly from theme.ts ---------------------------------------
-  background: "#f4f4f6",
+  // UI-refinement pass: was a light grey, changed to white at explicit
+  // direction — see deviation note 1 above for what this affects.
+  background: "#ffffff",
   foreground: "#2f3136",
   surface1: "#ffffff",
   surface2: "#eaebee",
@@ -128,6 +132,27 @@ export const colors = {
   watchGettingStartedBg: "#ffffff", // = surface1
   watchGettingStartedBorder: "#cdcfd5", // = borderStrong
   watchGettingStartedFg: "#686d76", // = textSecondary
+
+  // UI-refinement pass: third soft-tint colour for Home's stat tiles
+  // (statAmber in tailwind.config.js — kept in sync here). New tint;
+  // `foreground` on this bg measures 11.72:1, clearing AA with margin.
+  statAmberBg: "#fdf3d0",
+
+  // UI-refinement pass: 5-colour categorical skill-bar palette (skillBar
+  // in tailwind.config.js — kept in sync here). Exact values given;
+  // contrast against `surface2` flagged, not overridden — see that
+  // file's comment for the full rationale.
+  skillBar1: "#ff6b68",
+  skillBar2: "#3ca6f8",
+  skillBar3: "#7bd3aa",
+  skillBar4: "#ffb51f",
+  skillBar5: "#9a64df",
+
+  // UI-refinement pass: soft-purple card tint for Suggestions
+  // (suggestionPurple in tailwind.config.js — kept in sync here).
+  suggestionPurpleBg: "#f0e8fb",
+  suggestionPurpleAccept: "#6b3fa0",
+  suggestionPurpleDismissBg: "#e4d3f7",
 } as const;
 
 export const chart = {

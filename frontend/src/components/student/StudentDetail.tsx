@@ -1,11 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, House } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { client } from "../../api/client";
-import { Chart } from "../shared/Chart";
-import { DisclosureFooter } from "../shared/DisclosureFooter";
 import { ErrorState } from "../shared/ErrorState";
-import { FramingLine } from "../shared/FramingLine";
 import { LoadingSkeleton } from "../shared/LoadingSkeleton";
 import { SectionHeader } from "../shared/SectionHeader";
 import { ExplanationBlock } from "./ExplanationBlock";
@@ -13,9 +11,6 @@ import { RecommendationCard } from "./RecommendationCard";
 import { SkillProgressList } from "./SkillProgress";
 import { GettingStartedNotice } from "../status/GettingStartedNotice";
 import { PriorityBadge } from "../status/PriorityBadge";
-import { TrajectoryChip } from "../status/TrajectoryChip";
-import { WatchStatusBadge } from "../status/WatchStatusBadge";
-import { describeTrend } from "../../lib/format";
 import { SNAPSHOT_FRAMING, type RecommendationDisplay, toWatchStatus } from "../../lib/presentation";
 
 export interface StudentDetailProps {
@@ -69,17 +64,24 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
 
   return (
     <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
-      <header className="flex items-center gap-2">
+      <header className="flex items-center justify-between gap-2">
         <Link
           to={overviewQuery.data ? `/classes/${overviewQuery.data.snapshot.classId}` : "/classes"}
           aria-label="Back"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
-          ←
+          <ArrowLeft aria-hidden="true" size={22} />
         </Link>
-        <h1 className="text-base font-semibold text-ink-primary">
+        <h1 className="flex-1 truncate text-center text-[18px] font-bold text-ink-primary">
           {isPending ? "" : (overviewQuery.data?.snapshot.displayName ?? "Student")}
         </h1>
+        <Link
+          to="/"
+          aria-label="Home"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+        >
+          <House aria-hidden="true" size={22} />
+        </Link>
       </header>
 
       {showSessionsTab ? (
@@ -87,20 +89,20 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
         // (pb-2 only), well under the 44px touch-target minimum — fixed
         // with a flex+min-h wrapper on each tab rather than changing what
         // they say or do.
-        <div className="flex gap-4 border-b border-border text-sm">
-          <span className="flex min-h-[44px] items-center border-b-2 border-foreground font-medium text-ink-primary">
+        // UI-refinement pass: pill-shaped, coloured, centered — replacing
+        // the underline-tab look.
+        <div className="flex justify-center gap-3">
+          <span className="flex min-h-[44px] items-center justify-center rounded-full bg-watch-watching-bg px-5 text-base font-bold text-watch-watching-fg">
             Overview
           </span>
           <Link
             to={studentId ? `/students/${studentId}/sessions` : "#"}
-            className="flex min-h-[44px] items-center text-ink-secondary"
+            className="flex min-h-[44px] items-center justify-center rounded-full bg-surface2 px-5 text-base font-bold text-ink-secondary"
           >
             Sessions
           </Link>
         </div>
       ) : null}
-
-      <FramingLine />
 
       {isPending ? (
         <>
@@ -121,45 +123,15 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
           />
 
           <section>
-            <SectionHeader title="Skill progress" />
+            <SectionHeader title="Skill progress" boldTitle />
             <SkillProgressList
               skills={overviewQuery.data.skills}
               bounds={overviewQuery.data.skillBounds}
             />
           </section>
 
-          <section className="flex flex-col gap-4">
-            <SectionHeader title="Recent activity" />
-            <div>
-              <TrajectoryChip trajectory={overviewQuery.data.snapshot.practiceTrajectory} />
-              <div className="mt-2">
-                <Chart
-                  title="Practice accuracy"
-                  values={overviewQuery.data.snapshot.accuracySparkline}
-                  trendSentence={describeTrend(
-                    "Practice accuracy",
-                    overviewQuery.data.snapshot.accuracySparkline,
-                  )}
-                />
-              </div>
-            </div>
-            <div>
-              {/* D17: no engagement trajectory chip — the series still
-                  renders, with its own descriptive (not classified)
-                  trend sentence. */}
-              <Chart
-                title="Game engagement"
-                values={overviewQuery.data.snapshot.engagementSparkline}
-                trendSentence={describeTrend(
-                  "Game engagement",
-                  overviewQuery.data.snapshot.engagementSparkline,
-                )}
-              />
-            </div>
-          </section>
-
           <section>
-            <SectionHeader title="Suggestions" />
+            <SectionHeader title="Suggestions" boldTitle />
             {recommendations.length === 0 ? (
               <p className="text-sm text-ink-secondary">No suggestions right now.</p>
             ) : (
@@ -178,8 +150,6 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
               </div>
             )}
           </section>
-
-          <DisclosureFooter disclosure={overviewQuery.data.disclosure} />
         </>
       )}
     </div>
@@ -205,15 +175,27 @@ function StatusAndWhy({
     );
   }
 
+  // UI-refinement pass: for a no-concern student this card was just the
+  // "Based on recent learning activity" framing line on its own (no
+  // priority, usually no explanation either) — removed entirely at
+  // explicit direction rather than rendering an empty-feeling card.
+  if (status.kind === "no_concern") {
+    return null;
+  }
+
+  // UI-refinement pass: the "Worth watching right now" status badge is
+  // removed — the card's own green tint (watch.noConcern) carries the
+  // status instead. Note: watch.noConcern is normally "no current
+  // concern," reused here purely as a colour, not as a status re-label —
+  // this card is still for a watching/flagged student.
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface1 p-4">
-      <WatchStatusBadge status={status} />
+    <div className="flex flex-col gap-2 rounded-lg border border-watch-noConcern-border bg-watch-noConcern-bg p-4">
       {status.kind === "watching" && status.priority !== null ? (
         <PriorityBadge priority={status.priority} context={`in ${className}`} />
       ) : (
-        <p className="text-xs text-ink-secondary">{SNAPSHOT_FRAMING}</p>
+        <p className="text-sm text-ink-secondary">{SNAPSHOT_FRAMING}</p>
       )}
-      <ExplanationBlock explanation={snapshot.explanation} />
+      <ExplanationBlock explanation={snapshot.explanation} showHeading={false} />
     </div>
   );
 }

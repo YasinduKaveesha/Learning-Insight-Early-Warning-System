@@ -160,6 +160,24 @@ export function practiceTrajectoryLabel(t: PracticeTrajectory): string {
   return trajectoryLabel(t);
 }
 
+// UI-refinement pass: bare state word, no arrow, no source prefix — for a
+// display context (StudentCard, this pass) that dropped the D13 chip
+// entirely for a plainer inline word. This is NOT a substitute for
+// trajectoryLabel/practiceTrajectoryLabel, which stay the only entry
+// points TrajectoryChip uses and must keep the source prefix (D13).
+// Title-cased directly (rather than relying on CSS text-transform, which
+// didn't reliably capitalize both words) — UI-refinement pass.
+const TRAJECTORY_STATE_WORD: Record<Trajectory["state"], string> = {
+  improving: "Improving",
+  stable: "Stable",
+  needs_attention: "Needs Attention",
+  unknown: "Not Enough Data",
+};
+
+export function trajectoryStateWord(state: Trajectory["state"]): string {
+  return TRAJECTORY_STATE_WORD[state];
+}
+
 // --- Skill progress ------------------------------------------------------
 
 const SKILL_DIRECTION_LABEL: Record<SkillProgress["direction"], string> = {

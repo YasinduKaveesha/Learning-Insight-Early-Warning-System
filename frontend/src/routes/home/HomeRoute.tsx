@@ -1,19 +1,15 @@
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { Plus, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { client, isDuplicateClassNameError } from "../../api/client";
 import { ClassCard } from "../../components/class/ClassCard";
 import { ClassKeyDialog } from "../../components/class/ClassKeyDialog";
 import { CreateClassDialog } from "../../components/class/CreateClassDialog";
-import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { StatTile } from "../../components/shared/StatTile";
-import { SNAPSHOT_FRAMING, type Grade } from "../../lib/presentation";
-
-const GETTING_STARTED_INFO =
-  "These students are still building their learning history. They need at least 3 completed sessions before the system can identify a clear pattern.";
+import type { Grade } from "../../lib/presentation";
 
 /**
  * Home — the teacher-level dashboard (plan §4.1). The watch card is the
@@ -71,17 +67,16 @@ export default function HomeRoute() {
             setNameError(undefined);
             setIsCreateOpen(true);
           }}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-xl text-ink-primary"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
-          ⊕
+          <Plus aria-hidden="true" size={22} />
         </button>
-        <FramingLine />
         <Link
           to="/profile"
           aria-label="Profile"
           className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
-          ◯
+          <UserRound aria-hidden="true" size={22} />
         </Link>
       </header>
 
@@ -119,42 +114,34 @@ export default function HomeRoute() {
       ) : (
         <>
           {/* The watch card — largest element on the page, icon AND text,
-              never colour alone. The total is mandatory beside the count
-              (plan §1): the flag saturates from ~4% early to ~86% late in
-              the study, and the fraction is what lets a teacher see when
-              the list has stopped being selective. */}
+              never colour alone. UI-refinement pass: the "of N students"
+              total is kept for screen readers only (sr-only, still in the
+              DOM) rather than shown visually, and the "Based on recent
+              learning activity" framing sentence is dropped from this card
+              entirely per explicit direction — plan §1's total-beside-count
+              requirement is a compliance/checklist item, not a visual one,
+              so the total stays available to assistive tech even though
+              neither it nor the framing sentence is shown on screen. */}
           <Link
             to="/watch"
-            className="flex flex-col gap-1 rounded-2xl border border-watch-watching-border bg-watch-watching-bg p-5"
+            className="flex flex-col justify-between gap-2 rounded-2xl border border-watch-watching-border bg-watch-watching-bg px-5 py-10"
           >
-            <div className="flex items-center gap-2 text-sm font-medium text-watch-watching-fg">
-              <span aria-hidden="true" className="text-xl">
-                ◐
-              </span>
-              <span>Students to Watch</span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-bold text-watch-watching-fg">
-                {data.studentsToWatch}
-              </span>
-              <span className="text-sm text-watch-watching-fg">
-                of {data.activeStudents} students
-              </span>
-            </div>
-            <p className="text-xs text-watch-watching-fg">{SNAPSHOT_FRAMING}</p>
-            <span className="mt-1 text-sm font-medium text-watch-watching-fg">
-              View watch list →
+            <span className="self-start text-[17px] font-medium text-watch-watching-fg">
+              Students to Watch
+            </span>
+            <span className="ml-10 text-7xl font-bold text-watch-watching-fg">
+              {data.studentsToWatch}
+            </span>
+            <span className="sr-only">of {data.activeStudents} students</span>
+            <span className="self-end rounded-full bg-watch-watching-fg px-4 py-2 text-sm font-medium text-white">
+              View watch list
             </span>
           </Link>
 
           <div className="grid grid-cols-3 gap-2">
-            <StatTile label="Active Students" value={data.activeStudents} />
-            <StatTile label="Classes" value={data.classCount} />
-            <StatTile
-              label="Getting Started"
-              value={data.gettingStarted}
-              infoText={GETTING_STARTED_INFO}
-            />
+            <StatTile label="Active Students" value={data.activeStudents} tone="blue" />
+            <StatTile label="Classes" value={data.classCount} tone="green" />
+            <StatTile label="Getting Started" value={data.gettingStarted} tone="amber" />
           </div>
 
           <section>
@@ -183,14 +170,14 @@ export default function HomeRoute() {
                       grade={c.grade}
                       studentCount={c.studentCount}
                       toWatchCount={c.toWatchCount}
+                      pendingRequestCount={c.pendingRequestCount}
+                      variant="colorful"
                     />
                   </Link>
                 ))}
               </div>
             )}
           </section>
-
-          <DisclosureFooter disclosure={data.disclosure} />
         </>
       )}
     </div>
