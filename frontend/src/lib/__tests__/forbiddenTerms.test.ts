@@ -19,14 +19,20 @@ const FORBIDDEN_LANGUAGE = [
 
 const SRC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../");
 
+// Test files legitimately name these terms (to assert their absence
+// elsewhere) — excluded by the *.test.ts suffix, not by skipping __tests__/
+// wholesale, so every fixture (including every __tests__/*.json) and every
+// non-test source file still gets scanned.
+const TEST_FILE_PATTERN = /\.test\.tsx?$/;
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     const stats = statSync(full);
     if (stats.isDirectory()) {
-      if (entry === "node_modules" || entry === "__tests__") continue;
+      if (entry === "node_modules") continue;
       walk(full, out);
-    } else if (/\.(ts|tsx)$/.test(entry)) {
+    } else if (/\.(ts|tsx|json)$/.test(entry) && !TEST_FILE_PATTERN.test(entry)) {
       out.push(full);
     }
   }

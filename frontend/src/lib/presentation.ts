@@ -94,15 +94,33 @@ export function skillDirectionLabel(direction: SkillProgress["direction"]): stri
 }
 
 /**
- * `relativeLevel` is a bar position ONLY. Returns a 0-100 number for a CSS
- * width/position — never a string, so it cannot be rendered as a number or
- * percentage to the teacher. A null or out-of-range value collapses to 0
- * (an empty bar), which reads as "not enough data" alongside the direction
- * label rather than as a real position.
+ * `relativeLevel` is a bar position ONLY, never a labelled number or
+ * percentage (plan §4.4). Returns a 0-100 number for a CSS width, or `null`
+ * when there is no bar to draw at all.
+ *
+ * `null` must NOT collapse to 0: an empty bar reads as "lowest level", which
+ * is a real (if minimal) position — exactly the failure the nullable design
+ * exists to prevent (plan §4.4, §8: "no slope null becomes 0"). A null
+ * `relativeLevel` means "we don't know", so the caller renders no bar.
+ *
+ * SCALE IS UNDOCUMENTED: backend_plan.md §6.5 says only that `relative_level`
+ * "may be sent for bar positioning" — it does not commit to a 0–1 input
+ * range. The closest real analogue (`ipsatised_mastery_*` in the research
+ * dataset) is signed and roughly in [-0.5, 0.5], not [0, 1]. Rather than
+ * guess a global scale, this function takes explicit bounds from the caller
+ * (see fixtures/authored.ts, which derives them per skill from the real
+ * data) and the name says so. Flagged in the Step 3 report — confirm the
+ * real API's contract before this ships against a live backend.
  */
-export function skillBarPosition(relativeLevel: number | null): number {
-  if (relativeLevel === null || Number.isNaN(relativeLevel)) return 0;
-  return Math.min(100, Math.max(0, relativeLevel * 100));
+export function skillBarPositionFromBounds(
+  relativeLevel: number | null,
+  bounds: { min: number; max: number },
+): number | null {
+  if (relativeLevel === null || Number.isNaN(relativeLevel)) return null;
+  const { min, max } = bounds;
+  if (max <= min) return null;
+  const fraction = (relativeLevel - min) / (max - min);
+  return Math.min(100, Math.max(0, fraction * 100));
 }
 
 // --- Session activity gaps -------------------------------------------------

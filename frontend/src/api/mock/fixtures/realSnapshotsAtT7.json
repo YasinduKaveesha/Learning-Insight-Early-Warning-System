@@ -1,0 +1,1982 @@
+[
+  {
+    "studentId": "STU-0001",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 7,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
+    "accuracySparkline": [
+      0.361,
+      0.278,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0004",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 28,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.111,
+      0,
+      0.083
+    ]
+  },
+  {
+    "studentId": "STU-0005",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.556,
+      0.25,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0008",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 29,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Recent practice accuracy has been low, and game engagement has been declining across recent sessions.",
+    "accuracySparkline": [
+      0.417,
+      0.667,
+      0.167
+    ]
+  },
+  {
+    "studentId": "STU-0010",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 9,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
+    "accuracySparkline": [
+      0.389,
+      0.167,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0012",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 1,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.194,
+      0.278,
+      0.361
+    ]
+  },
+  {
+    "studentId": "STU-0014",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.639,
+      0.333,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0015",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 14,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.222,
+      0.083,
+      0.25
+    ]
+  },
+  {
+    "studentId": "STU-0016",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 21,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
+    "accuracySparkline": [
+      0.389,
+      0.556,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0023",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.083,
+      0.194,
+      0.194
+    ]
+  },
+  {
+    "studentId": "STU-0030",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 36,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
+    "accuracySparkline": [
+      0.444,
+      0,
+      0
+    ]
+  },
+  {
+    "studentId": "STU-0032",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 23,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
+    "accuracySparkline": [
+      0.111,
+      0,
+      0
+    ]
+  },
+  {
+    "studentId": "STU-0036",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 35,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "unknown"
+    },
+    "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
+    "accuracySparkline": [
+      0.667,
+      0.167,
+      0.222
+    ]
+  },
+  {
+    "studentId": "STU-0040",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.083,
+      0,
+      0.083
+    ]
+  },
+  {
+    "studentId": "STU-0042",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 11,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Several skills have not improved across recent sessions, and hints are being used heavily relative to recent practice.",
+    "accuracySparkline": [
+      0.5,
+      0.444,
+      0.444
+    ]
+  },
+  {
+    "studentId": "STU-0049",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.361,
+      0.5,
+      0.667
+    ]
+  },
+  {
+    "studentId": "STU-0057",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.5,
+      0.722,
+      0.667
+    ]
+  },
+  {
+    "studentId": "STU-0058",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.333,
+      0.361,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0064",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.417,
+      0.417,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0067",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 26,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Game engagement has been declining across recent sessions, and skill mastery has slowed across recent sessions.",
+    "accuracySparkline": [
+      0.333,
+      0.389,
+      0.306
+    ]
+  },
+  {
+    "studentId": "STU-0069",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 2,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
+    "accuracySparkline": [
+      0.556,
+      0.583,
+      0.528
+    ]
+  },
+  {
+    "studentId": "STU-0072",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 16,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
+    "accuracySparkline": [
+      0.417,
+      0.194,
+      0.222
+    ]
+  },
+  {
+    "studentId": "STU-0076",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.444,
+      0.278,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0079",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 12,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
+    "accuracySparkline": [
+      0.556,
+      0.222,
+      0.611
+    ]
+  },
+  {
+    "studentId": "STU-0081",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.333,
+      0.444,
+      0.389
+    ]
+  },
+  {
+    "studentId": "STU-0082",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 15,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Skill mastery has slowed across recent sessions, and practice accuracy has not improved across recent sessions.",
+    "accuracySparkline": [
+      0.25,
+      0.111,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0091",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.167,
+      0,
+      0.306
+    ]
+  },
+  {
+    "studentId": "STU-0092",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.333,
+      0.583,
+      0.528
+    ]
+  },
+  {
+    "studentId": "STU-0103",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 6,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.278,
+      0.389,
+      0.528
+    ]
+  },
+  {
+    "studentId": "STU-0109",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.444,
+      0.556,
+      0.306
+    ]
+  },
+  {
+    "studentId": "STU-0113",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 22,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
+    "accuracySparkline": [
+      0.444,
+      0.306,
+      0.25
+    ]
+  },
+  {
+    "studentId": "STU-0114",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 13,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
+    "accuracySparkline": [
+      0.583,
+      0.417,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0115",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.25,
+      0.333,
+      0.361
+    ]
+  },
+  {
+    "studentId": "STU-0120",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.278,
+      0,
+      0.167
+    ]
+  },
+  {
+    "studentId": "STU-0122",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 24,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Game engagement has been declining across recent sessions, and skill mastery has slowed across recent sessions.",
+    "accuracySparkline": [
+      0.278,
+      0.389,
+      0.111
+    ]
+  },
+  {
+    "studentId": "STU-0124",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 25,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.278,
+      0.222,
+      0
+    ]
+  },
+  {
+    "studentId": "STU-0126",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.083,
+      0.194,
+      0.083
+    ]
+  },
+  {
+    "studentId": "STU-0129",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.472,
+      0.778,
+      0.639
+    ]
+  },
+  {
+    "studentId": "STU-0133",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0,
+      0.333,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0134",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 33,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Skill mastery has slowed across recent sessions, and practice accuracy has not improved across recent sessions.",
+    "accuracySparkline": [
+      0.167,
+      0,
+      0.194
+    ]
+  },
+  {
+    "studentId": "STU-0135",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.833,
+      0.611,
+      0.389
+    ]
+  },
+  {
+    "studentId": "STU-0136",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 31,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.389,
+      0.5,
+      0.111
+    ]
+  },
+  {
+    "studentId": "STU-0137",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 4,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
+    "accuracySparkline": [
+      0.222,
+      0.222,
+      0.667
+    ]
+  },
+  {
+    "studentId": "STU-0138",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.389,
+      0.361,
+      0.417
+    ]
+  },
+  {
+    "studentId": "STU-0147",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 10,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.083,
+      0.167,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0148",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.528,
+      0.083,
+      0.167
+    ]
+  },
+  {
+    "studentId": "STU-0162",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.556,
+      0.583,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0163",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 20,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Several skills have not improved across recent sessions, and hints are being used heavily relative to recent practice.",
+    "accuracySparkline": [
+      0.333,
+      0.194,
+      0.167
+    ]
+  },
+  {
+    "studentId": "STU-0164",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 34,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
+    "accuracySparkline": [
+      0.528,
+      0.333,
+      0.361
+    ]
+  },
+  {
+    "studentId": "STU-0167",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.5,
+      0.417,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0168",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.333,
+      0.5,
+      0.75
+    ]
+  },
+  {
+    "studentId": "STU-0169",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.667,
+      0.694,
+      0.806
+    ]
+  },
+  {
+    "studentId": "STU-0172",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.472,
+      0.333,
+      0.444
+    ]
+  },
+  {
+    "studentId": "STU-0176",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.444,
+      0.417,
+      0.25
+    ]
+  },
+  {
+    "studentId": "STU-0181",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.333,
+      0.278,
+      0.389
+    ]
+  },
+  {
+    "studentId": "STU-0191",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.167,
+      0,
+      0.556
+    ]
+  },
+  {
+    "studentId": "STU-0194",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 19,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
+    "accuracySparkline": [
+      0.417,
+      0.361,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0195",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.333,
+      0.167,
+      0.472
+    ]
+  },
+  {
+    "studentId": "STU-0197",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.083,
+      0.083,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0207",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.556,
+      0.583,
+      0.528
+    ]
+  },
+  {
+    "studentId": "STU-0217",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.5,
+      0.333,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0218",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.667,
+      0.333,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0220",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 18,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
+    "accuracySparkline": [
+      0.5,
+      0.389,
+      0.222
+    ]
+  },
+  {
+    "studentId": "STU-0227",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 30,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
+    "accuracySparkline": [
+      0.083,
+      0,
+      0
+    ]
+  },
+  {
+    "studentId": "STU-0228",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.278,
+      0.444,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0229",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.528,
+      0.583,
+      0.778
+    ]
+  },
+  {
+    "studentId": "STU-0230",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.444,
+      0.444,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0231",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.556,
+      0.611,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0232",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 27,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Game engagement has been declining across recent sessions, and skill mastery has slowed across recent sessions.",
+    "accuracySparkline": [
+      0.278,
+      0.333,
+      0.167
+    ]
+  },
+  {
+    "studentId": "STU-0234",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.444,
+      0.472,
+      0.25
+    ]
+  },
+  {
+    "studentId": "STU-0236",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 5,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
+    "accuracySparkline": [
+      0.194,
+      0.222,
+      0.444
+    ]
+  },
+  {
+    "studentId": "STU-0237",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.722,
+      0.389,
+      0.778
+    ]
+  },
+  {
+    "studentId": "STU-0239",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 17,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": "Recent practice accuracy has been low, and game engagement has been declining across recent sessions.",
+    "accuracySparkline": [
+      0.417,
+      0.389,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0244",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "unknown"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.167,
+      0.167,
+      0.444
+    ]
+  },
+  {
+    "studentId": "STU-0245",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.25,
+      0.333,
+      0.5
+    ]
+  },
+  {
+    "studentId": "STU-0248",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.389,
+      0.417,
+      0.361
+    ]
+  },
+  {
+    "studentId": "STU-0253",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.444,
+      0.222,
+      0.25
+    ]
+  },
+  {
+    "studentId": "STU-0254",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.222,
+      0.222,
+      0.472
+    ]
+  },
+  {
+    "studentId": "STU-0256",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.278,
+      0.389,
+      0.333
+    ]
+  },
+  {
+    "studentId": "STU-0257",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 3,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Game engagement has been declining across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
+    "accuracySparkline": [
+      0.417,
+      0.556,
+      0.667
+    ]
+  },
+  {
+    "studentId": "STU-0270",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.333,
+      0.194,
+      0.222
+    ]
+  },
+  {
+    "studentId": "STU-0272",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 32,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
+    "accuracySparkline": [
+      0.5,
+      0.444,
+      0.222
+    ]
+  },
+  {
+    "studentId": "STU-0276",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.194,
+      0.278,
+      0.389
+    ]
+  },
+  {
+    "studentId": "STU-0281",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.583,
+      0.444,
+      0.222
+    ]
+  },
+  {
+    "studentId": "STU-0283",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 8,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "improving"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Hints are being used heavily relative to recent practice, and game engagement has been declining across recent sessions.",
+    "accuracySparkline": [
+      0.528,
+      0.5,
+      0.722
+    ]
+  },
+  {
+    "studentId": "STU-0284",
+    "sessionNumber": 7,
+    "watchFlag": true,
+    "rankWithinSnapshot": 37,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": "Several skills have not improved across recent sessions, and hints are being used heavily relative to recent practice.",
+    "accuracySparkline": [
+      0.5,
+      0.167,
+      0
+    ]
+  },
+  {
+    "studentId": "STU-0286",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "needs_attention"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.167,
+      0.361,
+      0.083
+    ]
+  },
+  {
+    "studentId": "STU-0293",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "needs_attention"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.722,
+      0.444,
+      0.278
+    ]
+  },
+  {
+    "studentId": "STU-0295",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "stable"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.556,
+      0.667,
+      0.778
+    ]
+  },
+  {
+    "studentId": "STU-0298",
+    "sessionNumber": 7,
+    "watchFlag": false,
+    "rankWithinSnapshot": null,
+    "evidenceStatus": "sufficient_evidence",
+    "sessionsCompleted": 7,
+    "practiceTrajectory": {
+      "source": "practice_accuracy",
+      "state": "stable"
+    },
+    "engagementTrajectory": {
+      "source": "game_engagement",
+      "state": "improving"
+    },
+    "explanation": null,
+    "accuracySparkline": [
+      0.5,
+      0.556,
+      0.278
+    ]
+  }
+]

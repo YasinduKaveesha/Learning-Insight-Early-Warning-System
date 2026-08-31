@@ -3,7 +3,7 @@ import type { EvidenceStatus, LearnerSnapshot } from "../../api/types";
 import {
   filterExplanation,
   recommendationLabel,
-  skillBarPosition,
+  skillBarPositionFromBounds,
   skillDirectionLabel,
   toWatchStatus,
   trajectoryLabel,
@@ -134,14 +134,21 @@ describe("skillDirectionLabel", () => {
   });
 });
 
-describe("skillBarPosition", () => {
-  it("returns 0 for a null relative level rather than a formatted number", () => {
-    expect(skillBarPosition(null)).toBe(0);
+describe("skillBarPositionFromBounds", () => {
+  const bounds = { min: -0.5, max: 0.5 };
+
+  it("returns null for a null relative level — never a rendered 0/empty bar", () => {
+    expect(skillBarPositionFromBounds(null, bounds)).toBeNull();
   });
 
-  it("returns a plain number, never a string with a % sign", () => {
-    const result = skillBarPosition(0.5);
+  it("returns a plain number, never a string with a % sign, for a real level", () => {
+    const result = skillBarPositionFromBounds(0, bounds);
     expect(typeof result).toBe("number");
+  });
+
+  it("clamps within the given bounds", () => {
+    expect(skillBarPositionFromBounds(-1, bounds)).toBe(0);
+    expect(skillBarPositionFromBounds(1, bounds)).toBe(100);
   });
 });
 

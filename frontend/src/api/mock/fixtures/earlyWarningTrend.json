@@ -1,0 +1,47 @@
+[
+  {
+    "sessionNumber": 3,
+    "flagRate": 0.044444444444444446,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 5,
+    "flagRate": 0.36666666666666664,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 7,
+    "flagRate": 0.4111111111111111,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 9,
+    "flagRate": 0.6222222222222222,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 11,
+    "flagRate": 0.6777777777777778,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 13,
+    "flagRate": 0.7444444444444445,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 15,
+    "flagRate": 0.7555555555555555,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 17,
+    "flagRate": 0.8444444444444444,
+    "sampleSize": 90
+  },
+  {
+    "sessionNumber": 19,
+    "flagRate": 0.8555555555555555,
+    "sampleSize": 90
+  }
+]
