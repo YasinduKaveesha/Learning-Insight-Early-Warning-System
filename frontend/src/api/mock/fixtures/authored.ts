@@ -19,6 +19,7 @@ import type {
   SessionEntry,
   SkillProgress,
 } from "../../types";
+import type { RecommendationDisplay } from "../../../lib/presentation";
 import realSnapshotsAtT7 from "./realSnapshotsAtT7.json";
 import rosterStudentIds from "./rosterStudentIds.json";
 import skillBoundsAtT7 from "./skillBoundsAtT7.json";
@@ -270,4 +271,28 @@ export function sessionsForStudent(studentId: string, sessionsCompleted: number)
 // Getting Started: exactly one session, both components present and normal.
 export function sessionsForGettingStarted(): SessionEntry[] {
   return [authoredSession(GETTING_STARTED_STUDENT_ID, 1, 1)];
+}
+
+// --- Hand-authored: Suggestions (Student Overview, plan §4.4) ---------------
+//
+// PROVISIONAL, per Step 4 review ruling B (see RecommendationDisplay's doc
+// comment in lib/presentation.ts) — there is no recommendation endpoint or
+// dataset behind this. One demo recommendation on the roster's first
+// watched student (Amara / STU-0001) so the Suggestions section has
+// something real to render on the primary journey; every other student
+// gets an empty list, which is a legitimate "no suggestions" state, not a
+// missing-data gap.
+const DEMO_RECOMMENDATION: RecommendationDisplay = {
+  recommendationId: "demo-rec-1",
+  kind: "review",
+  targetSkillDisplayName: "Place value",
+  evidenceSummary:
+    "Subtraction has been practised for four sessions without improvement, and place value is still developing.",
+  status: "pending",
+  modifiedActionSummary: null,
+  expiresAfterSession: 14,
+};
+
+export function recommendationsForStudent(studentId: string): RecommendationDisplay[] {
+  return studentId === "STU-0001" ? [DEMO_RECOMMENDATION] : [];
 }

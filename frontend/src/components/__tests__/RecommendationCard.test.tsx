@@ -49,13 +49,30 @@ describe("RecommendationCard", () => {
     expect(screen.getByText(/Expires after session 14/)).toBeInTheDocument();
   });
 
-  it("Accept, Modify and Dismiss are labelled distinctly and are not adjacent in DOM order", () => {
+  it("Accept, Modify and Dismiss are labelled distinctly and are visually separated, not merely adjacent siblings", () => {
+    // Step 4 review ruling A: "never adjacent" means visually, not only in
+    // DOM order — a 4px spacer div satisfies the letter and not the point.
+    // This asserts real visual distinction: three different visual weights
+    // (solid / outline / understated-with-a-rule-above-it), not three
+    // identically-styled buttons a thumb could confuse.
     render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
     const accept = screen.getByRole("button", { name: "Accept" });
     const modify = screen.getByRole("button", { name: "Modify" });
     const dismiss = screen.getByRole("button", { name: "Dismiss" });
-    expect(accept.nextElementSibling).not.toBe(modify);
-    expect(modify.nextElementSibling).not.toBe(dismiss);
+
+    // Distinct labels (never colour/position alone).
+    expect(accept.textContent).not.toBe(modify.textContent);
+    expect(modify.textContent).not.toBe(dismiss.textContent);
+
+    // Distinct visual treatment — not three buttons sharing one className.
+    expect(accept.className).not.toBe(modify.className);
+    expect(modify.className).not.toBe(dismiss.className);
+    expect(accept.className).not.toBe(dismiss.className);
+
+    // Dismiss sits behind an explicit visual break (a rule + extra top
+    // margin), giving it real distance from Accept — not just DOM order.
+    const dismissWrapper = dismiss.parentElement!;
+    expect(dismissWrapper.className).toMatch(/border-t/);
   });
 
   it("calls onAccept with the recommendation id", async () => {

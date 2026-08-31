@@ -80,34 +80,41 @@ export function RecommendationCard({
           </div>
         </div>
       ) : (
-        // Accept / Modify / Dismiss: equally weighted, NEVER adjacent,
-        // distinguished by label rather than colour or position — a
-        // vertical stack with a spacer row satisfies "never adjacent"
-        // rather than relying on colour to separate them.
-        <div className="flex flex-col gap-2 pt-1">
+        // Accept / Modify / Dismiss: equally weighted, NEVER adjacent — and
+        // at 375px "never adjacent" means visually, not just in DOM order
+        // (Step 4 review ruling A). A mis-tap here decides something about a
+        // child, so each control gets real vertical distance and a distinct
+        // visual weight, not just a 4px spacer: Accept is a full-width solid
+        // block, Modify is a full-width outline block one gap below it, and
+        // Dismiss sits below a rule with extra top margin, deliberately the
+        // furthest thumb-travel from Accept. None of the three uses colour
+        // to signal "less/more correct" — the weight difference is about
+        // making the tap targets unmistakably separate finger-hits, not
+        // about ranking the choices.
+        <div className="flex flex-col gap-3 pt-1">
           <button
             type="button"
             onClick={() => onAccept(recommendation.recommendationId)}
-            className="min-h-[44px] rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-800"
+            className="min-h-[44px] w-full rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white"
           >
             Accept
           </button>
-          <div aria-hidden="true" className="h-1" />
           <button
             type="button"
             onClick={() => setIsModifying(true)}
-            className="min-h-[44px] rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-800"
+            className="min-h-[44px] w-full rounded-lg border-2 border-slate-400 px-3 text-sm font-semibold text-slate-800"
           >
             Modify
           </button>
-          <div aria-hidden="true" className="h-1" />
-          <button
-            type="button"
-            onClick={() => onDismiss(recommendation.recommendationId)}
-            className="min-h-[44px] rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-800"
-          >
-            Dismiss
-          </button>
+          <div className="mt-2 border-t border-slate-200 pt-3">
+            <button
+              type="button"
+              onClick={() => onDismiss(recommendation.recommendationId)}
+              className="min-h-[44px] w-full rounded-lg px-3 text-sm font-medium text-slate-600 underline underline-offset-2"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
     </div>

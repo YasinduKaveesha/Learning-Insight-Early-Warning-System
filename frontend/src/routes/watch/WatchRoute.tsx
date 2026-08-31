@@ -1,3 +1,5 @@
+import { WatchListScreen } from "./WatchListScreen";
+
 export default function WatchRoute() {
-  return <div>Students to Watch</div>;
+  return <WatchListScreen />;
 }

@@ -9,13 +9,16 @@ import type {
   StudentOverviewResponse,
   WatchListResponse,
 } from "../client";
+import type { RecommendationDisplay } from "../../lib/presentation";
 import { filterExplanation, toWatchStatus } from "../../lib/presentation";
 import {
   ALL_CLASS_STUDENTS,
   CLASSES,
   DISCLOSURE,
   GETTING_STARTED_STUDENT_ID,
+  recommendationsForStudent,
   ROSTER_SNAPSHOTS,
+  SKILL_BOUNDS_AT_T7,
   TEACHER_NAME,
   sessionsForGettingStarted,
   sessionsForStudent,
@@ -123,6 +126,7 @@ export class MockClient implements ApiClient {
       ).length,
       pendingRequestCount: 0,
       students,
+      disclosure: DISCLOSURE,
     });
   }
 
@@ -147,9 +151,13 @@ export class MockClient implements ApiClient {
   getStudentOverview(studentId: string): Promise<StudentOverviewResponse> {
     const snapshot = allStudents().find((s) => s.studentId === studentId);
     if (!snapshot) throw new Error(`Unknown student: ${studentId}`);
+    const classInfo = CLASSES.find((c) => c.classId === snapshot.classId);
     return delay({
       snapshot,
       skills: skillProgressFor(studentId),
+      disclosure: DISCLOSURE,
+      className: classInfo?.name ?? snapshot.classId,
+      skillBounds: SKILL_BOUNDS_AT_T7,
     });
   }
 
@@ -160,5 +168,9 @@ export class MockClient implements ApiClient {
     const snapshot = ROSTER_SNAPSHOTS.find((s) => s.studentId === studentId);
     const sessionsCompleted = snapshot?.sessionsCompleted ?? 0;
     return delay(sessionsForStudent(studentId, sessionsCompleted));
+  }
+
+  getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]> {
+    return delay(recommendationsForStudent(studentId));
   }
 }

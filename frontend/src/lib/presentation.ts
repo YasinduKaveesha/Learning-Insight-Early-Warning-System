@@ -183,6 +183,13 @@ export function gamesGapLabel(games: SessionEntry["games"]): string | null {
 // loose `string`, not the closed RecommendationKind union — D7 froze the
 // action VOCABULARY, not a client-side mapping, and recommendationLabel()
 // already has a documented fallback for anything it doesn't recognise.
+//
+// PROVISIONAL (Step 4 review ruling B, carried into Step 5): this shape was
+// inferred from the frontend_plan.md §4.4 mockup, not from an API spec. It
+// is good enough to build screens against, but nothing downstream should
+// harden around it as if it were confirmed — expect it to change once a
+// real /recommendations endpoint exists, and re-check every consumer
+// (mockClient, RecommendationCard, StudentRoute) when it does.
 
 export interface RecommendationDisplay {
   recommendationId: string;
