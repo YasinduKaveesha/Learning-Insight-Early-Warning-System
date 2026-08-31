@@ -14,7 +14,9 @@ Rules enforced here (backend_plan.md section 5.2):
   2. Lags/deltas/rollmeans never cross a student_id boundary -- enforced by `groupby`.
   3. Rolling means exclude the current t -- `shift(1)` before `expanding().mean()`.
   4. Missingness indicators are computed from the raw (pre-imputation) values.
-  5. A null stays null through delta/rollmean -- no null is ever coerced to 0.0.
+  5. A null stays null through delta/rollmean -- no null is ever coerced to 0.0. The one
+     documented exception is `hint_intensity` under decision D20 -- see
+     `_apply_d20_hint_intensity_encoding`.
   6. Component B response time and Component C game latency are never merged into one column.
   7. Raw values only -- no log1p, no quantile transform.
 """
@@ -120,7 +122,40 @@ def load_research_panel(path: str | Path) -> pd.DataFrame:
         raise ValueError(f"research panel is missing expected columns: {sorted(missing)}")
 
     panel = raw.loc[raw["t"].isin(SUPERVISED_GRID), list(_RAW_SOURCE_COLUMNS)].copy()
-    return panel.sort_values(list(_KEY_COLUMNS)).reset_index(drop=True)
+    panel = panel.sort_values(list(_KEY_COLUMNS)).reset_index(drop=True)
+    _apply_d20_hint_intensity_encoding(panel)
+    return panel
+
+
+def _apply_d20_hint_intensity_encoding(panel: pd.DataFrame) -> None:
+    """Decision D20 -- reproduce the training encoding of `hint_intensity`, in place.
+
+    `docs/06` section 238 defines `hint_intensity` as "null by definition" where the hint rate
+    is zero, with `hint_avoidance == 1.0` carrying that case. The notebook that produced
+    `24_engineered_feature_matrix.csv` instead wrote `0.0` on those rows, and the shipped
+    artefact (`nb05_primary_logreg_armA.joblib`) was fitted on that encoding. Serving must
+    reproduce what the artefact was trained on, so this DELIBERATELY deviates from docs/06 --
+    do not "fix" it back. Recorded as D20 in plan/README.md and plan/backend_plan.md section 5.2.
+
+    Conditional and asserted, never a blanket fillna: on the research dataset the biconditional
+    `hint_intensity IS NULL` <=> `hint_avoidance == 1.0` holds exactly (10 rows each way, no
+    exceptions). A null `hint_intensity` on a row where `hint_avoidance != 1.0` is a genuinely
+    missing value, not a structural zero -- it must fail loudly rather than be silently encoded
+    as "used no hints". Rule 5 ("a null is never a zero") still governs every other column.
+    """
+
+    null_intensity = panel["hint_intensity"].isna()
+    avoids_all_hints = panel["hint_avoidance"] == 1.0
+
+    unexpected = panel.loc[null_intensity & ~avoids_all_hints]
+    if not unexpected.empty:
+        keys = list(unexpected[list(_KEY_COLUMNS)].itertuples(index=False, name=None))
+        raise ValueError(
+            "hint_intensity is null on rows where hint_avoidance != 1.0 -- a genuinely missing "
+            f"value, not a D20 structural zero; refusing to zero-fill: {keys}"
+        )
+
+    panel.loc[null_intensity & avoids_all_hints, "hint_intensity"] = 0.0
 
 
 def build_feature_matrix(panel: pd.DataFrame) -> pd.DataFrame:
@@ -140,6 +175,9 @@ def build_feature_matrix(panel: pd.DataFrame) -> pd.DataFrame:
     df["c_telemetry_missing"] = (
         df["engagement_decline_rate"].isna() | df["frustration_slope"].isna()
     ).astype(int)
+    # t == 3 is equivalent to "this learner's first snapshot" only because sessions_observed
+    # == t holds for every row of the research dataset (verified across all 2700 rows). A live
+    # learner who misses sessions breaks that equivalence -- revisit for live data.
     df["is_first_snapshot"] = (df["t"] == SUPERVISED_GRID[0]).astype(int)
 
     # Lag / delta / rollmean (5.3-5.5) -- grouped by student_id so nothing crosses a learner
@@ -156,6 +194,9 @@ def build_feature_matrix(panel: pd.DataFrame) -> pd.DataFrame:
     # Interactions (5.6) -- same-row fields only, no cross-component or cross-t merge.
     df["engagement_x_frustration"] = df["engagement_decline_rate"] * df["frustration_mean"]
     df["hint_intensity_x_accuracy"] = df["hint_intensity"] * df["score_avg_recent"]
+    # Uses sessions_observed rather than t directly; the two are identical on the research
+    # dataset (sessions_observed == t for all 2700 rows) but will diverge for a live learner
+    # who misses sessions -- revisit for live data.
     df["stagnant_x_t"] = df["stagnant_skill_count"] * df["sessions_observed"]
 
     return df
