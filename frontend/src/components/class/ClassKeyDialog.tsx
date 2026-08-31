@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ClassKeyDisplay } from "./ClassKeyDisplay";
 import { Dialog } from "../shared/Dialog";
 
 export interface ClassKeyDialogProps {
@@ -6,45 +6,43 @@ export interface ClassKeyDialogProps {
   onClose: () => void;
   className: string;
   classKey: string;
+  /** Navigates to the new classroom — shown only right after creation, when
+   * this dialog is the "Created → Class Key → Classroom" step of the flow
+   * (plan §4.7). Omitted when this dialog is reused elsewhere. */
+  onGoToClass?: () => void;
 }
 
-/** Large, monospaced, letter-spaced — legible at arm's length when a teacher
- * reads it aloud to a room. aria-label spells it character by character so a
- * screen reader doesn't run it together as one word. */
-export function ClassKeyDialog({ isOpen, onClose, className, classKey }: ClassKeyDialogProps) {
-  const [copied, setCopied] = useState(false);
-  const spelledOut = classKey.split("").join(" ");
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(classKey);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard access can be denied by the browser; the key is still
-      // visible and selectable, so this is not an error state to surface.
-    }
-  }
-
+/**
+ * THE PRIMARY ELEMENT on this screen — shown immediately on class creation.
+ * Reuses ClassKeyDisplay (large) rather than a second key rendering; see
+ * that component's doc comment for the accessibility and D1 permanence
+ * contract.
+ */
+export function ClassKeyDialog({
+  isOpen,
+  onClose,
+  className,
+  classKey,
+  onGoToClass,
+}: ClassKeyDialogProps) {
   return (
     <Dialog isOpen={isOpen} onClose={onClose} titleId="class-key-title" title="Class Key">
       <p className="text-sm text-slate-600">{className}</p>
-      <p
-        aria-label={spelledOut}
-        className="my-4 rounded-lg bg-slate-100 py-4 text-center font-mono text-3xl font-semibold tracking-[0.35em] text-slate-900"
-      >
-        {classKey}
-      </p>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="min-h-[44px] w-full rounded-lg border border-slate-300 text-sm font-medium text-slate-800"
-      >
-        {copied ? "Copied" : "Copy key"}
-      </button>
-      <p className="mt-3 text-xs text-slate-500">
+      <div className="my-4">
+        <ClassKeyDisplay classKey={classKey} size="large" />
+      </div>
+      <p className="text-xs text-slate-500">
         Give this key to your students so they can join the class.
       </p>
+      {onGoToClass ? (
+        <button
+          type="button"
+          onClick={onGoToClass}
+          className="mt-4 min-h-[44px] w-full rounded-lg bg-slate-900 text-sm font-medium text-white"
+        >
+          Go to class
+        </button>
+      ) : null}
     </Dialog>
   );
 }

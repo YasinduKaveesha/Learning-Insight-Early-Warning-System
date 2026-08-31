@@ -1,13 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { client } from "../../api/client";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { client, isDuplicateClassNameError } from "../../api/client";
 import { ClassCard } from "../../components/class/ClassCard";
+import { ClassKeyDialog } from "../../components/class/ClassKeyDialog";
+import { CreateClassDialog } from "../../components/class/CreateClassDialog";
 import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { StatTile } from "../../components/shared/StatTile";
-import { SNAPSHOT_FRAMING } from "../../lib/presentation";
+import { SNAPSHOT_FRAMING, type Grade } from "../../lib/presentation";
 
 const GETTING_STARTED_INFO =
   "These students are still building their learning history. They need at least 3 completed sessions before the system can identify a clear pattern.";
@@ -17,18 +20,52 @@ const GETTING_STARTED_INFO =
  * largest element on the page: it is why the application exists.
  */
 export default function HomeRoute() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["home"],
     queryFn: () => client.getHome(),
   });
 
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [nameError, setNameError] = useState<string | undefined>(undefined);
+  // Populated on successful creation; ClassKeyDialog opens the moment this
+  // is set, and CreateClassDialog closes at the same time — "Created →
+  // Class Key" happens as one transition, per plan §4.7's flow.
+  const [createdClass, setCreatedClass] = useState<
+    { classId: string; className: string; classKey: string } | undefined
+  >(undefined);
+
+  async function handleCreateSubmit(name: string, grade: Grade) {
+    setNameError(undefined);
+    try {
+      const result = await client.createClass(name, grade);
+      setIsCreateOpen(false);
+      setCreatedClass(result);
+      // The new class must appear in "Your Classes" and the stat tiles
+      // immediately — refetch rather than hand-patch the cache, since the
+      // mock (and eventually the real API) is the source of truth for
+      // counts derived from the roster.
+      void queryClient.invalidateQueries({ queryKey: ["home"] });
+    } catch (e) {
+      if (isDuplicateClassNameError(e)) {
+        setNameError(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
   return (
     <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8">
       <header className="flex items-center justify-between gap-2">
-        {/* The dialog behind this is Step 6 — the 44px target exists, inert for now. */}
         <button
           type="button"
           aria-label="Add class"
+          onClick={() => {
+            setNameError(undefined);
+            setIsCreateOpen(true);
+          }}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-xl text-slate-700"
         >
           ⊕
@@ -42,6 +79,26 @@ export default function HomeRoute() {
           ◯
         </Link>
       </header>
+
+      <CreateClassDialog
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSubmit={handleCreateSubmit}
+        nameError={nameError}
+      />
+      {createdClass ? (
+        <ClassKeyDialog
+          isOpen={true}
+          onClose={() => setCreatedClass(undefined)}
+          className={createdClass.className}
+          classKey={createdClass.classKey}
+          onGoToClass={() => {
+            const classId = createdClass.classId;
+            setCreatedClass(undefined);
+            navigate(`/classes/${classId}`);
+          }}
+        />
+      ) : null}
 
       {isPending ? (
         <>
@@ -100,6 +157,10 @@ export default function HomeRoute() {
             {data.classes.length === 0 ? (
               <button
                 type="button"
+                onClick={() => {
+                  setNameError(undefined);
+                  setIsCreateOpen(true);
+                }}
                 className="flex min-h-[44px] w-full items-center justify-center rounded-lg border-2 border-dashed border-slate-300 p-6 text-sm font-medium text-slate-700"
               >
                 Create your first class to get started.

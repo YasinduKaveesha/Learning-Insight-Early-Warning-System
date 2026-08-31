@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
+import type { Grade } from "../../lib/presentation";
 import { Dialog } from "../shared/Dialog";
-
-export type Grade = "GRADE_2" | "GRADE_3";
 
 export interface CreateClassDialogProps {
   isOpen: boolean;

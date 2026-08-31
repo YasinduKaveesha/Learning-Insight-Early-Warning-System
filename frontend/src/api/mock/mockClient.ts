@@ -6,20 +6,26 @@ import type { HomeSummary, LearnerSnapshot, SessionEntry } from "../types";
 import type {
   ApiClient,
   CohortResponse,
+  CreateClassResult,
   StudentOverviewResponse,
   WatchListResponse,
 } from "../client";
-import type { RecommendationDisplay } from "../../lib/presentation";
-import { filterExplanation, toWatchStatus } from "../../lib/presentation";
+import type { Grade, PendingRequestDisplay, RecommendationDisplay } from "../../lib/presentation";
+import { filterExplanation, sortCohortOrder, toWatchStatus } from "../../lib/presentation";
 import {
   ALL_CLASS_STUDENTS,
-  CLASSES,
   DISCLOSURE,
   GETTING_STARTED_STUDENT_ID,
-  recommendationsForStudent,
   ROSTER_SNAPSHOTS,
   SKILL_BOUNDS_AT_T7,
   TEACHER_NAME,
+  allClasses,
+  approveJoinRequest as approveJoinRequestFixture,
+  createClassRecord,
+  joinRequestsForClass,
+  pendingRequestCountForClass,
+  recommendationsForStudent,
+  rejectJoinRequest as rejectJoinRequestFixture,
   sessionsForGettingStarted,
   sessionsForStudent,
   skillProgressFor,
@@ -52,30 +58,11 @@ function allStudents(): LearnerSnapshot[] {
   return Object.values(ALL_CLASS_STUDENTS).flat().map(withFilteredExplanation);
 }
 
-/**
- * Watching first by priority, then no concern, then Getting Started last —
- * never sorted among no-concern students (plan §4.2: "we don't know" and "no
- * concern" are different answers, and merging them is the failure the whole
- * nullable design exists to prevent).
- */
-function sortCohortOrder(students: LearnerSnapshot[]): LearnerSnapshot[] {
-  const rank = (s: LearnerSnapshot) => {
-    const status = toWatchStatus(s);
-    if (status.kind === "watching") return 0;
-    if (status.kind === "no_concern") return 1;
-    return 2; // getting_started
-  };
-  return [...students].sort((a, b) => {
-    const rankDiff = rank(a) - rank(b);
-    if (rankDiff !== 0) return rankDiff;
-    const statusA = toWatchStatus(a);
-    const statusB = toWatchStatus(b);
-    if (statusA.kind === "watching" && statusB.kind === "watching") {
-      return (statusA.priority ?? Infinity) - (statusB.priority ?? Infinity);
-    }
-    return a.displayName.localeCompare(b.displayName);
-  });
-}
+// sortCohortOrder lives in lib/presentation.ts now (Step 6 fix) — this mock
+// still applies it here as defence in depth (the same pattern
+// filterExplanation uses), but it is no longer the only place the order is
+// guaranteed. See that function's doc comment for why the mock-only version
+// was a latent regression.
 
 function watchedOnly(students: LearnerSnapshot[]): LearnerSnapshot[] {
   return students
@@ -92,7 +79,8 @@ function watchedOnly(students: LearnerSnapshot[]): LearnerSnapshot[] {
 export class MockClient implements ApiClient {
   getHome(): Promise<HomeSummary> {
     const all = allStudents();
-    const classCards = CLASSES.map((c) => {
+    const classes = allClasses();
+    const classCards = classes.map((c) => {
       const students = studentsInClass(c.classId);
       return {
         classId: c.classId,
@@ -106,7 +94,7 @@ export class MockClient implements ApiClient {
       teacherName: TEACHER_NAME,
       studentsToWatch: all.filter((s) => toWatchStatus(s).kind === "watching").length,
       activeStudents: all.length,
-      classCount: CLASSES.length,
+      classCount: classes.length,
       gettingStarted: all.filter((s) => toWatchStatus(s).kind === "getting_started").length,
       classes: classCards,
       disclosure: DISCLOSURE,
@@ -114,17 +102,21 @@ export class MockClient implements ApiClient {
   }
 
   getCohort(classId: string): Promise<CohortResponse> {
-    const classInfo = CLASSES.find((c) => c.classId === classId);
+    const classInfo = allClasses().find((c) => c.classId === classId);
+    // Defence in depth (Step 6 fix) — sortCohortOrder is applied here AND
+    // again by ClassroomRoute itself; see that function's doc comment.
     const students = sortCohortOrder(studentsInClass(classId));
     return delay({
       classId,
       className: classInfo?.name ?? classId,
+      grade: classInfo?.grade ?? "GRADE_3",
+      classKey: classInfo?.classKey ?? "",
       studentCount: students.length,
       toWatchCount: students.filter((s) => toWatchStatus(s).kind === "watching").length,
       gettingStartedCount: students.filter(
         (s) => toWatchStatus(s).kind === "getting_started",
       ).length,
-      pendingRequestCount: 0,
+      pendingRequestCount: pendingRequestCountForClass(classId),
       students,
       disclosure: DISCLOSURE,
     });
@@ -151,7 +143,7 @@ export class MockClient implements ApiClient {
   getStudentOverview(studentId: string): Promise<StudentOverviewResponse> {
     const snapshot = allStudents().find((s) => s.studentId === studentId);
     if (!snapshot) throw new Error(`Unknown student: ${studentId}`);
-    const classInfo = CLASSES.find((c) => c.classId === snapshot.classId);
+    const classInfo = allClasses().find((c) => c.classId === snapshot.classId);
     return delay({
       snapshot,
       skills: skillProgressFor(studentId),
@@ -172,5 +164,31 @@ export class MockClient implements ApiClient {
 
   getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]> {
     return delay(recommendationsForStudent(studentId));
+  }
+
+  createClass(name: string, grade: Grade): Promise<CreateClassResult> {
+    // createClassRecord throws DuplicateClassNameError (lib/presentation.ts)
+    // directly on a collision — nothing to translate here.
+    const record = createClassRecord(name, grade);
+    return delay({
+      classId: record.classId,
+      className: record.name,
+      grade: record.grade,
+      classKey: record.classKey,
+    });
+  }
+
+  getJoinRequests(classId: string): Promise<PendingRequestDisplay[]> {
+    return delay(joinRequestsForClass(classId));
+  }
+
+  approveJoinRequest(classId: string, requestId: string): Promise<void> {
+    approveJoinRequestFixture(classId, requestId);
+    return delay(undefined);
+  }
+
+  rejectJoinRequest(classId: string, requestId: string): Promise<void> {
+    rejectJoinRequestFixture(classId, requestId);
+    return delay(undefined);
   }
 }

@@ -1,16 +1,13 @@
+import { GRADE_LABEL, type Grade } from "../../lib/presentation";
+
 export interface ClassCardProps {
   name: string;
-  grade: "GRADE_2" | "GRADE_3";
+  grade: Grade;
   studentCount: number;
   toWatchCount: number;
   pendingRequestCount?: number;
   onClick?: () => void;
 }
-
-const GRADE_LABEL: Record<ClassCardProps["grade"], string> = {
-  GRADE_2: "Grade 2",
-  GRADE_3: "Grade 3",
-};
 
 export function ClassCard({
   name,

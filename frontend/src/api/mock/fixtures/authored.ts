@@ -19,7 +19,8 @@ import type {
   SessionEntry,
   SkillProgress,
 } from "../../types";
-import type { RecommendationDisplay } from "../../../lib/presentation";
+import type { PendingRequestDisplay, RecommendationDisplay } from "../../../lib/presentation";
+import { DuplicateClassNameError, type Grade } from "../../../lib/presentation";
 import realSnapshotsAtT7 from "./realSnapshotsAtT7.json";
 import rosterStudentIds from "./rosterStudentIds.json";
 import skillBoundsAtT7 from "./skillBoundsAtT7.json";
@@ -40,11 +41,76 @@ export const TWO_SIGNAL_EXEMPLAR_ID: string = (twoSignalExemplar as { studentId:
 
 // --- Classes and roster (D2: GRADE_2 / GRADE_3 only) ------------------------
 
-export const CLASSES = [
-  { classId: "class-3blue", name: "Grade 3 Blue", grade: "GRADE_3" as const },
-  { classId: "class-3green", name: "Grade 3 Green", grade: "GRADE_3" as const },
-  { classId: "class-2gold", name: "Grade 2 Gold", grade: "GRADE_2" as const },
+interface ClassRecord {
+  classId: string;
+  name: string;
+  grade: Grade;
+  // Permanent (D1) — assigned once, at creation, and never regenerated.
+  // Excludes visually ambiguous characters (0/O, 1/I) so a teacher can read
+  // it aloud to a room and a student can type it back correctly, per the
+  // constraint documented in backend_plan.md §4.2.
+  classKey: string;
+}
+
+const SEED_CLASSES: ClassRecord[] = [
+  { classId: "class-3blue", name: "Grade 3 Blue", grade: "GRADE_3", classKey: "7K4P92" },
+  { classId: "class-3green", name: "Grade 3 Green", grade: "GRADE_3", classKey: "9M3R58" },
+  { classId: "class-2gold", name: "Grade 2 Gold", grade: "GRADE_2", classKey: "4T7N26" },
 ];
+
+// Classes created during this session via CreateClassDialog (Step 6). Mock
+// state only — there is no persistence layer, so this resets on reload,
+// same as every other in-memory mutation in this mock client.
+const CREATED_CLASSES: ClassRecord[] = [];
+
+export const CLASSES: readonly ClassRecord[] = SEED_CLASSES;
+
+export function allClasses(): ClassRecord[] {
+  return [...SEED_CLASSES, ...CREATED_CLASSES];
+}
+
+function classKeyTaken(key: string): boolean {
+  return allClasses().some((c) => c.classKey === key);
+}
+
+const KEY_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // no 0/O, 1/I
+
+function generateClassKey(): string {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    let key = "";
+    for (let i = 0; i < 6; i++) {
+      key += KEY_ALPHABET[Math.floor(Math.random() * KEY_ALPHABET.length)];
+    }
+    // Exclude a run of the same character repeated — hard to read aloud.
+    if (/(.)\1{2,}/.test(key)) continue;
+    if (!classKeyTaken(key)) return key;
+  }
+  throw new Error("Could not generate a unique class key");
+}
+
+/**
+ * Name is required and unique per teacher, case-insensitive and trimmed
+ * (backend_plan.md §3). Throws DuplicateClassNameError — see client.ts —
+ * on a collision; CreateClassDialog only ever renders the message it's
+ * given, so the message text here IS the inline field error.
+ */
+export function createClassRecord(name: string, grade: Grade): ClassRecord {
+  const trimmed = name.trim();
+  const isDuplicate = allClasses().some(
+    (c) => c.name.trim().toLowerCase() === trimmed.toLowerCase(),
+  );
+  if (isDuplicate) {
+    throw new DuplicateClassNameError(`A class named "${trimmed}" already exists.`);
+  }
+  const record: ClassRecord = {
+    classId: `class-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    name: trimmed,
+    grade,
+    classKey: generateClassKey(),
+  };
+  CREATED_CLASSES.push(record);
+  return record;
+}
 
 const DISPLAY_NAME: Record<string, string> = {
   "STU-0103": "Kavindu",
@@ -295,4 +361,61 @@ const DEMO_RECOMMENDATION: RecommendationDisplay = {
 
 export function recommendationsForStudent(studentId: string): RecommendationDisplay[] {
   return studentId === "STU-0001" ? [DEMO_RECOMMENDATION] : [];
+}
+
+// --- Hand-authored: Join requests (docs/11 §4, Step 6) ----------------------
+//
+// PROVISIONAL — see PendingRequestDisplay's doc comment in
+// lib/presentation.ts. Seeded only on Grade 3 Blue so the Cohort screen's
+// pending-requests banner has something real to demonstrate; every other
+// class starts with none, which is the ordinary "nothing pending" state.
+// Approve/reject mutate this in-memory list directly — mock state only,
+// same caveat as CREATED_CLASSES above.
+
+const PENDING_REQUESTS: Record<string, PendingRequestDisplay[]> = {
+  "class-3blue": [
+    {
+      requestId: "req-1",
+      studentDisplayName: "Devni",
+      requestedDate: "2026-08-29T09:00:00.000Z",
+    },
+    {
+      requestId: "req-2",
+      studentDisplayName: "Sithumi",
+      requestedDate: "2026-08-30T09:00:00.000Z",
+    },
+  ],
+};
+
+export function joinRequestsForClass(classId: string): PendingRequestDisplay[] {
+  // A copy, not the live array — removeJoinRequest splices the internal
+  // array in place, so returning it by reference would let a caller's
+  // already-fetched "before" list silently mutate out from under it the
+  // moment a request is approved/rejected.
+  return [...(PENDING_REQUESTS[classId] ?? [])];
+}
+
+export function pendingRequestCountForClass(classId: string): number {
+  return joinRequestsForClass(classId).length;
+}
+
+function removeJoinRequest(classId: string, requestId: string): void {
+  const list = PENDING_REQUESTS[classId];
+  if (!list) return;
+  const index = list.findIndex((r) => r.requestId === requestId);
+  if (index !== -1) list.splice(index, 1);
+}
+
+// Approve/reject both just remove the request from the pending list in this
+// mock — there is no membership table here to actually add the learner to
+// the roster, and D10-style "no write-back" caution applies to inventing
+// state a real backend would need to own correctly (e.g. duplicate
+// enrolment checks). The UI-level effect (the request disappears, the
+// pending count drops) is what Step 6 is scoped to demonstrate.
+export function approveJoinRequest(classId: string, requestId: string): void {
+  removeJoinRequest(classId, requestId);
+}
+
+export function rejectJoinRequest(classId: string, requestId: string): void {
+  removeJoinRequest(classId, requestId);
 }

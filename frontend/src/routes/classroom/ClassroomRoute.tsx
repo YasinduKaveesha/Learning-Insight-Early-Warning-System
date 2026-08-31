@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
+import { ClassInfoDialog } from "../../components/class/ClassInfoDialog";
 import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
@@ -11,19 +12,30 @@ import { SearchField } from "../../components/shared/SearchField";
 import { SectionHeader } from "../../components/shared/SectionHeader";
 import { StatTile } from "../../components/shared/StatTile";
 import { StudentCard } from "../../components/student/StudentCard";
-import { SNAPSHOT_FRAMING, type LearnerSnapshot, toWatchStatus } from "../../lib/presentation";
+import {
+  SNAPSHOT_FRAMING,
+  sortCohortOrder,
+  type LearnerSnapshot,
+  toWatchStatus,
+} from "../../lib/presentation";
 
 /**
- * Classroom / Cohort (plan §4.2) — the main working screen. Ordering matters:
- * watched first by priority, then no-current-concern, then Getting Started
- * LAST — never among the no-concern students ("we don't know" and "no
- * concern" are different answers, docs/12 §3). The mock client's
- * getCohort() already returns students in this order; this screen only
- * splits that single ordered list into its two sections without re-sorting.
+ * Classroom / Cohort (plan §4.2) — the main working screen. Ordering
+ * matters: watched first by priority, then no-current-concern, then
+ * Getting Started LAST — never among the no-concern students ("we don't
+ * know" and "no concern" are different answers, docs/12 §3).
+ *
+ * Step 6 fix: this screen no longer trusts the API's order. sortCohortOrder
+ * (lib/presentation.ts) is applied here explicitly, in addition to the
+ * mock client applying it too — defence in depth, so a future real backend
+ * that returns students in a different order cannot silently interleave
+ * Getting Started among no-concern students. See that function's doc
+ * comment for the regression this closes.
  */
 export default function ClassroomRoute() {
   const { classId } = useParams<{ classId: string }>();
   const [search, setSearch] = useState("");
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["cohort", classId],
@@ -31,15 +43,19 @@ export default function ClassroomRoute() {
     enabled: !!classId,
   });
 
-  const filtered = useMemo(() => {
+  const ordered = useMemo(() => {
     if (!data) return [];
+    return sortCohortOrder(data.students);
+  }, [data]);
+
+  const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (query === "") return data.students;
-    return data.students.filter((s) => s.displayName.toLowerCase().includes(query));
-  }, [data, search]);
+    if (query === "") return ordered;
+    return ordered.filter((s) => s.displayName.toLowerCase().includes(query));
+  }, [ordered, search]);
 
   const watching = filtered.filter((s) => toWatchStatus(s).kind === "watching");
-  // Preserves the order already returned by the API — no-concern students
+  // Preserves the order sortCohortOrder produced — no-concern students
   // first, Getting Started last, never interleaved (see doc comment above).
   const allOthers = filtered.filter((s) => toWatchStatus(s).kind !== "watching");
 
@@ -53,16 +69,28 @@ export default function ClassroomRoute() {
         >
           ← {isPending ? "" : (data?.className ?? "Class")}
         </Link>
-        {/* Class Info dialog is Step 6 — the 44px target exists, inert for now. */}
         <button
           type="button"
           aria-label="Class info"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-slate-700"
+          onClick={() => setIsInfoOpen(true)}
+          disabled={!data}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-slate-700 disabled:opacity-40"
         >
           ⓘ
         </button>
       </header>
       <FramingLine />
+
+      {data ? (
+        <ClassInfoDialog
+          isOpen={isInfoOpen}
+          onClose={() => setIsInfoOpen(false)}
+          className={data.className}
+          grade={data.grade}
+          classKey={data.classKey}
+          studentCount={data.studentCount}
+        />
+      ) : null}
 
       {isPending ? (
         <>
@@ -75,6 +103,11 @@ export default function ClassroomRoute() {
           message="Couldn't load this class. Check your connection and try again."
           onRetry={() => refetch()}
         />
+      ) : data.studentCount === 0 ? (
+        // The useful empty state is the class key, not "no students" —
+        // it's the thing the teacher needs to actually fix this (docs/11
+        // §7's own example: "No learners yet. Share the class key ...").
+        <EmptyState message={`No students yet. Share the key ${data.classKey}.`} />
       ) : (
         <>
           <SearchField
@@ -91,15 +124,17 @@ export default function ClassroomRoute() {
             <StatTile label="Getting Started" value={data.gettingStartedCount} />
           </div>
 
-          {/* The join-requests screen is Step 6 — this banner is inert. */}
           {data.pendingRequestCount > 0 ? (
-            <div className="flex min-h-[44px] items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <Link
+              to={`/classes/${classId}/requests`}
+              className="flex min-h-[44px] items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700"
+            >
               <span>
                 ⚑ {data.pendingRequestCount} join request
                 {data.pendingRequestCount === 1 ? "" : "s"} pending
               </span>
               <span aria-hidden="true">→</span>
-            </div>
+            </Link>
           ) : null}
 
           <section>

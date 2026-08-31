@@ -270,7 +270,7 @@ export default function GalleryRoute() {
           Open CreateClassDialog
         </button>
         <ClassKeyDialog isOpen={dialogOpen === "key"} onClose={() => setDialogOpen(null)} className="Grade 3 Blue" classKey="7K4P92" />
-        <ClassInfoDialog isOpen={dialogOpen === "info"} onClose={() => setDialogOpen(null)} className="Grade 3 Blue" grade="GRADE_3" classKey="7K4P92" />
+        <ClassInfoDialog isOpen={dialogOpen === "info"} onClose={() => setDialogOpen(null)} className="Grade 3 Blue" grade="GRADE_3" classKey="7K4P92" studentCount={9} />
         <CreateClassDialog isOpen={dialogOpen === "create"} onClose={() => setDialogOpen(null)} onSubmit={noop} nameError="A class named 'Grade 3 Blue' already exists." />
       </GallerySection>
 

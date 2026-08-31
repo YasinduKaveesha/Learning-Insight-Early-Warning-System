@@ -5,17 +5,26 @@ import type { LearnerSnapshot } from "../../lib/presentation";
 import ClassroomRoute from "../classroom/ClassroomRoute";
 import { renderRoute } from "./testUtils";
 
-vi.mock("../../api/client", () => ({
-  client: {
-    getHome: vi.fn(),
-    getCohort: vi.fn(),
-    getClassWatchList: vi.fn(),
-    getWatchList: vi.fn(),
-    getStudentOverview: vi.fn(),
-    getStudentSessions: vi.fn(),
-    getStudentRecommendations: vi.fn(),
-  },
-}));
+vi.mock("../../api/client", async () => {
+  const actual = await vi.importActual<typeof import("../../api/client")>("../../api/client");
+  return {
+    DuplicateClassNameError: actual.DuplicateClassNameError,
+    isDuplicateClassNameError: actual.isDuplicateClassNameError,
+    client: {
+      getHome: vi.fn(),
+      getCohort: vi.fn(),
+      getClassWatchList: vi.fn(),
+      getWatchList: vi.fn(),
+      getStudentOverview: vi.fn(),
+      getStudentSessions: vi.fn(),
+      getStudentRecommendations: vi.fn(),
+      createClass: vi.fn(),
+      getJoinRequests: vi.fn(),
+      approveJoinRequest: vi.fn(),
+      rejectJoinRequest: vi.fn(),
+    },
+  };
+});
 
 const { client } = await import("../../api/client");
 
@@ -73,6 +82,8 @@ function mockCohort(students: LearnerSnapshot[], overrides: Partial<Record<strin
   vi.mocked(client.getCohort).mockResolvedValue({
     classId: "class-1",
     className: "Grade 3 Blue",
+    grade: "GRADE_3",
+    classKey: "7K4P92",
     studentCount: students.length,
     toWatchCount: students.filter((s) => s.watchFlag).length,
     gettingStartedCount: students.filter((s) => s.evidenceStatus !== "sufficient_evidence").length,
@@ -119,6 +130,81 @@ describe("ClassroomRoute — ordering", () => {
     // "All Students" section — Getting Started sorts last, never merged in.
     const allText = allSection.textContent!;
     expect(allText.indexOf("Kavya")).toBeLessThan(allText.indexOf("Nimal"));
+  });
+});
+
+describe("ClassroomRoute — the Step 6 ordering-defect fix", () => {
+  // MIS_ORDERED_COHORT is exactly what a real backend that sorted by, say,
+  // enrolment date might return: Getting Started FIRST, interleaved with
+  // no-concern students, watched students not even grouped together. If
+  // this screen still trusted the API's order (the Step 5 bug), the
+  // rendered sections would reproduce this wrong order. sortCohortOrder is
+  // now applied in ClassroomRoute itself, so the render must be correct
+  // regardless of what mockCohort hands it — that's the whole point of
+  // this test; without it the fix is unverified.
+  const MIS_ORDERED_COHORT = [GETTING_STARTED, NO_CONCERN, WATCHED_2, WATCHED_1];
+
+  it("still renders watched → no-concern → Getting Started last from a deliberately mis-ordered API response", async () => {
+    mockCohort(MIS_ORDERED_COHORT);
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+
+    const names = screen.getAllByText(/^(Amara|Priya|Kavya|Nimal)$/).map((el) => el.textContent);
+    expect(names).toEqual(["Amara", "Priya", "Kavya", "Nimal"]);
+
+    const watchSection = screen.getByText("Students to Watch").closest("section")!;
+    const allSection = screen.getByText("All Students").closest("section")!;
+    expect(within(watchSection).queryByText("Nimal")).not.toBeInTheDocument();
+    expect(within(allSection).getByText("Nimal")).toBeInTheDocument();
+    expect(within(allSection).getByText("Kavya")).toBeInTheDocument();
+    const allText = allSection.textContent!;
+    expect(allText.indexOf("Kavya")).toBeLessThan(allText.indexOf("Nimal"));
+  });
+});
+
+describe("ClassroomRoute — Class Info dialog (Step 6)", () => {
+  it("the ⓘ opens a dialog showing the same key the cohort response carries", async () => {
+    mockCohort(ORDERED_COHORT, { classKey: "9M3R58" });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "Class info" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("9M3R58")).toBeInTheDocument();
+    expect(dialog).toHaveAttribute("aria-labelledby");
+  });
+
+  it("closes on Escape and restores focus to the ⓘ trigger", async () => {
+    mockCohort(ORDERED_COHORT);
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+
+    const trigger = screen.getByRole("button", { name: "Class info" });
+    await userEvent.click(trigger);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+  });
+});
+
+describe("ClassroomRoute — pending requests banner links to the requests screen", () => {
+  it("shows the banner as a link to /classes/:classId/requests when there are pending requests", async () => {
+    mockCohort(ORDERED_COHORT, { pendingRequestCount: 2 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText(/2 join requests pending/)).toBeInTheDocument());
+    const link = screen.getByText(/2 join requests pending/).closest("a")!;
+    expect(link).toHaveAttribute("href", "/classes/class-1/requests");
+  });
+});
+
+describe("ClassroomRoute — empty cohort shows the class key", () => {
+  it("shows the class key as the useful empty state when the class has no students at all", async () => {
+    mockCohort([], { studentCount: 0, classKey: "4T7N26" });
+    renderClassroom();
+    await waitFor(() =>
+      expect(screen.getByText("No students yet. Share the key 4T7N26.")).toBeInTheDocument(),
+    );
   });
 });
 

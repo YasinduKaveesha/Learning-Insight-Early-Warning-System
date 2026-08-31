@@ -70,6 +70,49 @@ export function toWatchStatus(s: LearnerSnapshot): WatchStatus {
   return { kind: "no_concern", label: "No current concern identified" };
 }
 
+/**
+ * Watching first by priority, then no-current-concern, then Getting Started
+ * LAST — never interleaved among no-concern students ("we don't know" and
+ * "no concern" are different answers, docs/12 §3).
+ *
+ * THIS IS THE CANONICAL ORDERING — a display-layer guarantee, not a mock
+ * convenience. It was originally only implemented inside the mock client
+ * (Step 3), which meant ClassroomRoute simply trusted whatever order the
+ * API returned. That is a latent regression: plan §5 says swapping to the
+ * real FastAPI backend changes api/client.ts and nothing else, at which
+ * point the mock client's sort is gone entirely, and a backend that returns
+ * students in any other order (e.g. by enrolment date) would silently
+ * interleave Getting Started among no-concern students — the exact failure
+ * docs/12 §3 exists to prevent — and the screen's own tests would keep
+ * passing because they only ever exercised the mock.
+ *
+ * Fix (Step 6): this function is the one place the order is defined, and
+ * BOTH the mock client and every screen that renders a cohort apply it —
+ * defence in depth, the same pattern filterExplanation already uses for
+ * the explanation filters. The mock's own sort staying in place is not
+ * redundant: it's what the mock server would do if it were real, and this
+ * function is what protects the screen even when a future real server
+ * forgets to.
+ */
+export function sortCohortOrder(students: LearnerSnapshot[]): LearnerSnapshot[] {
+  const rank = (s: LearnerSnapshot) => {
+    const status = toWatchStatus(s);
+    if (status.kind === "watching") return 0;
+    if (status.kind === "no_concern") return 1;
+    return 2; // getting_started
+  };
+  return [...students].sort((a, b) => {
+    const rankDiff = rank(a) - rank(b);
+    if (rankDiff !== 0) return rankDiff;
+    const statusA = toWatchStatus(a);
+    const statusB = toWatchStatus(b);
+    if (statusA.kind === "watching" && statusB.kind === "watching") {
+      return (statusA.priority ?? Infinity) - (statusB.priority ?? Infinity);
+    }
+    return a.displayName.localeCompare(b.displayName);
+  });
+}
+
 /** Exhaustive icon/text pairing so colour can never be the only cue (plan §9). */
 export function watchStatusIcon(status: WatchStatus): string {
   switch (status.kind) {
@@ -215,6 +258,75 @@ const RECOMMENDATION_FALLBACK = "Suggestion";
 /** An unrecognised kind renders a readable fallback — it must never throw. */
 export function recommendationLabel(kind: string): string {
   return (RECOMMENDATION_LABEL as Record<string, string>)[kind] ?? RECOMMENDATION_FALLBACK;
+}
+
+// --- Classes (D1, D2) ------------------------------------------------------
+
+/** Grades are GRADE_2 / GRADE_3 only (D2) — the database constrains it and
+ * the study's learners are aged 7–9. The single canonical type so the
+ * grade select, the class-key dialogs and the seam all agree on the same
+ * closed set — no free text, no other grades. */
+export type Grade = "GRADE_2" | "GRADE_3";
+
+export const GRADE_LABEL: Record<Grade, string> = {
+  GRADE_2: "Grade 2",
+  GRADE_3: "Grade 3",
+};
+
+/**
+ * Thrown by ApiClient.createClass on a duplicate name (case-insensitive,
+ * trimmed, per teacher — backend_plan.md §3). Defined here rather than in
+ * api/client.ts to avoid a circular import: fixtures/authored.ts needs to
+ * throw it and client.ts needs to type its createClass signature with it,
+ * and client.ts already imports MockClient from the fixtures/mock layer —
+ * a reverse import from there back into client.ts would cycle. This file
+ * has no dependency on either, so both sides can import from here safely.
+ * CreateClassDialog never decides what counts as a duplicate; it only
+ * renders the message it's given, so this error's `message` IS the inline
+ * field error text.
+ *
+ * Callers should prefer `isDuplicateClassNameError(e)` over `e instanceof
+ * DuplicateClassNameError` — this class crosses the fixtures → mock client
+ * → seam boundary, and `instanceof` across separately-resolved import
+ * specifiers for the same file has proven unreliable in this project's
+ * Windows/Vitest environment (two specifiers for the identical module can
+ * end up as distinct instances). `code` is a plain string comparison and
+ * can't have that problem.
+ */
+export class DuplicateClassNameError extends Error {
+  readonly code = "DUPLICATE_CLASS_NAME" as const;
+  constructor(message: string) {
+    super(message);
+    this.name = "DuplicateClassNameError";
+  }
+}
+
+/** See DuplicateClassNameError's doc comment for why this checks `code`
+ * rather than `instanceof`. */
+export function isDuplicateClassNameError(
+  e: unknown,
+): e is DuplicateClassNameError {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code: unknown }).code === "DUPLICATE_CLASS_NAME"
+  );
+}
+
+// --- Join requests (docs/11 §4) ---------------------------------------------
+//
+// PROVISIONAL, in the same spirit as RecommendationDisplay (Step 4 review
+// ruling B): docs/11 §4 describes the fields a request card shows (name,
+// requested date, approve/reject) but there is no endpoint contract behind
+// this yet — the real classroom/membership endpoints belong to the student
+// app (plan §4.7's "Join — student-facing" note), which Component 3 does
+// not reimplement. This shape is good enough to build the screen against.
+
+export interface PendingRequestDisplay {
+  requestId: string;
+  studentDisplayName: string;
+  requestedDate: string;
 }
 
 // --- Snapshot framing (plan §1, §6) ---------------------------------------
