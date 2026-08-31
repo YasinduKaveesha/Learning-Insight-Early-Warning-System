@@ -18,7 +18,6 @@ import type {
   LearnerSnapshot,
   SessionEntry,
   SkillProgress,
-  Trajectory,
 } from "../../types";
 import realSnapshotsAtT7 from "./realSnapshotsAtT7.json";
 import rosterStudentIds from "./rosterStudentIds.json";
@@ -115,8 +114,10 @@ export const ROSTER_SNAPSHOTS: LearnerSnapshot[] = ROSTER_IDS.map((id) => {
 
 // --- Hand-authored fixture 1: Getting Started -------------------------------
 
-const NO_TRAJECTORY: Trajectory = { source: "practice_accuracy", state: "unknown" };
-const NO_ENGAGEMENT_TRAJECTORY: Trajectory = { source: "game_engagement", state: "unknown" };
+const NO_TRAJECTORY: LearnerSnapshot["practiceTrajectory"] = {
+  source: "practice_accuracy",
+  state: "unknown",
+};
 
 export const GETTING_STARTED_STUDENT_ID = "STU-GS01";
 
@@ -130,10 +131,11 @@ export const GETTING_STARTED_SNAPSHOT: LearnerSnapshot = {
   evidenceStatus: "insufficient_exposure" satisfies EvidenceStatus,
   sessionsCompleted: 1,
   practiceTrajectory: NO_TRAJECTORY,
-  engagementTrajectory: NO_ENGAGEMENT_TRAJECTORY,
+  // D17: no engagementTrajectory field on LearnerSnapshot at all.
   explanation: null,
   lastActiveDate: authoredDateForSession(1, 1),
   accuracySparkline: [],
+  engagementSparkline: [],
   modelVersion: MODEL_VERSION,
   inferenceTimestamp: INFERENCE_TIMESTAMP,
 };

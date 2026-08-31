@@ -250,13 +250,13 @@ function capitalise(s) {
 //   game_engagement    ← engagement_decline_rate (ε = 0.010, SIGN INVERTED:
 //                          a rising decline rate is worsening engagement)
 //
-// AMBIGUITY FLAGGED IN REPORT: backend_plan.md D17 says engagement_trajectory
-// is computed but must NEVER be served to any client — it is held back due to
-// a measured inversion on the DD subgroup. frontend_plan.md §4.4's mockup and
-// api/types.ts (already shipped in Step 2) both require an engagementTrajectory
-// on every LearnerSnapshot. This fixture computes it from real data so the
-// Step-2 type contract has something to render, but the D17/frontend_plan
-// conflict is unresolved — see the Step 3 report.
+// RESOLVED in Step 4 (supervisor decision D17, 2026-08-31): the Step 3 report
+// flagged a conflict between this held-back state and the Step-2 type
+// contract. The ruling is to withhold the state entirely — engagementState is
+// still computed here (used only internally, to keep the explanation sentence
+// bank from contradicting the practice trajectory — see buildExplanation) and
+// is NEVER written into any emitted fixture. Only the underlying engagement
+// SERIES (engagementSparkline, from engagement_consistency) ships.
 // ---------------------------------------------------------------------------
 
 function slopeToTrajectoryState(slope, epsilon, sessionsCompleted, invert = false) {
@@ -313,7 +313,7 @@ function buildSnapshotsAtT(t) {
       evidenceStatus: "sufficient_evidence",
       sessionsCompleted,
       practiceTrajectory: { source: "practice_accuracy", state: practiceState },
-      engagementTrajectory: { source: "game_engagement", state: engagementState },
+      // D17: no engagementTrajectory field — the derived state is withheld.
       explanation: buildExplanation(
         r.student_id,
         t,
@@ -321,7 +321,11 @@ function buildSnapshotsAtT(t) {
         practiceState,
         engagementState,
       ),
-      accuracySparkline: buildSparkline(r.student_id, t),
+      accuracySparkline: buildSparkline(r.student_id, t, "score_avg_recent"),
+      // The engagement SERIES still ships for the chart (D17 keeps the data,
+      // withholds only the derived 3-state chip). engagement_consistency is
+      // the closest real per-snapshot engagement magnitude available.
+      engagementSparkline: buildSparkline(r.student_id, t, "engagement_consistency"),
       // predicted_class, prob_class_0/1/2+, actual_class and population are
       // read above ONLY to compute watchFlag/rank/sentences. None are copied
       // into this object.
@@ -329,11 +333,11 @@ function buildSnapshotsAtT(t) {
   });
 }
 
-function buildSparkline(studentId, t) {
+function buildSparkline(studentId, t, column) {
   const values = [];
   for (let s = 3; s <= t; s += 2) {
     const training = trainingByKey.get(`${studentId}|${s}`);
-    const v = training ? num(training.score_avg_recent) : null;
+    const v = training ? num(training[column]) : null;
     if (v !== null) values.push(Number(v.toFixed(3)));
   }
   return values.slice(-5);

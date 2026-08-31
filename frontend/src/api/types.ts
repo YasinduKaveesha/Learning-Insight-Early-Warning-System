@@ -16,6 +16,12 @@ export type TrajectoryState = "improving" | "stable" | "needs_attention" | "unkn
 
 export interface Trajectory {
   // D12 — practice and engagement trajectories are separate, never averaged.
+  // D17 restricts the SOURCE of any rendered trajectory STATE to
+  // practice_accuracy only — see the note on LearnerSnapshot below. The
+  // "game_engagement" source value is not removed from the type because a
+  // Trajectory shape isn't used for engagement at all any more (there is no
+  // engagementTrajectory field left to hold one); it stays here only as a
+  // discriminant researchers may reintroduce if D17 is revisited.
   source: "practice_accuracy" | "game_engagement";
   state: TrajectoryState;
 }
@@ -32,11 +38,27 @@ export interface LearnerSnapshot {
   rankWithinSnapshot: number | null;
   evidenceStatus: EvidenceStatus;
   sessionsCompleted: number;
-  practiceTrajectory: Trajectory;
-  engagementTrajectory: Trajectory;
+  // Narrowed to source: "practice_accuracy" (rather than the generic
+  // Trajectory) so a component consuming this field is statically incapable
+  // of accepting an engagement trajectory here — the D17 restriction is
+  // enforced by the type, not just by convention.
+  practiceTrajectory: { source: "practice_accuracy"; state: TrajectoryState };
+  // D17 (supervisor decision, 2026-08-31): the engagement trajectory STATE
+  // (Improving/Stable/Needs Attention derived from c_engagement_score) is
+  // withheld from v1. It was computed, audited and held: DD needs_attention
+  // lift of 0.76 — inside the band NB07 found for the rejected High tier —
+  // and "unknown" for 56-86% of learners because c_engagement_score is
+  // missing from ~half of all sessions. Shipping it would under-surface the
+  // group the product exists to serve while looking informative. There is
+  // deliberately no `engagementTrajectory` field here. The underlying
+  // engagement SERIES is retained below (`engagementSparkline`) so a chart
+  // can still render it — only the derived three-state chip is withheld.
+  // Revisit once the DD subgroup / c_engagement_score coverage issue is
+  // resolved and the derived signal is re-audited (plan/docs/11 §5).
   explanation: string | null; // <=280 chars, display names only
   lastActiveDate: string;
   accuracySparkline: number[];
+  engagementSparkline: number[];
   modelVersion: string;
   inferenceTimestamp: string;
 }
@@ -46,6 +68,11 @@ export interface SkillProgress {
   displayName: string;
   direction: "improving" | "not_moving" | "unknown";
   relativeLevel: number | null; // bar position only — never labelled with a number
+  // NOT REAL DATA (Step 3 finding): no per-skill practice-opportunity count
+  // exists in the research dataset; this is a placeholder. Kept on the type
+  // so a real source can be wired in later, but NO component may render it
+  // until one exists — a fabricated count a teacher acts on is worse than no
+  // count at all.
   practiceCount: number;
 }
 

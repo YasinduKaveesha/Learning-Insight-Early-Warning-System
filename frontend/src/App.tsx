@@ -5,6 +5,7 @@ import ClassroomRequestsRoute from "./routes/classroom-requests/ClassroomRequest
 import ClassroomRoute from "./routes/classroom/ClassroomRoute";
 import ClassroomWatchRoute from "./routes/classroom-watch/ClassroomWatchRoute";
 import ClassesRoute from "./routes/classes/ClassesRoute";
+import GalleryRoute from "./routes/gallery/GalleryRoute";
 import HomeRoute from "./routes/home/HomeRoute";
 import ProfileRoute from "./routes/profile/ProfileRoute";
 import StudentRoute from "./routes/student/StudentRoute";
@@ -41,6 +42,14 @@ function App() {
             path="/students/:studentId/sessions"
             element={<StudentSessionsRoute />}
           />
+
+          {/* Dev-only component gallery (Step 4 acceptance surface).
+              Excluded from production: import.meta.env.DEV is statically
+              false in a `vite build`, so this route (and its import) is
+              dead-code-eliminated from the production bundle. */}
+          {import.meta.env.DEV ? (
+            <Route path="/__gallery" element={<GalleryRoute />} />
+          ) : null}
         </Routes>
       </main>
     </div>

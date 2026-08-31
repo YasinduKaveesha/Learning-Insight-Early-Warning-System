@@ -82,8 +82,8 @@ describe("fixtures: type conformance", () => {
       expect(typeof s.evidenceStatus).toBe("string");
       expect(typeof s.sessionsCompleted).toBe("number");
       expect(s.practiceTrajectory.source).toBe("practice_accuracy");
-      expect(s.engagementTrajectory.source).toBe("game_engagement");
       expect(Array.isArray(s.accuracySparkline)).toBe(true);
+      expect(Array.isArray(s.engagementSparkline)).toBe(true);
       expect(typeof s.modelVersion).toBe("string");
       expect(typeof s.inferenceTimestamp).toBe("string");
     }

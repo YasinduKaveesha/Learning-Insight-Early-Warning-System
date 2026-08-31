@@ -2,17 +2,42 @@
 // No RiskLevel type exists here on purpose.
 
 import type {
+  EvidenceStatus,
   LearnerSnapshot,
   RecommendationKind,
   SessionEntry,
   SkillProgress,
   Trajectory,
+  TrajectoryState,
 } from "../api/types";
+
+// Re-exported so components import display shapes from THIS file only, never
+// from api/types.ts directly (plan §5) — the single boundary a test can
+// enforce by scanning import specifiers. These shapes are already free of
+// every banned ML field (Step 3 tests assert it), so re-exporting them here
+// is the translation layer's job, not a bypass of it.
+export type { EvidenceStatus, LearnerSnapshot, SessionEntry, SkillProgress, TrajectoryState };
 
 /** Exhaustiveness guard — a switch that forgets a case fails to compile. */
 export function assertNever(x: never): never {
   throw new Error(`Unhandled case: ${JSON.stringify(x)}`);
 }
+
+// --- Framing (docs/12 §1, docs/15 §7) --------------------------------------
+
+/** Exact required wording — no paraphrase, ever. Renders in the header of
+ * every analytics surface via FramingLine. */
+export const FRAMING_LINE = "The system flags learners for teacher review.";
+
+// --- Trajectory (D13, D17) --------------------------------------------------
+
+/**
+ * D17: only the practice trajectory ships as a rendered state chip. This
+ * type exists so TrajectoryChip's prop can be restricted to
+ * "practice_accuracy" at compile time — there is no display-layer shape for
+ * an engagement trajectory STATE for a component to accidentally accept.
+ */
+export type PracticeTrajectory = { source: "practice_accuracy"; state: TrajectoryState };
 
 // --- Watch status -----------------------------------------------------
 
@@ -81,6 +106,12 @@ export function trajectoryLabel(t: Trajectory): string {
   return `${TRAJECTORY_SOURCE_LABEL[t.source]}: ${TRAJECTORY_STATE_LABEL[t.state]}`;
 }
 
+/** TrajectoryChip's only entry point — the parameter type itself forbids an
+ * engagement trajectory from ever reaching a rendered chip (D17). */
+export function practiceTrajectoryLabel(t: PracticeTrajectory): string {
+  return trajectoryLabel(t);
+}
+
 // --- Skill progress ------------------------------------------------------
 
 const SKILL_DIRECTION_LABEL: Record<SkillProgress["direction"], string> = {
@@ -145,6 +176,25 @@ export function gamesGapLabel(games: SessionEntry["games"]): string | null {
 }
 
 // --- Recommendations (D7) -------------------------------------------------
+//
+// Defined here rather than in api/types.ts: docs/13 §2 is read ONLY for what
+// a recommendation card must DISPLAY (its storage/state-machine/database
+// sections are backend scope, out of bounds for this file). `kind` is a
+// loose `string`, not the closed RecommendationKind union — D7 froze the
+// action VOCABULARY, not a client-side mapping, and recommendationLabel()
+// already has a documented fallback for anything it doesn't recognise.
+
+export interface RecommendationDisplay {
+  recommendationId: string;
+  kind: string;
+  targetSkillDisplayName: string;
+  /** ≤280 chars, display-safe — shown WITH the action, never behind a tap. */
+  evidenceSummary: string;
+  status: "pending" | "accepted" | "dismissed" | "modified";
+  /** What the teacher changed it to, when status is "modified". */
+  modifiedActionSummary: string | null;
+  expiresAfterSession: number;
+}
 
 const RECOMMENDATION_LABEL: Record<RecommendationKind, string> = {
   practice: "Practice",

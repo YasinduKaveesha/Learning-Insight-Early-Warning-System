@@ -10,15 +10,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
     "accuracySparkline": [
       0.361,
       0.278,
       0.333
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -32,15 +33,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.111,
       0,
       0.083
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -54,15 +55,15 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.556,
       0.25,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -76,15 +77,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Recent practice accuracy has been low, and game engagement has been declining across recent sessions.",
     "accuracySparkline": [
       0.417,
       0.667,
       0.167
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -98,15 +100,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
     "accuracySparkline": [
       0.389,
       0.167,
       0.5
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -120,15 +123,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.194,
       0.278,
       0.361
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -142,15 +146,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.639,
       0.333,
       0.333
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -164,15 +169,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.222,
       0.083,
       0.25
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -186,15 +191,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
     "accuracySparkline": [
       0.389,
       0.556,
       0.333
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -208,15 +213,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.083,
       0.194,
       0.194
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -230,15 +236,15 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
     "accuracySparkline": [
       0.444,
       0,
       0
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -252,15 +258,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
     "accuracySparkline": [
       0.111,
       0,
       0
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -274,16 +280,13 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "unknown"
-    },
     "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
     "accuracySparkline": [
       0.667,
       0.167,
       0.222
-    ]
+    ],
+    "engagementSparkline": []
   },
   {
     "studentId": "STU-0040",
@@ -296,15 +299,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.083,
       0,
       0.083
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -318,15 +321,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Several skills have not improved across recent sessions, and hints are being used heavily relative to recent practice.",
     "accuracySparkline": [
       0.5,
       0.444,
       0.444
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -340,15 +344,16 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.361,
       0.5,
       0.667
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -362,15 +367,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.5,
       0.722,
       0.667
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -384,15 +390,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.333,
       0.361,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -406,15 +412,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.417,
       0.417,
       0.333
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -428,15 +434,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Game engagement has been declining across recent sessions, and skill mastery has slowed across recent sessions.",
     "accuracySparkline": [
       0.333,
       0.389,
       0.306
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -450,15 +456,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
     "accuracySparkline": [
       0.556,
       0.583,
       0.528
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -472,15 +478,15 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
     "accuracySparkline": [
       0.417,
       0.194,
       0.222
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -494,15 +500,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.444,
       0.278,
       0.333
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -516,15 +523,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
     "accuracySparkline": [
       0.556,
       0.222,
       0.611
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -538,15 +546,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.333,
       0.444,
       0.389
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -560,15 +568,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Skill mastery has slowed across recent sessions, and practice accuracy has not improved across recent sessions.",
     "accuracySparkline": [
       0.25,
       0.111,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -582,15 +590,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.167,
       0,
       0.306
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -604,15 +612,16 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.333,
       0.583,
       0.528
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -626,15 +635,15 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.278,
       0.389,
       0.528
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -648,15 +657,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.444,
       0.556,
       0.306
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -670,15 +679,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Practice accuracy has not improved across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
     "accuracySparkline": [
       0.444,
       0.306,
       0.25
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -692,15 +701,14 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
     "accuracySparkline": [
       0.583,
       0.417,
       0.333
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -714,15 +722,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.25,
       0.333,
       0.361
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -736,15 +744,14 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.278,
       0,
       0.167
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -758,15 +765,14 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Game engagement has been declining across recent sessions, and skill mastery has slowed across recent sessions.",
     "accuracySparkline": [
       0.278,
       0.389,
       0.111
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -780,15 +786,14 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.278,
       0.222,
       0
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -802,15 +807,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.083,
       0.194,
       0.083
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -824,15 +830,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.472,
       0.778,
       0.639
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -846,15 +853,14 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0,
       0.333,
       0.5
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -868,15 +874,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Skill mastery has slowed across recent sessions, and practice accuracy has not improved across recent sessions.",
     "accuracySparkline": [
       0.167,
       0,
       0.194
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -890,15 +896,14 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.833,
       0.611,
       0.389
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -912,15 +917,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.389,
       0.5,
       0.111
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -934,15 +940,16 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
     "accuracySparkline": [
       0.222,
       0.222,
       0.667
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -956,15 +963,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.389,
       0.361,
       0.417
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -978,15 +986,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.083,
       0.167,
       0.333
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1000,15 +1008,16 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.528,
       0.083,
       0.167
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1022,15 +1031,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.556,
       0.583,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1044,15 +1054,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Several skills have not improved across recent sessions, and hints are being used heavily relative to recent practice.",
     "accuracySparkline": [
       0.333,
       0.194,
       0.167
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1066,15 +1076,14 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
     "accuracySparkline": [
       0.528,
       0.333,
       0.361
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -1088,15 +1097,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.5,
       0.417,
       0.5
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1110,15 +1119,16 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.333,
       0.5,
       0.75
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1132,15 +1142,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.667,
       0.694,
       0.806
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1154,15 +1165,14 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.472,
       0.333,
       0.444
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -1176,15 +1186,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.444,
       0.417,
       0.25
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1198,15 +1209,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.333,
       0.278,
       0.389
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1220,15 +1232,16 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.167,
       0,
       0.556
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1242,15 +1255,16 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "The same type of question is being answered incorrectly across recent sessions, and number sense has not progressed across recent sessions.",
     "accuracySparkline": [
       0.417,
       0.361,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1264,15 +1278,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.333,
       0.167,
       0.472
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1286,15 +1301,14 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.083,
       0.083,
       0.278
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -1308,15 +1322,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.556,
       0.583,
       0.528
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1330,15 +1345,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.5,
       0.333,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1352,15 +1367,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.667,
       0.333,
       0.5
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1374,15 +1390,14 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
     "accuracySparkline": [
       0.5,
       0.389,
       0.222
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -1396,15 +1411,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Hints are being used heavily relative to recent practice, and recent practice accuracy has been low.",
     "accuracySparkline": [
       0.083,
       0,
       0
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1418,15 +1434,15 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.278,
       0.444,
       0.5
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1440,15 +1456,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.528,
       0.583,
       0.778
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1462,15 +1479,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.444,
       0.444,
       0.5
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1484,15 +1502,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.556,
       0.611,
       0.5
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1506,15 +1525,15 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Game engagement has been declining across recent sessions, and skill mastery has slowed across recent sessions.",
     "accuracySparkline": [
       0.278,
       0.333,
       0.167
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1528,15 +1547,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.444,
       0.472,
       0.25
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1550,15 +1570,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
     "accuracySparkline": [
       0.194,
       0.222,
       0.444
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1572,15 +1593,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.722,
       0.389,
       0.778
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1594,15 +1616,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": "Recent practice accuracy has been low, and game engagement has been declining across recent sessions.",
     "accuracySparkline": [
       0.417,
       0.389,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1616,16 +1639,13 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "unknown"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.167,
       0.167,
       0.444
-    ]
+    ],
+    "engagementSparkline": []
   },
   {
     "studentId": "STU-0245",
@@ -1638,15 +1658,15 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.25,
       0.333,
       0.5
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1660,15 +1680,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.389,
       0.417,
       0.361
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1682,15 +1703,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.444,
       0.222,
       0.25
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1704,15 +1726,16 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.222,
       0.222,
       0.472
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1726,15 +1749,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.278,
       0.389,
       0.333
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1748,15 +1772,15 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Game engagement has been declining across recent sessions, and the same type of question is being answered incorrectly across recent sessions.",
     "accuracySparkline": [
       0.417,
       0.556,
       0.667
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1770,15 +1794,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.333,
       0.194,
       0.222
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1792,15 +1817,15 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Number sense has not progressed across recent sessions, and several skills have not improved across recent sessions.",
     "accuracySparkline": [
       0.5,
       0.444,
       0.222
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1814,15 +1839,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.194,
       0.278,
       0.389
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1836,15 +1862,16 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.583,
       0.444,
       0.222
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1858,15 +1885,15 @@
       "source": "practice_accuracy",
       "state": "improving"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Hints are being used heavily relative to recent practice, and game engagement has been declining across recent sessions.",
     "accuracySparkline": [
       0.528,
       0.5,
       0.722
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   },
   {
@@ -1880,15 +1907,16 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": "Several skills have not improved across recent sessions, and hints are being used heavily relative to recent practice.",
     "accuracySparkline": [
       0.5,
       0.167,
       0
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1902,15 +1930,14 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "needs_attention"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.167,
       0.361,
       0.083
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -1924,15 +1951,14 @@
       "source": "practice_accuracy",
       "state": "needs_attention"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.722,
       0.444,
       0.278
+    ],
+    "engagementSparkline": [
+      1
     ]
   },
   {
@@ -1946,15 +1972,16 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "stable"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.556,
       0.667,
       0.778
+    ],
+    "engagementSparkline": [
+      1,
+      1,
+      1
     ]
   },
   {
@@ -1968,15 +1995,15 @@
       "source": "practice_accuracy",
       "state": "stable"
     },
-    "engagementTrajectory": {
-      "source": "game_engagement",
-      "state": "improving"
-    },
     "explanation": null,
     "accuracySparkline": [
       0.5,
       0.556,
       0.278
+    ],
+    "engagementSparkline": [
+      1,
+      1
     ]
   }
 ]

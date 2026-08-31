@@ -20,10 +20,11 @@ function makeSnapshot(overrides: Partial<LearnerSnapshot> = {}): LearnerSnapshot
     evidenceStatus: "sufficient_evidence",
     sessionsCompleted: 5,
     practiceTrajectory: { source: "practice_accuracy", state: "stable" },
-    engagementTrajectory: { source: "game_engagement", state: "stable" },
+    // D17: no engagementTrajectory field on LearnerSnapshot.
     explanation: null,
     lastActiveDate: "2026-08-29T00:00:00.000Z",
     accuracySparkline: [],
+    engagementSparkline: [],
     modelVersion: "v1",
     inferenceTimestamp: "2026-08-30T00:00:00.000Z",
     ...overrides,
