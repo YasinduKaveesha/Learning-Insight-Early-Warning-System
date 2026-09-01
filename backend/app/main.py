@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.health import router as health_router
 from app.infrastructure import model_loading
+from app.infrastructure.db import engine as db_engine
 from app.infrastructure.logging import configure_logging, request_id_ctx
 from app.infrastructure.settings import get_settings
 
@@ -45,7 +46,18 @@ def create_app() -> FastAPI:
         except model_loading.ModelLoadError as exc:
             app.state.model_state = model_loading.ModelState(error=exc)
             logger.error("model artefact failed to load", extra={"error": str(exc)})
-        yield
+
+        # The engine is NOT opened here. It is created lazily on first use so a database
+        # that is briefly down cannot stop the process from starting and answering
+        # `/health/ready` with an honest 503 -- which is the whole point of the probe.
+        try:
+            yield
+        finally:
+            # Always dispose, even if startup partly failed: an undisposed asyncpg pool
+            # holds server connections open, and on a shared database those are somebody
+            # else's too. `dispose()` also clears the module-level engine, so a fresh app
+            # in the same process (every TestClient) never inherits the previous URL.
+            await db_engine.dispose()
 
     application = FastAPI(
         title="Component 3 - Learning Insight & Early Warning System API",

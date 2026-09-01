@@ -221,12 +221,13 @@ pytestmark_live = pytest.mark.skipif(
 )
 
 
-@pytestmark_live
-def test_loader_end_to_end_is_a_db_gate_documented_in_the_report():
-    # Gates 3 (7,500 panel rows), 4 (no b_present/c_present-false row) and 8 (re-run makes a
-    # second pipeline_run_id, first generation intact) are demonstrated against the local
-    # Docker DB in the work-order report, not here.
-    pytest.skip("covered by the manual gate demonstrations in the B4 report")
+# Gates 3, 4 and 8 all run for real, below, against `T3_LIVE_DB_URL`:
+#   gate 3 -- test_loader_end_to_end_row_count_matches_the_database (7,500 panel rows)
+#   gate 4 -- test_gate4_an_empty_session_writes_no_panel_row_at_all
+#   gate 8 -- test_gate8_a_rerun_makes_a_new_run_and_leaves_the_first_intact
+# They were previously a `pytest.skip` pointing at a manual demonstration in the B4 report.
+# A demonstration cannot be re-run and does not fail when someone breaks it, so it was not a
+# gate at all; work order B2.2 closed the loophole.
 
 
 # --- the 300-row demo fixture and the row-count gate against a real database (B4.1) --------
@@ -264,7 +265,9 @@ if _LIVE_URL:
             "'TEST', 't3_demo_fixture', 'test', '1', 't3_demo_fixture', :name)"
         ).bindparams(lid=learner_id, rid=f"b4_1-{learner_id}", name=name)
 
-    async def _seed_300_learners_and_map() -> list[tuple]:
+    async def _seed_learners_and_map(
+        n_students: int = _N_STUDENTS, *, id_offset: int = 0
+    ) -> list[tuple]:
         # A fresh engine per `asyncio.run` call -- asyncpg connections are bound to the event
         # loop that created them, so an engine reused across separate `asyncio.run` calls
         # (each of which opens a NEW loop) fails at teardown with "Event loop is closed".
@@ -272,7 +275,10 @@ if _LIVE_URL:
         try:
             pairs = []
             async with engine.begin() as conn:
-                for i in range(1, _N_STUDENTS + 1):
+                # `t3_demo_learner_map.research_student_id` is UNIQUE, so a second
+                # fixture live at the same time needs its own id range -- hence
+                # `id_offset`. Two fixtures both starting at STU-0001 collide.
+                for i in range(1 + id_offset, n_students + 1 + id_offset):
                     lid = _uuid.uuid4()
                     sid = f"STU-{i:04d}"
                     pairs.append((lid, sid))
@@ -315,6 +321,10 @@ if _LIVE_URL:
         finally:
             await engine.dispose()
 
+    #: Kept as a name because `tests/test_feature_persistence.py` imports it for the B4.2a
+    #: live fixture. Same function, now takes an optional count.
+    _seed_300_learners_and_map = _seed_learners_and_map
+
     def _write_synthetic_source(tmp_path, student_ids):
         source_path = tmp_path / "so2_joined_fixture.jsonl"
         manifest_path = tmp_path / "so2_manifest_fixture.json"
@@ -353,7 +363,7 @@ if _LIVE_URL:
 
     @pytest.fixture(scope="module")
     def demo_learner_map_300():
-        pairs = asyncio.run(_seed_300_learners_and_map())
+        pairs = asyncio.run(_seed_learners_and_map())
         pipeline_run_ids: list = []
         try:
             yield pairs, pipeline_run_ids
@@ -404,3 +414,159 @@ if _LIVE_URL:
         assert result.panel_rows_written == expected
         assert db_count == expected  # queried directly from the database, not a variable
         assert not result.unresolved_student_ids
+
+    # --- gates 4 and 8, against a real database (work order B2.2) ---------------------
+    #
+    # Both used to be a `pytest.skip` deferring to a hand-run demonstration. They are
+    # committed tests now, on a 3-learner / 2-session fixture -- small enough to be cheap,
+    # and neither gate is about volume (gate 3 above covers the 7,500-row scale).
+
+    _SMALL_N_STUDENTS = 3
+    _SMALL_N_SESSIONS = 2
+
+    def _write_source(tmp_path, student_ids, *, n_sessions, empty_session_for=None):
+        """Write a joined-source JSONL. If `empty_session_for` names a student, that
+        student's first session carries `b_present=false` AND `c_present=false` -- the
+        rule 3-F10 violation gate 4 is about."""
+
+        source_path = tmp_path / "so2_joined_gate.jsonl"
+        manifest_path = tmp_path / "so2_manifest_gate.json"
+        manifest_path.write_text(
+            json.dumps({"dataset": "b2_2_gate_fixture", "n_students": len(student_ids)}),
+            encoding="utf-8",
+        )
+        with source_path.open("w", encoding="utf-8") as handle:
+            for sid in student_ids:
+                for session_no in range(1, n_sessions + 1):
+                    empty = sid == empty_session_for and session_no == 1
+                    raw = {
+                        "mapping": {
+                            "student_id": sid,
+                            "intervention_session_number": session_no,
+                            "intervention_session_date": "2026-01-01",
+                            "intervention_session_id": f"{sid}-I-{session_no:03d}",
+                            "b_session_id": f"{sid}-B-{session_no:03d}",
+                            "c_session_id": f"{sid}-C-{session_no:03d}",
+                            "b_present": not empty,
+                            "c_present": not empty,
+                        },
+                        "b_to_3": {
+                            "accuracy_rate": 0.5,
+                            "total_questions": 10,
+                            "correct_responses": 5,
+                            "hint_requests": 1,
+                        },
+                        "c_to_3": {
+                            "accuracy_rate": 0.5,
+                            "task_completion_rate": 0.8,
+                            "engagement_score": 0.6,
+                        },
+                    }
+                    handle.write(json.dumps(raw) + "\n")
+        return source_path, manifest_path
+
+    async def _run_load_against_live(source_path, manifest_path, *, notes):
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+
+        engine = _create_async_engine(_normalise_url(_LIVE_URL))
+        try:
+            maker = async_sessionmaker(engine, expire_on_commit=False)
+            async with maker() as session:
+                return await t3_loader.run_load(
+                    session,
+                    source_path=source_path,
+                    manifest_path=manifest_path,
+                    resolver=t3_loader.DemoMapLearnerResolver(session),
+                    model_version="1.0.0",
+                    notes=notes,
+                )
+        finally:
+            await engine.dispose()
+
+    async def _panel_count(pipeline_run_id=None) -> int:
+        engine = _create_async_engine(_normalise_url(_LIVE_URL))
+        try:
+            async with engine.connect() as conn:
+                if pipeline_run_id is None:
+                    sql = _text("SELECT count(*) FROM t3_panel")
+                    params = {}
+                else:
+                    sql = _text(
+                        "SELECT count(*) FROM t3_panel WHERE pipeline_run_id = :run"
+                    )
+                    params = {"run": pipeline_run_id}
+                return (await conn.execute(sql, params)).scalar_one()
+        finally:
+            await engine.dispose()
+
+    @pytest.fixture(scope="module")
+    def demo_learner_map_small():
+        # Offset well clear of the 300-learner fixture's STU-0001..STU-0300 range.
+        pairs = asyncio.run(
+            _seed_learners_and_map(_SMALL_N_STUDENTS, id_offset=9000)
+        )
+        pipeline_run_ids: list = []
+        try:
+            yield pairs, pipeline_run_ids
+        finally:
+            asyncio.run(_cleanup_fixture([lid for lid, _ in pairs], pipeline_run_ids))
+
+    def test_gate4_an_empty_session_writes_no_panel_row_at_all(
+        demo_learner_map_small, tmp_path
+    ):
+        """Gate 4: a record with `b_present` and `c_present` both false is refused, and
+        the refusal happens BEFORE anything is written -- the whole file is rejected, not
+        just the offending row. Asserted against the database's own total row count, so a
+        partial write would show up even though `run_load` raised."""
+
+        pairs, _ = demo_learner_map_small
+        student_ids = [sid for _, sid in pairs]
+        source_path, manifest_path = _write_source(
+            tmp_path,
+            student_ids,
+            n_sessions=_SMALL_N_SESSIONS,
+            empty_session_for=student_ids[0],
+        )
+
+        before = asyncio.run(_panel_count())
+
+        with pytest.raises(ValueError) as excinfo:
+            asyncio.run(
+                _run_load_against_live(source_path, manifest_path, notes="B2.2 gate 4")
+            )
+
+        assert "b_present and c_present both false" in str(excinfo.value)
+        assert "3-F10" in str(excinfo.value)
+        after = asyncio.run(_panel_count())
+        assert after == before, "an empty-session load left rows behind in t3_panel"
+
+    def test_gate8_a_rerun_makes_a_new_run_and_leaves_the_first_intact(
+        demo_learner_map_small, tmp_path
+    ):
+        """Gate 8: loading the same source twice produces two distinct
+        `pipeline_run_id`s, and the first generation's rows are still there afterwards.
+        The loader appends generations; it never overwrites one."""
+
+        pairs, pipeline_run_ids = demo_learner_map_small
+        student_ids = [sid for _, sid in pairs]
+        source_path, manifest_path = _write_source(
+            tmp_path, student_ids, n_sessions=_SMALL_N_SESSIONS
+        )
+        expected = _SMALL_N_STUDENTS * _SMALL_N_SESSIONS
+
+        first = asyncio.run(
+            _run_load_against_live(source_path, manifest_path, notes="B2.2 gate 8 run 1")
+        )
+        pipeline_run_ids.append(first.pipeline_run_id)
+        first_count_before_rerun = asyncio.run(_panel_count(first.pipeline_run_id))
+
+        second = asyncio.run(
+            _run_load_against_live(source_path, manifest_path, notes="B2.2 gate 8 run 2")
+        )
+        pipeline_run_ids.append(second.pipeline_run_id)
+
+        assert second.pipeline_run_id != first.pipeline_run_id
+        assert first_count_before_rerun == expected
+        # Re-read the FIRST generation from the database after the second load.
+        assert asyncio.run(_panel_count(first.pipeline_run_id)) == expected
+        assert asyncio.run(_panel_count(second.pipeline_run_id)) == expected

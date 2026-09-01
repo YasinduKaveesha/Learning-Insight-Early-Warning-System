@@ -325,16 +325,16 @@ async def _amain() -> None:  # pragma: no cover - operational entrypoint
 
     import os
 
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
-    from app.infrastructure.db_url import normalise_async_url, redact_url
-    from app.infrastructure.migration_guard import assert_direct_connection
+    from app.infrastructure.db.engine import create_direct_engine
 
-    url = normalise_async_url(os.environ["DATABASE_URL"])
-    assert_direct_connection(url)
-    print(f"t3_loader target: {redact_url(url)}")
+    # The shared factory's *direct-connection* shape (work order B2.2). This is a bulk load
+    # on port 5432, not an API request on the pooler, so it must not go through
+    # `get_engine()`; `create_direct_engine` still refuses a pooler URL outright.
+    engine, target = create_direct_engine(os.environ["DATABASE_URL"])
+    print(f"t3_loader target: {target}")
 
-    engine = create_async_engine(url, poolclass=None)
     maker = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with maker() as session:

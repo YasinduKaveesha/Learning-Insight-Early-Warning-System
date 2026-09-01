@@ -32,9 +32,10 @@ section 5):
    built, the same discipline as ``t3_loader.PanelRowCountMismatchError``. A mismatch aborts
    (rolls back) the whole write.
 
-Follows ``t3_loader.py``'s self-contained-engine pattern for the CLI entry point
-(``_amain``). TODO(B2.2): repoint at the shared session factory once it exists instead of
-opening its own engine here.
+The CLI entry point (``_amain``) opens its engine through
+``app.infrastructure.db.engine.create_direct_engine`` -- the shared factory's direct-
+connection (port 5432) shape, the same one ``t3_loader`` uses. It is deliberately NOT the
+API engine: that one targets the transaction pooler.
 """
 
 from __future__ import annotations
@@ -336,24 +337,25 @@ async def _amain() -> None:  # pragma: no cover - operational entrypoint
 
     import os
 
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.ext.asyncio import async_sessionmaker
 
     from app.infrastructure import model_loading
-    from app.infrastructure.db_url import normalise_async_url, redact_url
-    from app.infrastructure.migration_guard import assert_direct_connection
+    from app.infrastructure.db.engine import create_direct_engine
 
-    url = normalise_async_url(os.environ["DATABASE_URL"])
-    assert_direct_connection(url)
-    print(f"feature_persistence target: {redact_url(url)}")
+    # The shared factory's *direct-connection* shape (work order B2.2) -- see t3_loader.
+    engine, target = create_direct_engine(os.environ["DATABASE_URL"])
+    print(f"feature_persistence target: {target}")
 
-    model_version = os.environ.get("T3_ACTIVE_MODEL_VERSION", "1.0.0")
-    artefact_store = Path(os.environ["T3_ARTEFACT_STORE_PATH"])
-    artefact_path = model_loading.resolve_artefact_path(artefact_store, model_version)
-    model = model_loading.load_model(artefact_path, model_version=model_version)
-
-    engine = create_async_engine(url, poolclass=None)
     maker = async_sessionmaker(engine, expire_on_commit=False)
     try:
+        # Inside the try so a failed artefact load still disposes the engine. The target
+        # banner above is printed before any of this, so an operator sees which database
+        # is in play even if the model never loads.
+        model_version = os.environ.get("T3_ACTIVE_MODEL_VERSION", "1.0.0")
+        artefact_store = Path(os.environ["T3_ARTEFACT_STORE_PATH"])
+        artefact_path = model_loading.resolve_artefact_path(artefact_store, model_version)
+        model = model_loading.load_model(artefact_path, model_version=model_version)
+
         async with maker() as session:
             result = await run_persist(
                 session,

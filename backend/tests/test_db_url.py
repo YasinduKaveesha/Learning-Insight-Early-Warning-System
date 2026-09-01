@@ -174,3 +174,113 @@ def test_password_is_still_present_in_the_async_url_itself() -> None:
     result = normalise_database_url(_BASE)
     assert _PW in result.async_url
     assert isinstance(result, NormalisedUrl)
+
+
+# --------------------------------------------------------------------------------------
+# Gate 5 (work order B2.2): the STRING entry point must agree with the context one.
+#
+# `normalise_async_url` cannot return an `ssl.SSLContext` -- Alembic's env.py hands
+# SQLAlchemy nothing but a URL string. It therefore passes the libpq mode name through as
+# asyncpg's `ssl` parameter and lets asyncpg build the context. These tests assert on the
+# context asyncpg ACTUALLY builds from that string, not merely that the string parses:
+# "it didn't raise" is exactly the assertion that let `ssl=true` sit here undetected.
+# --------------------------------------------------------------------------------------
+from urllib.parse import parse_qs, urlsplit  # noqa: E402
+
+from app.infrastructure.db_url import normalise_async_url  # noqa: E402
+
+asyncpg = pytest.importorskip("asyncpg")
+
+from asyncpg.connect_utils import SSLMode  # noqa: E402
+
+
+def _ssl_param(url: str) -> str | None:
+    values = parse_qs(urlsplit(normalise_async_url(url)).query).get("ssl")
+    return values[0] if values else None
+
+
+def _asyncpg_context_for(mode: str) -> object:
+    """Rebuild the SSL context asyncpg derives from an `ssl=<mode>` URL parameter.
+
+    Mirrors `asyncpg.connect_utils._parse_connect_dsn_and_args` for the branch that runs
+    when `ssl` arrives as a string, with no user root certificate in play (the CI and
+    container case). Kept to the two attributes the trap is about -- chain and hostname
+    verification -- rather than re-implementing the whole function.
+    """
+
+    sslmode = SSLMode.parse(mode)
+    if sslmode < SSLMode.allow:
+        return False
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.check_hostname = sslmode >= SSLMode.verify_full
+    if sslmode < SSLMode.require:
+        ctx.verify_mode = ssl.CERT_NONE
+    elif sslmode == SSLMode.require:
+        ctx.verify_mode = ssl.CERT_NONE  # no root.crt -> asyncpg falls back to CERT_NONE
+    else:
+        ctx.verify_mode = ssl.CERT_REQUIRED
+    return ctx
+
+
+def test_string_path_never_emits_the_old_verifying_ssl_true() -> None:
+    """The exact regression. `ssl=true` asked for full verification AND is not even a
+    value asyncpg accepts -- `SSLMode.parse('true')` raises, so a URL carrying any
+    `sslmode` would have died with `ClientConfigurationError`."""
+
+    out = normalise_async_url(f"{_BASE}?sslmode=require")
+    assert "ssl=true" not in out
+    assert "ssl=require" in out
+    with pytest.raises(AttributeError):
+        SSLMode.parse("true")
+
+
+def test_string_path_require_is_a_non_verifying_context() -> None:
+    ctx = _asyncpg_context_for(_ssl_param(f"{_BASE}?sslmode=require"))
+
+    assert isinstance(ctx, ssl.SSLContext)
+    assert ctx.check_hostname is False
+    assert ctx.verify_mode is ssl.CERT_NONE
+
+
+def test_string_path_verify_full_still_verifies() -> None:
+    ctx = _asyncpg_context_for(_ssl_param(f"{_BASE}?sslmode=verify-full"))
+
+    assert isinstance(ctx, ssl.SSLContext)
+    assert ctx.check_hostname is True
+    assert ctx.verify_mode is ssl.CERT_REQUIRED
+
+
+def test_string_path_rejects_a_nonsense_sslmode_without_echoing_it() -> None:
+    with pytest.raises(InvalidDatabaseUrl) as excinfo:
+        normalise_async_url(f"{_BASE}?sslmode={_PW}")
+    assert _PW not in str(excinfo.value)
+
+
+@pytest.mark.parametrize("mode", ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"])
+def test_both_entry_points_accept_exactly_the_same_vocabulary(mode: str) -> None:
+    """One `_ssl_for_sslmode`, so neither path can accept a value the other refuses."""
+
+    assert _ssl_param(f"{_BASE}?sslmode={mode}") == mode
+    normalise_database_url(f"{_BASE}?sslmode={mode}")  # does not raise
+
+
+def test_the_string_path_routes_through_the_shared_ssl_for_sslmode(monkeypatch) -> None:
+    """Unification, asserted structurally: break the shared validator and BOTH paths
+    break. Without this a later edit could quietly give the string path its own table
+    again, which is how the two drifted apart in the first place."""
+
+    import app.infrastructure.db_url as db_url
+
+    calls: list[str] = []
+    real = db_url._ssl_for_sslmode
+
+    def spy(value: str):
+        calls.append(value)
+        return real(value)
+
+    monkeypatch.setattr(db_url, "_ssl_for_sslmode", spy)
+
+    normalise_async_url(f"{_BASE}?sslmode=require")
+    normalise_database_url(f"{_BASE}?sslmode=require")
+
+    assert calls == ["require", "require"]

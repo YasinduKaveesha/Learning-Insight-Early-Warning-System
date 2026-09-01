@@ -10,13 +10,18 @@ Holds no connection and is import-safe without a database.
 Two consumers, two entry points:
 
 * **Alembic / the loader** call :func:`normalise_async_url` -- they want a plain URL string
-  and run on the *direct* connection (port 5432), where the sslmode nuance below does not
-  bite. :func:`assert_direct_connection` (in ``migration_guard``) refuses the pooler outright.
+  and run on the *direct* connection (port 5432). :func:`assert_direct_connection` (in
+  ``migration_guard``) refuses the pooler outright.
 * **The API engine** calls :func:`normalise_database_url`, which returns a
   :class:`NormalisedUrl`: the async URL *plus* the asyncpg ``connect_args`` and the
-  SQLAlchemy dialect kwargs, because on the API path ``sslmode=require`` must become an
-  unverified ``ssl.SSLContext`` and the pooler must disable prepared-statement caching.
+  prepared-statement-cache kwargs, because on the API path ``sslmode=require`` must become
+  an unverified ``ssl.SSLContext`` and the pooler must disable prepared-statement caching.
   See backend_plan.md section 2, "Two connection-string traps".
+
+Both entry points route every ``sslmode`` value through the one :func:`_ssl_for_sslmode`,
+so the two can no longer disagree about what ``require`` means (work order B2.2). They
+differ only in what they can *carry*: a string URL cannot hold an ``ssl.SSLContext``, so
+the string form passes the mode name to asyncpg, which builds an equivalent context.
 """
 
 from __future__ import annotations
@@ -48,16 +53,31 @@ def normalise_async_url(url: str) -> str:
 
     * ``postgres`` / ``postgresql`` / ``+psycopg2`` / ``+psycopg`` schemes become
       ``postgresql+asyncpg``; an already-async scheme is untouched.
-    * ``sslmode`` is translated to asyncpg's ``ssl`` argument -- ``disable`` -> ``ssl=false``,
-      anything else (``require``, ``verify-full``, ...) -> ``ssl=true`` -- unless the URL
-      already carries an explicit ``ssl``.
+    * ``sslmode`` is validated by the shared :func:`_ssl_for_sslmode` and then carried
+      through as asyncpg's ``ssl`` query parameter under its own libpq name --
+      ``sslmode=require`` becomes ``ssl=require``, not ``ssl=true`` -- unless the URL
+      already carries an explicit ``ssl``. An unrecognised value raises
+      :class:`InvalidDatabaseUrl` without echoing it.
     * Other libpq-only params (``target_session_attrs`` etc.) are dropped: asyncpg raises
       ``TypeError: connect() got an unexpected keyword argument`` on them.
     * Every other query parameter (``application_name``, ...) is preserved in order.
 
     This is the string-only form used for the *direct* (port 5432) connection Alembic and
-    the loader run on. The API engine wants :func:`normalise_database_url` instead, which
-    does not collapse ``require`` to a verifying context.
+    the loader run on -- Alembic's ``env.py`` hands SQLAlchemy nothing but this string, so
+    it has to be self-sufficient; it cannot carry an ``ssl.SSLContext`` object. The API
+    engine wants :func:`normalise_database_url` instead, which returns real connect args.
+
+    **Both entry points now agree** (work order B2.2). This function used to map every
+    non-``disable`` mode to ``ssl=true``, which asked for full chain *and hostname*
+    verification where libpq's ``require`` means "encrypt, do not verify"; against the
+    Supabase pooler that fails with ``CERTIFICATE_VERIFY_FAILED``, an error that reads
+    like a credentials problem. (``ssl=true`` was in fact doubly wrong: asyncpg parses a
+    string ``ssl`` as an sslmode name and rejects ``"true"`` outright with
+    ``ClientConfigurationError: `sslmode` parameter must be one of: ...``. It has never
+    fired because the live URL carries no ``sslmode``.) asyncpg's ``ssl`` accepts exactly
+    the libpq vocabulary :func:`_ssl_for_sslmode` validates, and derives
+    ``check_hostname`` from it the same way, so passing the mode name through keeps one
+    meaning for one word.
     """
 
     parts = urlsplit(url)
@@ -70,8 +90,13 @@ def normalise_async_url(url: str) -> str:
     query: list[tuple[str, str]] = []
     for key, value in pairs:
         if key == "sslmode":
+            # Validate through the SAME function the API path uses, so a value this
+            # project accepts on one entry point cannot be refused on the other, and a
+            # nonsense value raises identically (without echoing it) on both.
+            mode = value.strip().lower()
+            _ssl_for_sslmode(mode)
             if not has_ssl:
-                query.append(("ssl", "false" if value.lower() == "disable" else "true"))
+                query.append(("ssl", mode))
             continue
         if key in _LIBPQ_ONLY_PARAMS:
             continue
@@ -156,8 +181,15 @@ class NormalisedUrl:
     * ``async_url``       -- the ``postgresql+asyncpg://`` URL, libpq-only params stripped.
     * ``connect_args``    -- for ``create_async_engine(..., connect_args=...)``; may carry
                              ``ssl`` and ``statement_cache_size``.
-    * ``dialect_kwargs``  -- for ``create_async_engine(...)`` directly; carries
-                             ``prepared_statement_cache_size`` when a pooler is detected.
+    * ``dialect_kwargs``  -- carries ``prepared_statement_cache_size`` when a pooler is
+                             detected. NOTE: despite the name this is a *DBAPI* argument in
+                             SQLAlchemy's asyncpg dialect, so it must be merged into
+                             ``connect_args`` (or put in the URL query), never passed to
+                             ``create_async_engine`` as a keyword -- that raises
+                             ``TypeError: Invalid argument(s)``. ``db/engine.py`` merges it.
+                             Kept in its own bucket because it configures SQLAlchemy's
+                             statement-cache emulation, a different cache from asyncpg's
+                             own ``statement_cache_size``.
     * ``pooler_detected`` -- so the caller can log that the pooler path is in use.
     """
 
