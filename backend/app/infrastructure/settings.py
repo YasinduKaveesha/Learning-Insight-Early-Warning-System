@@ -7,10 +7,11 @@ see backend_plan.md section 2.
 from __future__ import annotations
 
 import logging
+import uuid
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import AnyHttpUrl, Field, field_validator
+from pydantic import AnyHttpUrl, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -44,6 +45,14 @@ class Settings(BaseSettings):
     t3_model_artefact_path: str = Field(validation_alias="T3_MODEL_ARTEFACT_PATH")
     t3_active_model_version: str = Field(validation_alias="T3_ACTIVE_MODEL_VERSION")
 
+    # Demo-mode identity (work order B2.3). Both default to "off" / empty so a deployment
+    # that never sets either env var behaves exactly like today. See the fail-fast rule
+    # below: T3_DEMO_MODE=true is refused outright when APP_ENV=production.
+    t3_demo_mode: bool = Field(default=False, validation_alias="T3_DEMO_MODE")
+    t3_demo_teacher_pool: Annotated[list[str], NoDecode] = Field(
+        default="", validation_alias="T3_DEMO_TEACHER_POOL"
+    )
+
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -60,6 +69,35 @@ class Settings(BaseSettings):
     @classmethod
     def _upper_log_level(cls, value: str) -> str:
         return value.upper()
+
+    @field_validator("t3_demo_teacher_pool", mode="before")
+    @classmethod
+    def _split_demo_teacher_pool(cls, value: object) -> object:
+        if isinstance(value, str):
+            ids = [entry.strip() for entry in value.split(",") if entry.strip()]
+            for entry in ids:
+                try:
+                    uuid.UUID(entry)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"T3_DEMO_TEACHER_POOL entry {entry!r} is not a valid UUID"
+                    ) from exc
+            return ids
+        return value
+
+    @model_validator(mode="after")
+    def _demo_mode_never_in_production(self) -> "Settings":
+        """Fail app startup entirely -- not a warning -- if demo mode could ever run in
+        production (B2.3 hard rule). `get_settings()` is the fail-fast boundary this raises
+        through; `app/main.py` calls it before the app object is even constructed."""
+
+        if self.t3_demo_mode and self.app_env == "production":
+            raise ValueError(
+                "T3_DEMO_MODE=true is refused when APP_ENV=production. Demo mode maps an "
+                "anonymous Supabase subject onto a real teacher's data and must be "
+                "impossible to accidentally leave on in production."
+            )
+        return self
 
     @property
     def api_database_url(self) -> str:

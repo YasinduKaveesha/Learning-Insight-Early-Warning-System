@@ -84,6 +84,27 @@ classroom_memberships = Table(
     info={"component3_shadow": True},
 )
 
+# Added by work order B2.3 (`app.application.principal_resolution.resolve_principal`). Only
+# the columns that module actually reads, same rule as every shadow above.
+app_users = Table(
+    "app_users",
+    Base.metadata,
+    Column("user_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("supabase_subject", String(255)),
+    Column("profile_type", String(16)),
+    Column("source_class", String(16)),
+    info={"component3_shadow": True},
+)
+
+teacher_profiles = Table(
+    "teacher_profiles",
+    Base.metadata,
+    Column("teacher_profile_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("user_id", PgUUID(as_uuid=True)),
+    Column("source_class", String(16)),
+    info={"component3_shadow": True},
+)
+
 
 class PipelineRun(ProvenanceCoreMixin, Base):
     """`t3_pipeline_runs` -- the provenance root (`docs/04` sections 2, 7; plan section 4.1).
@@ -477,6 +498,52 @@ class DemoLearnerMap(ProvenanceMixin, Base):
     )
     research_student_id: Mapped[str] = mapped_column(
         String(16), nullable=False, unique=True
+    )
+
+
+class TeacherBinding(ProvenanceMixin, Base):
+    """`t3_teacher_bindings` -- the demo-mode anonymous-subject <-> teacher bridge (B2.3).
+
+    The dashboard frontend has no login screen and never will for the demo; Supabase
+    anonymous sign-in gives it a real, signature-verifiable JWT with a `sub` that identifies
+    no teacher. This table maps that durable anonymous subject onto one `teacher_profiles`
+    row drawn from `T3_DEMO_TEACHER_POOL`, so `resolve_principal`
+    (`app/application/principal_resolution.py`) can answer "who is this" for a demo device
+    without Component 3 ever provisioning an `app_users` or `teacher_profiles` row itself --
+    that remains the student app's exclusive job (rule: a missing row is 403, never an
+    insert). Demo-only: meant to be dropped whole once real teacher login ships.
+
+    `teacher_profile_id` carries a UNIQUE constraint on purpose -- one demo device claims one
+    teacher, so two concurrent demo sessions never fight over the same class list. Claiming
+    is race-safe by construction: `app.application.principal_resolution._claim_demo_teacher`
+    attempts an INSERT per candidate and catches the resulting unique-violation to move to the
+    next one, the same "generate/pick -> INSERT -> catch collision -> retry" shape as
+    `t3_classroom_keys` (`app.application.class_key`) -- never check-then-insert.
+
+    Carries the full six-column `ProvenanceMixin`, the same choice as `t3_demo_learner_map`:
+    `supabase_subject` is an opaque JWT claim, not a pipeline output, so there is no PK member
+    available to stand in for the sixth provenance column. `pipeline_run_id` is a plain
+    `uuid NOT NULL` with no FK (this table is not a pipeline output either), matching
+    `t3_demo_learner_map` and `t3_classroom_keys`.
+    """
+
+    __tablename__ = "t3_teacher_bindings"
+    __table_args__ = (
+        UniqueConstraint(
+            "teacher_profile_id", name="uq_t3_teacher_bindings_teacher_profile_id"
+        ),
+        source_class_check(),
+    )
+
+    supabase_subject: Mapped[str] = mapped_column(String(255), primary_key=True)
+    teacher_profile_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey(
+            "teacher_profiles.teacher_profile_id",
+            name="fk_t3_teacher_bindings_teacher_profile_id_teacher_profiles",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
     )
 
 

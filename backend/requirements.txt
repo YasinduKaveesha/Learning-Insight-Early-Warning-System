@@ -18,3 +18,10 @@ httpx==0.28.1
 alembic==1.16.4
 SQLAlchemy==2.0.43
 asyncpg==0.30.0
+
+# Supabase JWT verification against JWKS (work order B2.3).
+PyJWT[crypto]==2.10.1
+
+# Test-only: in-memory async SQLite for a self-contained unit test that must not touch the
+# shared upadya_test database (work order B2.3, gate 7).
+aiosqlite==0.20.0

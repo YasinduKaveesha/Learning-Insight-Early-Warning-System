@@ -92,8 +92,8 @@ def test_gate1_table_exists_and_student_app_untouched() -> None:
                 "and table_type='BASE TABLE' and table_name not like 't3_%'"
             )
             assert non_t3 == 36, non_t3
-            # Updated for each new migration -- work order B4.1 added 0007_demo_learner_map.
-            assert await conn.fetchval("select version_num from t3_alembic_version") == "0007_demo_learner_map"
+            # Updated for each new migration -- work order B2.3 added 0008_teacher_bindings.
+            assert await conn.fetchval("select version_num from t3_alembic_version") == "0008_teacher_bindings"
         finally:
             await conn.close()
 
