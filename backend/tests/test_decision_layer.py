@@ -283,11 +283,19 @@ def test_scored_snapshot_flags_when_predicted_class_ge_1(monkeypatch):
 
 
 def test_engagement_trajectory_absent_from_every_domain_serialisation_path():
-    """D17 -- engagement_trajectory is STORED, NEVER SERVED. B6 builds the response models;
-    until then this proves nothing under app/domain or app/api references it, and that the
-    decision layer's own row-dict is the only place the name appears in app/application
-    besides its documented computation."""
+    """D17 -- engagement_trajectory is STORED, NEVER SERVED.
 
+    This scans app/domain and app/api for the name used AS CODE. It deliberately ignores
+    prose: `app/domain/dashboard.py` names the field in its module docstring to explain why
+    it must never be served, and a test that fails on its own documentation trains people to
+    delete the documentation.
+
+    B6.1 added the stronger assertion this one always wanted: `tests/test_dashboard_api.py`
+    checks actual response BODIES, with source rows that CARRY engagement_trajectory. Keep
+    both -- this one also covers files that have no response model yet.
+    """
+
+    import ast
     import pathlib
 
     backend = pathlib.Path(__file__).resolve().parents[1]
@@ -295,9 +303,25 @@ def test_engagement_trajectory_absent_from_every_domain_serialisation_path():
     for path in list((backend / "app" / "domain").rglob("*.py")) + list(
         (backend / "app" / "api").rglob("*.py")
     ):
-        if "engagement_trajectory" in path.read_text(encoding="utf-8"):
-            offenders.append(str(path.relative_to(backend)))
-    assert offenders == [], f"engagement_trajectory referenced on a serialisation path: {offenders}"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            named = (
+                (isinstance(node, ast.Name) and node.id == "engagement_trajectory")
+                or (isinstance(node, ast.Attribute) and node.attr == "engagement_trajectory")
+                or (isinstance(node, ast.keyword) and node.arg == "engagement_trajectory")
+                or (
+                    isinstance(node, ast.Constant)
+                    and node.value == "engagement_trajectory"
+                )
+                or (
+                    isinstance(node, ast.AnnAssign)
+                    and isinstance(node.target, ast.Name)
+                    and node.target.id == "engagement_trajectory"
+                )
+            )
+            if named:
+                offenders.append(f"{path.relative_to(backend)}:{node.lineno}")
+    assert offenders == [], f"engagement_trajectory used as code on a serialisation path: {offenders}"
 
 
 # --- gate 10 support: no code path in the decision layer sets risk_level --------------

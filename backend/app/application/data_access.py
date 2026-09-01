@@ -152,6 +152,27 @@ async def classroom_roster(session: AsyncSession, classroom_id: uuid.UUID) -> Se
     return (await session.execute(stmt)).all()
 
 
+async def classrooms_for_teacher(
+    session: AsyncSession, teacher_profile_id: uuid.UUID
+) -> Sequence[Row]:
+    """Every REAL classroom this teacher owns. The scoping read behind `/home` and the
+    all-classes watch list.
+
+    Carries the student-app provenance rule (`source_class = 'REAL'`) like every other
+    reader in this section -- a TEST classroom must never appear on a teacher's home screen
+    even though it is genuinely owned by them.
+    """
+
+    stmt = select(
+        classrooms.c.classroom_id,
+        classrooms.c.name,
+    ).where(
+        classrooms.c.teacher_profile_id == teacher_profile_id,
+        classrooms.c.source_class == REAL_SOURCE_CLASS,
+    )
+    return (await session.execute(stmt)).all()
+
+
 # ==========================================================================================
 # t3_* readers -- scoped by the active pipeline_run_id. NEVER filtered by source_class.
 # ==========================================================================================

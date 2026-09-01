@@ -11,6 +11,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.health import router as health_router
 from app.infrastructure import model_loading
 from app.infrastructure.db import engine as db_engine
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
         return response
 
     application.include_router(health_router)
+    application.include_router(dashboard_router)
 
     return application
 
