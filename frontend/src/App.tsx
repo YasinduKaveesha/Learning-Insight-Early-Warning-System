@@ -1,4 +1,7 @@
-import { Route, Routes } from "react-router-dom";
+import { Outlet, Route, Routes } from "react-router-dom";
+import { RedirectIfAuthed, RequireAuth } from "./auth/RouteGuard";
+import { SessionProvider } from "./auth/SessionProvider";
+import LoginRoute from "./routes/login/LoginRoute";
 import ClassroomReportsRoute from "./routes/classroom-reports/ClassroomReportsRoute";
 import ClassroomRequestsRoute from "./routes/classroom-requests/ClassroomRequestsRoute";
 import ClassroomRoute from "./routes/classroom/ClassroomRoute";
@@ -13,9 +16,27 @@ import WatchRoute from "./routes/watch/WatchRoute";
 
 function App() {
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      <main className="flex-1">
-        <Routes>
+    <SessionProvider>
+      <div className="flex min-h-screen flex-col lg:flex-row">
+        <main className="flex-1">
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <RedirectIfAuthed>
+                  <LoginRoute />
+                </RedirectIfAuthed>
+              }
+            />
+
+            {/* Everything below requires a session (frontend_plan §11.0). */}
+            <Route
+              element={
+                <RequireAuth>
+                  <Outlet />
+                </RequireAuth>
+              }
+            >
           <Route path="/" element={<HomeRoute />} />
           <Route path="/classes" element={<ClassesRoute />} />
           <Route path="/watch/:studentId?" element={<WatchRoute />} />
@@ -40,17 +61,19 @@ function App() {
             path="/students/:studentId/sessions"
             element={<StudentSessionsRoute />}
           />
+            </Route>
 
-          {/* Dev-only component gallery (Step 4 acceptance surface).
-              Excluded from production: import.meta.env.DEV is statically
-              false in a `vite build`, so this route (and its import) is
-              dead-code-eliminated from the production bundle. */}
-          {import.meta.env.DEV ? (
-            <Route path="/__gallery" element={<GalleryRoute />} />
-          ) : null}
-        </Routes>
-      </main>
-    </div>
+            {/* Dev-only component gallery (Step 4 acceptance surface).
+                Excluded from production: import.meta.env.DEV is statically
+                false in a `vite build`, so this route (and its import) is
+                dead-code-eliminated from the production bundle. */}
+            {import.meta.env.DEV ? (
+              <Route path="/__gallery" element={<GalleryRoute />} />
+            ) : null}
+          </Routes>
+        </main>
+      </div>
+    </SessionProvider>
   );
 }
 
