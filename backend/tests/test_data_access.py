@@ -142,3 +142,70 @@ def test_learner_visible_to_teacher_requires_approved_and_real() -> None:
     assert "teacher_profile_id ==" in source or "teacher_profile_id\n" in source or (
         "teacher_profile_id" in source
     )
+
+
+# ------------------------------------------------------------------------------------
+# `Row.t` shadowing -- the defect that produced an HTTP 500 on the first real request.
+# ------------------------------------------------------------------------------------
+
+
+def test_sqlalchemy_row_really_does_shadow_a_column_named_t() -> None:
+    """Pin the hazard itself, so this test starts failing if SQLAlchemy ever removes it.
+
+    `sqlalchemy.Row` defines its own `t` attribute. A query selecting a column NAMED `t` --
+    which `t3_predictions` and `t3_features_at_t` both do -- therefore cannot be read with
+    `row.t`: that returns the tuple accessor, not the value. It does not raise at the access
+    site, so the wrong object travels until something distant rejects it.
+    """
+
+    from sqlalchemy import create_engine, literal_column, select
+
+    engine = create_engine("sqlite://")
+    with engine.connect() as connection:
+        row = connection.execute(select(literal_column("7").label("t"))).all()[0]
+
+    assert row._mapping["t"] == 7
+    assert not isinstance(row.t, int), (
+        "SQLAlchemy no longer shadows a column named 't'. If this fails, the workaround in "
+        "data_access._as_records may be removable -- but verify against the pinned version "
+        "before removing it."
+    )
+
+
+def test_as_records_exposes_a_column_named_t_by_name() -> None:
+    """The fix. `_as_records` must make `record.t` the VALUE, not the tuple accessor.
+
+    This is the regression test for the 500 that `/api/v1/t3/home` returned the first time
+    `t3_predictions` had rows in it. Reverting `_as_records` makes this fail.
+    """
+
+    from sqlalchemy import create_engine, literal_column, select
+
+    engine = create_engine("sqlite://")
+    with engine.connect() as connection:
+        rows = connection.execute(
+            select(literal_column("7").label("t"), literal_column("3").label("sessions"))
+        ).all()
+
+    records = data_access._as_records(rows)
+
+    assert len(records) == 1
+    assert records[0].t == 7, "a column named 't' must be reachable as .t on the record"
+    assert isinstance(records[0].t, int)
+    assert records[0].sessions == 3
+
+
+def test_readers_selecting_t_convert_rows_to_records() -> None:
+    """Both readers that select `t` must go through `_as_records`.
+
+    A source check rather than a behavioural one: these readers need a populated database to
+    exercise, and this catches the likelier regression -- someone reinstating `.all()`
+    because it reads more naturally.
+    """
+
+    for reader in (data_access.predictions_for_run, data_access.features_for_run):
+        source = _code_only(reader)
+        assert "_as_records(" in source, (
+            f"{reader.__name__} selects a column named 't' and must return records, not raw "
+            f"Rows -- see data_access._as_records"
+        )

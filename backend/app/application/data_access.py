@@ -38,6 +38,7 @@ way of a row that happened to carry everything. Nothing in this module logs `pop
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -96,6 +97,28 @@ async def active_pipeline_run(
             f"{active_model_version!r}; exactly one is required -- refusing to pick one"
         )
     return rows[0]
+
+
+
+def _as_records(rows: Sequence[Row]) -> list[SimpleNamespace]:
+    """Convert result rows to plain namespaces so selected columns are reachable by name.
+
+    THIS IS NOT COSMETIC. `sqlalchemy.Row` defines its own attributes -- `t`, `count`,
+    `index` among them -- and they SHADOW a selected column of the same name.
+    `t3_predictions.t` is exactly that collision: on a real `Row`, `row.t` returns the
+    tuple accessor, not the snapshot index. It type-checks, it never raises at the access
+    site, and the wrong object travels until something far away rejects it.
+
+    It stayed invisible for two phases because the dashboard tests monkeypatch this module
+    wholesale with a hand-written stand-in whose `.t` is an ordinary attribute, and because
+    `t3_predictions` was empty until a real pipeline run existed. The first real request
+    after that run returned HTTP 500.
+
+    Returning namespaces means the reader layer hands back only what it selected, under the
+    names it selected them by -- so no future column can be shadowed by the row type.
+    """
+
+    return [SimpleNamespace(**row._mapping) for row in rows]
 
 
 # ==========================================================================================
@@ -312,7 +335,8 @@ async def features_for_run(
     ).where(FeaturesAtT.pipeline_run_id == pipeline_run_id)
     if student_id is not None:
         stmt = stmt.where(FeaturesAtT.student_id == student_id)
-    return (await session.execute(stmt)).all()
+    # Same `Row.t` collision as `predictions_for_run`.
+    return _as_records((await session.execute(stmt)).all())
 
 
 async def predictions_for_run(
@@ -344,7 +368,8 @@ async def predictions_for_run(
     ).where(Prediction.pipeline_run_id == pipeline_run_id)
     if student_id is not None:
         stmt = stmt.where(Prediction.student_id == student_id)
-    return (await session.execute(stmt)).all()
+    # `_as_records`, not `.all()`: `Prediction.t` collides with `Row.t`. See its docstring.
+    return _as_records((await session.execute(stmt)).all())
 
 
 # ==========================================================================================
