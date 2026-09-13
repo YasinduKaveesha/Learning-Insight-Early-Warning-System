@@ -106,7 +106,14 @@ export function sortCohortOrder(students: LearnerSnapshot[]): LearnerSnapshot[] 
     if (rankDiff !== 0) return rankDiff;
     const statusA = toWatchStatus(a);
     const statusB = toWatchStatus(b);
-    if (statusA.kind === "watching" && statusB.kind === "watching") {
+    if (
+      statusA.kind === "watching" &&
+      statusB.kind === "watching" &&
+      (statusA.priority !== null || statusB.priority !== null)
+    ) {
+      // Both-null used to compute Infinity - Infinity = NaN, which makes
+      // Array.sort's order undefined. With D39 the real client sends no
+      // priority at all, so that was every flagged learner.
       return (statusA.priority ?? Infinity) - (statusB.priority ?? Infinity);
     }
     return a.displayName.localeCompare(b.displayName);
@@ -351,6 +358,11 @@ export interface PendingRequestDisplay {
 // --- Snapshot framing (plan §1, §6) ---------------------------------------
 
 export const SNAPSHOT_FRAMING = "Based on recent learning activity";
+
+/** D13 source label for a suggestion (ML ruling ANSWERS_TO_APP_TEAM_4 section 3):
+ * the only suggestion v1 generates (D35) is raised from Component B practice
+ * evidence, and the card says so outside the 280-character summary. */
+export const SUGGESTION_SOURCE_LABEL = "Based on practice activity";
 
 // --- Reports (plan §4.6) ---------------------------------------------------
 

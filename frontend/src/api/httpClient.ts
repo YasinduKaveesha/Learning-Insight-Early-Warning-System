@@ -208,35 +208,24 @@ function toSnapshot(card: WireCard): LearnerSnapshot {
 }
 
 /**
- * Priority is a POSITION IN THE CLASS'S WATCH LIST (PriorityBadge: "position
- * within the list that produced it", rendered as "Priority N in <class>").
+ * D39: NO PRIORITY NUMBER, AND NO RANKED ORDER, across mixed sessions.
  *
- * The backend's rank_within_t is ranked across every scored learner at that
- * session in the whole pipeline run -- all 120 demo learners, not one class of
- * 20 -- so a learner can arrive as rank 100. Rendering "Priority 100 in 2A"
- * would state a quantity that does not exist. So, per class: flagged learners
- * ordered the way the backend orders a watch list, (t, rank), numbered 1..k.
- * Unflagged learners carry no priority.
+ * rank_within_t ranks a learner only against others at the SAME session, and
+ * the score behind it shifts with the session number. A class mixes sessions,
+ * so any class-wide order built from it -- including the (t, rank) numbering
+ * this client used before -- is mostly a session ordering (Spearman 0.877 with
+ * session in the demo) presented as "Priority N". MODEL_CARD section 10 scopes
+ * ordering to one snapshot, and a numbered list over the 2+ score is the
+ * interface form of the rank cut D5 prevents.
+ *
+ * So the rank is dropped here, before any screen can see it, and flagged
+ * learners are listed by name. toWatchStatus then yields priority: null, and
+ * StudentDetail shows the snapshot framing line instead of a badge.
  */
-function renumberWithinClass(snapshots: LearnerSnapshot[]): LearnerSnapshot[] {
-  const byClass = new Map<string, LearnerSnapshot[]>();
-  for (const s of snapshots) {
-    if (!s.watchFlag || s.rankWithinSnapshot === null) continue;
-    const list = byClass.get(s.classId) ?? [];
-    list.push(s);
-    byClass.set(s.classId, list);
-  }
-  const positions = new Map<string, number>();
-  for (const list of byClass.values()) {
-    list
-      .sort(
-        (a, b) =>
-          a.sessionNumber - b.sessionNumber ||
-          (a.rankWithinSnapshot ?? 0) - (b.rankWithinSnapshot ?? 0),
-      )
-      .forEach((s, index) => positions.set(s.studentId, index + 1));
-  }
-  return snapshots.map((s) => ({ ...s, rankWithinSnapshot: positions.get(s.studentId) ?? null }));
+function withoutPriority(snapshots: LearnerSnapshot[]): LearnerSnapshot[] {
+  return snapshots
+    .map((s) => ({ ...s, rankWithinSnapshot: null }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 const SKILL_DISPLAY_NAME: Record<string, string> = {
@@ -293,7 +282,7 @@ export class HttpClient implements ApiClient {
       toWatchCount: w.stats.watch_count,
       gettingStartedCount: w.stats.getting_started_count,
       pendingRequestCount: w.pending_request_count,
-      students: renumberWithinClass(w.learners.map(toSnapshot)),
+      students: withoutPriority(w.learners.map(toSnapshot)),
       disclosure: w.disclosure,
       grade: w.grade ?? "GRADE_2",
       // Empty only when no key has been minted (backend/scripts/mint_class_keys.py).
@@ -306,7 +295,7 @@ export class HttpClient implements ApiClient {
     return {
       totalStudents: w.total_students,
       disclosure: w.disclosure,
-      students: renumberWithinClass(w.learners.map(toSnapshot)),
+      students: withoutPriority(w.learners.map(toSnapshot)),
     };
   }
 
@@ -315,7 +304,7 @@ export class HttpClient implements ApiClient {
     return {
       totalStudents: w.total_students,
       disclosure: w.disclosure,
-      students: renumberWithinClass(w.learners.map(toSnapshot)),
+      students: withoutPriority(w.learners.map(toSnapshot)),
     };
   }
 
@@ -326,22 +315,13 @@ export class HttpClient implements ApiClient {
       get<WireSkills>(`/students/${id}/skills`),
     ]);
 
-    // Priority is class-relative (see renumberWithinClass), so it needs the
-    // class's watch list; the detail endpoint's rank is run-wide.
-    let priority: number | null = null;
-    if (detail.watch_flag && detail.classroom_id) {
-      const list = await this.getClassWatchList(detail.classroom_id);
-      priority =
-        list.students.find((s) => s.studentId === detail.student_id)?.rankWithinSnapshot ?? null;
-    }
-
     const snapshot: LearnerSnapshot = {
       studentId: detail.student_id,
       displayName: detail.display_name,
       classId: detail.classroom_id ?? "",
       sessionNumber: detail.t,
       watchFlag: detail.watch_flag,
-      rankWithinSnapshot: priority,
+      rankWithinSnapshot: null, // D39 -- see withoutPriority
       evidenceStatus: detail.evidence_status,
       sessionsCompleted: detail.sessions_completed,
       practiceTrajectory: { source: "practice_accuracy", state: detail.practice_trajectory },

@@ -5,6 +5,7 @@ import {
   recommendationLabel,
   skillBarPositionFromBounds,
   skillDirectionLabel,
+  sortCohortOrder,
   toWatchStatus,
   trajectoryLabel,
 } from "../presentation";
@@ -196,5 +197,24 @@ describe("filterExplanation", () => {
     const text =
       "Subtraction has not improved across the last four sessions, and hints are rarely being used.";
     expect(filterExplanation(text, true)).toBe(text);
+  });
+});
+
+describe("sortCohortOrder with no priority numbers (D39)", () => {
+  it("orders flagged learners by name, deterministically, when none carries a priority", () => {
+    const names = ["Zara", "Amal", "Kasun", "Dilshan", "Nimal"];
+    const flagged = names.map((displayName, i) =>
+      makeSnapshot({ studentId: `id-${i}`, displayName, watchFlag: true, rankWithinSnapshot: null }),
+    );
+    const calm = makeSnapshot({ studentId: "calm", displayName: "Aaron", watchFlag: false });
+    const sorted = sortCohortOrder([calm, ...flagged]);
+    expect(sorted.map((s) => s.displayName)).toEqual([
+      "Amal",
+      "Dilshan",
+      "Kasun",
+      "Nimal",
+      "Zara",
+      "Aaron", // no-concern still comes after every watched learner
+    ]);
   });
 });

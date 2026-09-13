@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import type { RecommendationDisplay } from "../../lib/presentation";
+import { SUGGESTION_SOURCE_LABEL, type RecommendationDisplay } from "../../lib/presentation";
 
 export interface RecommendationCardProps {
   recommendation: RecommendationDisplay;
@@ -43,6 +43,7 @@ export function RecommendationCard({
           UI-refinement pass: the "Why: " label is dropped — just the
           evidence text now. */}
       <p className="text-sm text-ink-primary">{recommendation.evidenceSummary}</p>
+      <p className="text-[12px] text-ink-secondary">{SUGGESTION_SOURCE_LABEL}</p>
 
       {isModifying ? (
         <div className="flex flex-col gap-2">
