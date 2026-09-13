@@ -41,7 +41,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import Row, select
+from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models import FeaturesAtT, Panel, Prediction, PipelineRun
@@ -54,6 +54,7 @@ REAL_SOURCE_CLASS = "REAL"
 #: The APPROVED membership state -- UPPERCASE, matching `classroom_memberships.state`
 #: (`plan/backend_plan.md` section 3). PENDING and REJECTED never count as roster members.
 APPROVED_STATE = "APPROVED"
+PENDING_STATE = "PENDING"
 
 
 class ActivePipelineRunError(RuntimeError):
@@ -166,11 +167,39 @@ async def classrooms_for_teacher(
     stmt = select(
         classrooms.c.classroom_id,
         classrooms.c.name,
+        classrooms.c.grade,
     ).where(
         classrooms.c.teacher_profile_id == teacher_profile_id,
         classrooms.c.source_class == REAL_SOURCE_CLASS,
     )
     return (await session.execute(stmt)).all()
+
+
+async def pending_request_counts(
+    session: AsyncSession, classroom_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """PENDING join requests per classroom, for the pending-request indicator.
+
+    Read-only toward `classroom_memberships`: approving or rejecting a request belongs to
+    the student app's own endpoints (D3/D10), and Component 3 never writes here. The count
+    is only an indicator that takes a teacher to that app's flow.
+    """
+
+    if not classroom_ids:
+        return {}
+
+    stmt = (
+        select(
+            classroom_memberships.c.classroom_id,
+            func.count().label("pending"),
+        )
+        .where(
+            classroom_memberships.c.classroom_id.in_(classroom_ids),
+            classroom_memberships.c.state == PENDING_STATE,
+        )
+        .group_by(classroom_memberships.c.classroom_id)
+    )
+    return {row.classroom_id: row.pending for row in (await session.execute(stmt)).all()}
 
 
 # ==========================================================================================
@@ -202,6 +231,66 @@ async def panel_rows_for_run(
     ).where(Panel.pipeline_run_id == pipeline_run_id)
     if student_id is not None:
         stmt = stmt.where(Panel.student_id == student_id)
+    return (await session.execute(stmt)).all()
+
+
+async def session_history_for_student(
+    session: AsyncSession,
+    pipeline_run_id: uuid.UUID,
+    student_id: uuid.UUID,
+) -> Sequence[Row]:
+    """`t3_panel` rows for ONE learner, with the per-session columns the sessions endpoint
+    serves. Ordered by session number so the caller never has to re-sort.
+
+    Separate from `panel_rows_for_run` on purpose: that reader is the narrow trajectory feed
+    used by the decision layer, and widening it would hand every existing caller a much
+    larger row for no reason. "Select the columns you intend to return" (backend_plan.md
+    section 8) cuts both ways -- a reader should also not fetch columns its callers do not
+    need.
+
+    Carries the Component C guard columns (`c_session_technical_issue_flag`,
+    `c_telemetry_quality_status`, `c_inactive_time_sec`) because a technical fault must never
+    be rendered to a teacher as disengagement (backend_plan.md section 3). The service layer
+    cannot make that distinction if the reader does not carry it.
+    """
+
+    stmt = (
+        select(
+            Panel.student_id,
+            Panel.intervention_session_number,
+            Panel.intervention_session_date,
+            Panel.b_present,
+            Panel.c_present,
+            # Component B -- practice.
+            Panel.b_accuracy_rate,
+            Panel.b_total_questions,
+            Panel.b_correct_responses,
+            Panel.b_hint_requests,
+            Panel.b_median_item_response_time_sec,
+            Panel.b_mastery_slope_w4,
+            Panel.b_opportunities_w4,
+            # Component C -- games. NEVER merged with the B values above.
+            Panel.c_accuracy_rate,
+            Panel.c_task_completion_rate,
+            Panel.c_median_game_task_latency_sec,
+            Panel.c_engagement_score,
+            Panel.c_engagement_components,
+            Panel.c_frustration_index,
+            Panel.c_frustration_components,
+            Panel.c_learner_state,
+            Panel.c_current_difficulty_level,
+            Panel.c_difficulty_trend,
+            # Guards.
+            Panel.c_telemetry_quality_status,
+            Panel.c_session_technical_issue_flag,
+            Panel.c_inactive_time_sec,
+        )
+        .where(
+            Panel.pipeline_run_id == pipeline_run_id,
+            Panel.student_id == student_id,
+        )
+        .order_by(Panel.intervention_session_number)
+    )
     return (await session.execute(stmt)).all()
 
 

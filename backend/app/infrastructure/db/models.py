@@ -60,6 +60,13 @@ classrooms = Table(
     Base.metadata,
     Column("classroom_id", PgUUID(as_uuid=True), primary_key=True),
     Column("teacher_profile_id", PgUUID(as_uuid=True)),
+    # Added in B6.3. The shadow definition previously carried only the two id columns, so
+    # `classrooms.c.name` raised AttributeError before a query ever reached the database --
+    # and no test caught it, because every dashboard test monkeypatches `data_access`. A
+    # shadow table must mirror the columns its readers actually select.
+    Column("name", String(255)),
+    Column("grade", String(16)),
+    Column("source_class", String(16)),
     info={"component3_shadow": True},
 )
 
