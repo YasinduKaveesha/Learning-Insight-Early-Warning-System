@@ -49,7 +49,10 @@ export function SkillProgressRow({ skill, bounds, colorIndex }: SkillProgressRow
     <div className="flex flex-col gap-1 py-1.5">
       <div className="flex items-center justify-between">
         <span className="text-[15px] font-bold text-ink-primary">{skill.displayName}</span>
-        {position !== null || directionKnown ? (
+        {/* D42: a bar can now exist while direction is withheld (D38).
+            "not enough data" beside a drawn bar would contradict it, so the
+            direction word appears only when a direction is actually known. */}
+        {directionKnown ? (
           <span className="text-sm text-ink-secondary">{skillDirectionLabel(skill.direction)}</span>
         ) : null}
       </div>

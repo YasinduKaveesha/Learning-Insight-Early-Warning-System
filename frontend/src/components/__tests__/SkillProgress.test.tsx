@@ -75,6 +75,27 @@ describe("SkillProgressRow", () => {
     );
     expect(container.textContent?.toLowerCase()).not.toContain("mastered");
   });
+  it("D42: a mastery bar with a withheld direction draws the bar and no direction word", () => {
+    const { container } = render(
+      <SkillProgressRow
+        skill={{
+          skillId: "counting",
+          displayName: "Counting",
+          direction: "unknown",
+          relativeLevel: 0.27,
+          practiceCount: 4,
+        }}
+        bounds={{ min: 0, max: 1 }}
+        colorIndex={0}
+      />,
+    );
+    const bar = container.querySelector(".bg-skillBar-1") as HTMLElement | null;
+    expect(bar).not.toBeNull();
+    expect(bar!.style.width).toBe("27%");
+    expect(container.textContent?.toLowerCase()).not.toContain("not enough data");
+    expect(container.textContent).not.toMatch(/0\.27|27%/);
+  });
+
   it("a known direction with no bar position shows the direction, not 'Not enough data'", () => {
     // The real backend's shape today: direction computed, relative_level null.
     const { container } = render(

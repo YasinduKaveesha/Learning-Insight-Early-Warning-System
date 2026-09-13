@@ -247,14 +247,33 @@ def test_the_technical_issue_flag_wins_over_an_ok_status(client):
 # --- rule 3: no mastery value, and no fabricated slope ----------------------------------
 
 
-def test_no_mastery_value_is_ever_served(client):
-    """`b_skill_certification_results` values are TEST_FIXTURE_ONLY and documented as never
-    exposed through a public DTO; live BKT uses identical parameters for all seven skills."""
+def test_the_sessions_route_never_serves_a_mastery_value(client):
+    """D42 opened ONE door -- `mastery_level` on the skills route. Session history stays
+    closed: the reader now selects `b_mastery`, and this proves it does not leak through."""
 
-    for route in (SESSIONS, SKILLS):
-        body = client.get(route).text
-        for banned in ("b_mastery", "p_l", "skill_estimate", "mastery_value", "0.83"):
-            assert banned not in body
+    body = client.get(SESSIONS).text
+    for banned in ("b_mastery", "mastery", "p_l", "skill_estimate", "0.83"):
+        assert banned not in body
+
+
+def test_the_skills_route_serves_mastery_only_as_mastery_level(client):
+    """D42: the latest value, rounded, under its honest name -- never the raw column name,
+    and None for a skill with no stored mastery."""
+
+    body = client.get(SKILLS)
+    assert "b_mastery" not in body.text
+    skills = {s["skill"]: s for s in body.json()["skills"]}
+    assert skills["counting"]["mastery_level"] == 0.83
+    assert skills["place_value"]["mastery_level"] is None
+    assert all(s["relative_level"] is None for s in skills.values())
+
+
+@pytest.mark.parametrize(
+    "raw, served",
+    [(0.834999, 0.83), (0.0, 0.0), (1.0, 1.0), (1.2, None), (-0.1, None), ("0.5", None), (True, None), (None, None)],
+)
+def test_mastery_level_is_rounded_and_never_clamped(raw, served):
+    assert dashboard_service._mastery_level(raw) == served
 
 
 def test_skill_direction_is_withheld_for_every_skill(client):

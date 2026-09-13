@@ -573,6 +573,18 @@ async def session_history(
 SKILL_DIRECTION_WITHHELD: str = "unknown"
 
 
+def _mastery_level(value: Any) -> float | None:
+    """D42. Two decimals: the underlying posterior is uncalibrated, and more digits would claim
+    a precision it does not have. Anything missing, non-numeric or outside [0, 1] is None --
+    no bar -- rather than a clamped value that looks like a measurement."""
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not 0.0 <= float(value) <= 1.0:
+        return None
+    return round(float(value), 2)
+
+
 async def skill_progress(
     session: AsyncSession,
     teacher_profile_id: uuid.UUID,
@@ -580,8 +592,8 @@ async def skill_progress(
     *,
     model_version: str,
 ) -> SkillProgressResponse:
-    """Direction and practice count per skill. NO mastery value is read, computed or
-    returned -- `b_mastery` is not even selected by the reader."""
+    """Direction (withheld, D38), practice count, and the latest mastery value for the bar
+    (D42). The mastery value is served only here, only as `mastery_level`, rounded."""
 
     if not await data_access.learner_visible_to_teacher(
         session, teacher_profile_id, student_id
@@ -600,9 +612,10 @@ async def skill_progress(
     latest = rows[-1]
     slopes = latest.b_mastery_slope_w4 or {}
     opportunities = latest.b_opportunities_w4 or {}
+    mastery = getattr(latest, "b_mastery", None) or {}
 
     skills = []
-    for skill in sorted(set(slopes) | set(opportunities)):
+    for skill in sorted(set(slopes) | set(opportunities) | set(mastery)):
         observations = int(opportunities.get(skill) or 0)
         skills.append(
             SkillProgress(
@@ -610,6 +623,7 @@ async def skill_progress(
                 direction=SKILL_DIRECTION_WITHHELD,  # D38
                 practice_count=observations,
                 relative_level=None,
+                mastery_level=_mastery_level(mastery.get(skill)),  # D42
             )
         )
 

@@ -98,17 +98,26 @@ class SessionHistoryResponse(Disclosed):
 
 
 class SkillProgress(_Base):
-    """Rule 3: direction and practice count. No mastery value, in any form.
+    """Direction, practice count, and -- since D42 -- the latest mastery value for the bar.
 
     `relative_level` is permitted for bar positioning only, and the client never labels it
     with a number (backend_plan.md section 6.5). It is a rank position among this learner's
-    own skills, not a mastery estimate.
+    own skills, not a mastery estimate. Unused today.
+
+    `mastery_level` (D42, ML lead's decision, 2026-09-14) OVERRIDES rule 3 for this one field:
+    the latest `b_mastery` value for the skill, rounded to two decimals, in [0, 1], for drawing
+    a progress bar only -- the client never renders it as a number. It is served under its
+    honest name, not disguised as `relative_level`. Known limits recorded with D42: the values
+    are `TEST_FIXTURE_ONLY` with identical BKT parameters for all seven skills, a skill never
+    practised sits at its starting prior (about 0.15) rather than a measurement, and no demo
+    learner reaches the 0.8 mastery threshold.
     """
 
     skill: str
     direction: TrajectoryState
     practice_count: int
     relative_level: int | None = None
+    mastery_level: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class SkillProgressResponse(Disclosed):

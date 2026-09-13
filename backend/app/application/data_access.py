@@ -382,6 +382,9 @@ async def session_history_for_student(
             Panel.b_correct_responses,
             Panel.b_hint_requests,
             Panel.b_median_item_response_time_sec,
+            # D42: read for the skill progress bar ONLY. The sessions service names every field
+            # it returns, so selecting it here does not put it in the sessions response.
+            Panel.b_mastery,
             Panel.b_mastery_slope_w4,
             Panel.b_opportunities_w4,
             # Component C -- games. NEVER merged with the B values above.
