@@ -108,6 +108,16 @@ teacher_profiles = Table(
     Base.metadata,
     Column("teacher_profile_id", PgUUID(as_uuid=True), primary_key=True),
     Column("user_id", PgUUID(as_uuid=True)),
+    # B6.3d. NOT NULL upstream (the student app enforces a non-blank name), but declared
+    # nullable here because this shadow describes only what we READ -- it does not and must
+    # not assert constraints on a table another team owns.
+    #
+    # Adding a column to a shadow `Table` needs NO migration: `component3_include_object`
+    # filters autogenerate to `t3_*`, which is exactly why these shadows can mirror the real
+    # schema without Alembic ever proposing to alter it. A reader that selects a column the
+    # shadow omits raises AttributeError BEFORE reaching the database -- that shipped once in
+    # B6.1 and the whole suite stayed green over it.
+    Column("name", String(255)),
     Column("source_class", String(16)),
     info={"component3_shadow": True},
 )

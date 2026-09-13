@@ -209,3 +209,49 @@ def test_readers_selecting_t_convert_rows_to_records() -> None:
             f"{reader.__name__} selects a column named 't' and must return records, not raw "
             f"Rows -- see data_access._as_records"
         )
+
+
+# ------------------------------------------------------------------------------------------
+# B6.3d provenance guards.
+#
+# Source checks rather than behavioural ones, matching the existing pattern above, and for a
+# concrete reason: neither `upadya` nor `upadya_test` currently holds a single non-REAL
+# `teacher_profiles` or `classrooms` row, so there is nothing for a live test to be refused.
+# A behavioural test would need to seed a TEST-provenance app_users -> teacher_profiles ->
+# classrooms chain first; worth doing if such rows ever appear naturally.
+# ------------------------------------------------------------------------------------------
+
+
+def test_teacher_display_name_filters_to_real_provenance() -> None:
+    source = _code_only(data_access.teacher_display_name)
+    assert "REAL_SOURCE_CLASS" in source, (
+        "teacher_display_name reads a student-app table and must filter source_class = 'REAL'"
+    )
+
+
+def test_classroom_for_learner_requires_approved_and_real() -> None:
+    source = _code_only(data_access.classroom_for_learner)
+    assert "APPROVED_STATE" in source
+    assert "REAL_SOURCE_CLASS" in source
+    assert "teacher_profile_id" in source, (
+        "classroom_for_learner must be scoped to the caller's own classrooms -- otherwise it "
+        "could surface the name of a class the teacher cannot see"
+    )
+
+
+def test_teacher_owns_classroom_filters_to_real_provenance() -> None:
+    """The filter this guard was missing until B6.3d.
+
+    Without it the guard disagreed with `classrooms_for_teacher`, which has always applied it:
+    a TEST-provenance classroom passed the ownership check while never appearing on `/home`.
+    A guard family that disagrees with itself makes an access decision depend on which
+    endpoint the caller came through.
+    """
+
+    source = _code_only(data_access.teacher_owns_classroom)
+    assert "REAL_SOURCE_CLASS" in source
+
+
+def test_predictions_for_run_selects_inference_timestamp() -> None:
+    source = _code_only(data_access.predictions_for_run)
+    assert "inference_timestamp" in source

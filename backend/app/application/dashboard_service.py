@@ -25,7 +25,9 @@ THE INVARIANTS THIS MODULE OWNS
 
 from __future__ import annotations
 
+import datetime as dt
 import uuid
+from dataclasses import dataclass, field
 from typing import Any, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,16 +84,82 @@ def _latest_by_student(rows: Sequence[Any]) -> dict[uuid.UUID, Any]:
     return latest
 
 
-def _learner_card(row: Any, display_name: str) -> LearnerCard:
+@dataclass(frozen=True)
+class _PanelSummary:
+    """Per-learner series derived from `t3_panel`, for the sparklines and `last_active_date`.
+
+    Nulls inside a series are PRESERVED. A session where Component B recorded nothing is an
+    absence, and zero-filling it would draw a 0% accuracy point -- inventing a bad session out
+    of a missing one, on a chart a teacher reads as progress.
+    """
+
+    last_active_date: dt.date | None = None
+    accuracy_sparkline: list[float | None] = field(default_factory=list)
+    engagement_sparkline: list[float | None] = field(default_factory=list)
+
+
+_EMPTY_PANEL = _PanelSummary()
+
+
+def _panel_summaries(rows: Sequence[Any]) -> dict[uuid.UUID, _PanelSummary]:
+    """Group the whole run's panel into one summary per learner, ordered by session.
+
+    Takes the rows rather than a session on purpose: the caller fetches the run ONCE and every
+    classroom reuses it. Querying per learner would issue 120 round trips for a six-class
+    dashboard, and per classroom would issue six full-run reads.
+    """
+
+    by_student: dict[uuid.UUID, list[Any]] = {}
+    for row in rows:
+        by_student.setdefault(row.student_id, []).append(row)
+
+    summaries: dict[uuid.UUID, _PanelSummary] = {}
+    for student_id, learner_rows in by_student.items():
+        learner_rows.sort(key=lambda r: r.intervention_session_number)
+        dates = [r.intervention_session_date for r in learner_rows if r.intervention_session_date]
+        summaries[student_id] = _PanelSummary(
+            last_active_date=max(dates) if dates else None,
+            accuracy_sparkline=[r.b_accuracy_rate for r in learner_rows],
+            engagement_sparkline=[r.c_engagement_score for r in learner_rows],
+        )
+    return summaries
+
+
+@dataclass(frozen=True)
+class _RunContext:
+    """Everything a card needs from the pipeline run, read ONCE per request."""
+
+    latest: dict[uuid.UUID, Any] = field(default_factory=dict)
+    panel: dict[uuid.UUID, _PanelSummary] = field(default_factory=dict)
+
+
+async def _run_context(session: AsyncSession, pipeline_run_id: uuid.UUID) -> _RunContext:
+    predictions = await data_access.predictions_for_run(session, pipeline_run_id)
+    panel_rows = await data_access.panel_rows_for_run(session, pipeline_run_id)
+    return _RunContext(
+        latest=_latest_by_student(predictions), panel=_panel_summaries(panel_rows)
+    )
+
+
+def _learner_card(
+    row: Any, display_name: str, classroom_id: uuid.UUID, panel: _PanelSummary
+) -> LearnerCard:
     return LearnerCard(
         student_id=row.student_id,
         display_name=display_name,
+        classroom_id=classroom_id,
         t=row.t,
         evidence_status=row.evidence_status,
         sessions_completed=row.sessions_completed,
         watch_flag=row.watch_flag,
         rank_within_t=row.rank_within_t,
         practice_trajectory=row.practice_trajectory,
+        explanation=row.risk_explanation,
+        last_active_date=panel.last_active_date,
+        accuracy_sparkline=panel.accuracy_sparkline,
+        engagement_sparkline=panel.engagement_sparkline,
+        model_version=row.model_version,
+        inference_timestamp=row.inference_timestamp,
     )
 
 
@@ -111,14 +179,21 @@ def _sort_watch_list(cards: list[LearnerCard]) -> list[LearnerCard]:
 
 
 async def _cards_for_classroom(
-    session: AsyncSession, classroom_id: uuid.UUID, pipeline_run_id: uuid.UUID
+    session: AsyncSession,
+    classroom_id: uuid.UUID,
+    pipeline_run_id: uuid.UUID,
+    context: _RunContext | None = None,
 ) -> list[LearnerCard]:
+    """`context` is the whole run, read once by the caller. Passing it is what keeps a
+    six-class dashboard at one predictions read instead of six."""
+
     roster = await data_access.classroom_roster(session, classroom_id)
     if not roster:
         return []
 
-    predictions = await data_access.predictions_for_run(session, pipeline_run_id)
-    latest = _latest_by_student(predictions)
+    if context is None:
+        context = await _run_context(session, pipeline_run_id)
+    latest = context.latest
 
     cards: list[LearnerCard] = []
     for learner in roster:
@@ -131,16 +206,32 @@ async def _cards_for_classroom(
                 LearnerCard(
                     student_id=learner.learner_id,
                     display_name=learner.name,
+                    classroom_id=classroom_id,
                     t=0,
                     evidence_status="insufficient_exposure",
                     sessions_completed=0,
                     watch_flag=False,
                     rank_within_t=None,
                     practice_trajectory="unknown",
+                    # Never scored, so there is no model version and no inference time. The
+                    # active run's version would be a fabricated provenance claim: it would
+                    # name a model that never saw this learner.
+                    model_version=None,
+                    inference_timestamp=None,
+                    last_active_date=context.panel.get(
+                        learner.learner_id, _EMPTY_PANEL
+                    ).last_active_date,
                 )
             )
             continue
-        cards.append(_learner_card(row, learner.name))
+        cards.append(
+            _learner_card(
+                row,
+                learner.name,
+                classroom_id,
+                context.panel.get(learner.learner_id, _EMPTY_PANEL),
+            )
+        )
     return cards
 
 
@@ -171,13 +262,22 @@ async def home_summary(
     ).pipeline_run_id
     classrooms = await data_access.classrooms_for_teacher(session, teacher_profile_id)
 
+    # Three reads for the whole page, not three per classroom.
+    context = await _run_context(session, run)
+    pending = await data_access.pending_request_counts(
+        session, [c.classroom_id for c in classrooms]
+    )
+    teacher_name = await data_access.teacher_display_name(session, teacher_profile_id)
+
     class_cards: list[ClassCard] = []
     watch_total = 0
     active_total = 0
     getting_started_total = 0
 
     for classroom in classrooms:
-        cards = await _cards_for_classroom(session, classroom.classroom_id, run)
+        cards = await _cards_for_classroom(
+            session, classroom.classroom_id, run, context
+        )
         stats = _stats_for(cards)
         watch_total += stats.watch_count
         active_total += stats.learner_count
@@ -186,13 +286,16 @@ async def home_summary(
             ClassCard(
                 classroom_id=classroom.classroom_id,
                 name=classroom.name,
+                grade=classroom.grade,
                 learner_count=stats.learner_count,
                 watch_count=stats.watch_count,
                 getting_started_count=stats.getting_started_count,
+                pending_request_count=pending.get(classroom.classroom_id, 0),
             )
         )
 
     return HomeSummary(
+        teacher_name=teacher_name,
         watch_count=watch_total,
         active_students=active_total,
         class_count=len(class_cards),
@@ -219,8 +322,22 @@ async def cohort(
         )
     ).pipeline_run_id
     cards = await _cards_for_classroom(session, classroom_id, run)
+
+    # Name and grade come from the teacher's own classroom list, which is already filtered to
+    # REAL. Reusing it keeps one definition of "a classroom this teacher may see".
+    classrooms = await data_access.classrooms_for_teacher(session, teacher_profile_id)
+    this_class = next(
+        (c for c in classrooms if c.classroom_id == classroom_id), None
+    )
+    pending = await data_access.pending_request_counts(session, [classroom_id])
+
     return CohortResponse(
-        classroom_id=classroom_id, stats=_stats_for(cards), learners=cards
+        classroom_id=classroom_id,
+        class_name=None if this_class is None else this_class.name,
+        grade=None if this_class is None else this_class.grade,
+        pending_request_count=pending.get(classroom_id, 0),
+        stats=_stats_for(cards),
+        learners=cards,
     )
 
 
@@ -241,8 +358,16 @@ async def classroom_watch_list(
             session, active_model_version=model_version
         )
     ).pipeline_run_id
-    cards = [c for c in await _cards_for_classroom(session, classroom_id, run) if c.watch_flag]
-    return WatchListResponse(classroom_id=classroom_id, learners=_sort_watch_list(cards))
+    all_cards = await _cards_for_classroom(session, classroom_id, run)
+    flagged = [c for c in all_cards if c.watch_flag]
+    # `total_students` is the population the list is drawn from, not the list's own length.
+    # A count without its total reads as escalation when it is actually saturation
+    # (frontend_plan.md section 1).
+    return WatchListResponse(
+        classroom_id=classroom_id,
+        total_students=len(all_cards),
+        learners=_sort_watch_list(flagged),
+    )
 
 
 async def all_classes_watch_list(
@@ -255,14 +380,19 @@ async def all_classes_watch_list(
     ).pipeline_run_id
     classrooms = await data_access.classrooms_for_teacher(session, teacher_profile_id)
 
+    context = await _run_context(session, run)
+
     cards: list[LearnerCard] = []
+    total_students = 0
     for classroom in classrooms:
-        cards.extend(
-            c
-            for c in await _cards_for_classroom(session, classroom.classroom_id, run)
-            if c.watch_flag
+        classroom_cards = await _cards_for_classroom(
+            session, classroom.classroom_id, run, context
         )
-    return WatchListResponse(classroom_id=None, learners=_sort_watch_list(cards))
+        total_students += len(classroom_cards)
+        cards.extend(c for c in classroom_cards if c.watch_flag)
+    return WatchListResponse(
+        classroom_id=None, total_students=total_students, learners=_sort_watch_list(cards)
+    )
 
 
 async def student_detail(
@@ -297,9 +427,18 @@ async def student_detail(
         for s in (latest.shap_top3 or [])
     ]
 
+    # `StudentDetail` carries no classroom context of its own, and the student-overview screen
+    # has no other source for a class name. Scoped to this teacher so it cannot surface a class
+    # the caller could not otherwise see -- `learner_visible_to_teacher` above remains the
+    # ownership guard; this is a display read, not a second gate.
+    classroom_row = await data_access.classroom_for_learner(
+        session, teacher_profile_id, student_id
+    )
+
     return StudentDetail(
         student_id=student_id,
         display_name=roster_name,
+        class_name=None if classroom_row is None else classroom_row.name,
         t=latest.t,
         evidence_status=latest.evidence_status,
         sessions_completed=latest.sessions_completed,

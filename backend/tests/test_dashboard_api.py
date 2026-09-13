@@ -15,6 +15,7 @@ every route rather than assumed.
 
 from __future__ import annotations
 
+import datetime as _dt
 import uuid
 
 import pytest
@@ -82,6 +83,9 @@ class _Row:
         self.rank_within_t = rank
         self.practice_trajectory = trajectory
         self.risk_explanation = "Flagged for teacher review." if watch_flag else None
+        # B6.3d: served on the card so a teacher can see when the learner was last scored.
+        self.model_version = "1.0.0"
+        self.inference_timestamp = _dt.datetime(2026, 9, 13, 19, 30, tzinfo=_dt.timezone.utc)
         self.shap_top3 = (
             [
                 {
@@ -108,9 +112,11 @@ class _Learner:
 
 
 class _Classroom:
-    def __init__(self, classroom_id, name):
+    def __init__(self, classroom_id, name, grade="GRADE_3"):
         self.classroom_id = classroom_id
         self.name = name
+        # B6.3d: `classrooms_for_teacher` has always selected grade; the service now serves it.
+        self.grade = grade
 
 
 ARTEFACT_STORE_PATH = __import__("pathlib").Path(__file__).resolve().parents[1] / "artefacts"
@@ -157,6 +163,7 @@ def client(monkeypatch):
     async def _classrooms(_session, teacher_profile_id):
         return [_Classroom(CLASSROOM, "Grade 3 Maths")] if teacher_profile_id == TEACHER else []
 
+
     async def _roster(_session, classroom_id):
         return [_Learner(LEARNER, "Amara"), _Learner(OTHER_LEARNER, "Bo")]
 
@@ -192,7 +199,48 @@ def client(monkeypatch):
             return everyone
         return [l for l in everyone if l.learner_id in set(learner_ids)]
 
+    class _PanelRow:
+        """A `panel_rows_for_run` row. Two sessions for LEARNER, and a NULL accuracy on the
+        second so the sparkline's null-preservation is exercised rather than assumed."""
+
+        def __init__(self, student_id, number, date, accuracy, engagement):
+            self.student_id = student_id
+            self.intervention_session_number = number
+            self.intervention_session_date = date
+            self.b_accuracy_rate = accuracy
+            self.c_engagement_score = engagement
+
+    async def _panel_rows(_session, _run, student_id=None):
+        rows = [
+            _PanelRow(LEARNER, 1, _dt.date(2026, 1, 5), 0.4, 0.7),
+            _PanelRow(LEARNER, 2, _dt.date(2026, 1, 12), None, 0.8),
+        ]
+        if student_id is not None:
+            rows = [r for r in rows if r.student_id == student_id]
+        return rows
+
+    async def _pending_counts(_session, classroom_ids):
+        return {CLASSROOM: 3} if CLASSROOM in set(classroom_ids) else {}
+
+    async def _teacher_name(_session, teacher_profile_id):
+        return "Teacher01" if teacher_profile_id == TEACHER else None
+
+    class _ClassroomRow:
+        def __init__(self, classroom_id, name, grade):
+            self.classroom_id = classroom_id
+            self.name = name
+            self.grade = grade
+
+    async def _classroom_for_learner(_session, teacher_profile_id, learner_id):
+        if teacher_profile_id != TEACHER:
+            return None
+        return _ClassroomRow(CLASSROOM, "Grade 3 Maths", "GRADE_3")
+
     da = dashboard_service.data_access
+    monkeypatch.setattr(da, "panel_rows_for_run", _panel_rows)
+    monkeypatch.setattr(da, "pending_request_counts", _pending_counts)
+    monkeypatch.setattr(da, "teacher_display_name", _teacher_name)
+    monkeypatch.setattr(da, "classroom_for_learner", _classroom_for_learner)
     monkeypatch.setattr(da, "active_pipeline_run", _active_run)
     monkeypatch.setattr(da, "classrooms_for_teacher", _classrooms)
     monkeypatch.setattr(da, "classroom_roster", _roster)
@@ -308,7 +356,7 @@ def test_watch_list_orders_within_t_never_pooled():
 
     def _card(student, t, rank):
         return LearnerCard(
-            student_id=student, display_name="x", t=t,
+            student_id=student, display_name="x", classroom_id=CLASSROOM, t=t,
             evidence_status="sufficient_evidence", sessions_completed=t,
             watch_flag=True, rank_within_t=rank, practice_trajectory="needs_attention",
         )
@@ -363,3 +411,100 @@ def test_a_missing_pipeline_run_is_503_not_an_empty_dashboard(client, monkeypatc
     response = client.get("/api/v1/t3/home")
     assert response.status_code == 503
     assert response.json()["detail"]["stage"] == "pipeline_run"
+
+
+# ------------------------------------------------------------------------------------------
+# B6.3d — the fields the dashboard frontend needs, and the two judgements inside them.
+# ------------------------------------------------------------------------------------------
+
+
+def test_home_serves_teacher_name_grade_and_pending_requests(client):
+    body = client.get("/api/v1/t3/home").json()
+    assert body["teacher_name"] == "Teacher01"
+    card = body["classes"][0]
+    assert card["grade"] == "GRADE_3"
+    assert card["pending_request_count"] == 3
+
+
+def test_cohort_serves_class_name_grade_and_pending_requests(client):
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    assert body["class_name"] == "Grade 3 Maths"
+    assert body["grade"] == "GRADE_3"
+    assert body["pending_request_count"] == 3
+
+
+def test_watch_list_carries_the_population_it_was_drawn_from(client):
+    """`total_students` is the denominator, not the list length.
+
+    Without it a teacher sees a bare count, and `frontend_plan.md` section 1 records why that
+    is wrong: "71 of 83" reads as escalation when it is saturation -- a weaker signal, not a
+    stronger one.
+    """
+
+    body = client.get("/api/v1/t3/watch").json()
+    assert body["total_students"] == 2
+    assert len(body["learners"]) == 1  # only the flagged learner is listed
+
+    scoped = client.get(f"/api/v1/t3/classes/{CLASSROOM}/watch").json()
+    assert scoped["total_students"] == 2
+
+
+def test_student_detail_serves_the_class_name(client):
+    body = client.get(f"/api/v1/t3/students/{LEARNER}").json()
+    assert body["class_name"] == "Grade 3 Maths"
+
+
+def test_learner_card_carries_its_classroom_and_provenance(client):
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    card = next(c for c in body["learners"] if c["student_id"] == str(LEARNER))
+    assert card["classroom_id"] == str(CLASSROOM)
+    assert card["model_version"] == "1.0.0"
+    assert card["inference_timestamp"].startswith("2026-09-13T19:30")
+    assert card["explanation"] == "Flagged for teacher review."
+
+
+def test_sparklines_preserve_nulls_and_are_not_zero_filled(client):
+    """A session where Component B recorded nothing is an ABSENCE.
+
+    Zero-filling it would draw a 0% accuracy point -- inventing a bad session out of a missing
+    one, on a chart a teacher reads as progress. The fixture's second session has a null
+    accuracy for exactly this assertion.
+    """
+
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    card = next(c for c in body["learners"] if c["student_id"] == str(LEARNER))
+
+    assert card["accuracy_sparkline"] == [0.4, None]
+    assert 0 not in card["accuracy_sparkline"]
+    assert card["engagement_sparkline"] == [0.7, 0.8]
+    assert card["last_active_date"] == "2026-01-12"
+
+
+def test_a_learner_with_no_prediction_gets_null_provenance(client, monkeypatch):
+    """A rostered learner absent from the run has never been scored.
+
+    `model_version` must be null -- NOT the active run's version. Stamping an unscored learner
+    with a model that never saw them would be a fabricated provenance claim, and a quiet one:
+    it would look entirely normal on screen.
+    """
+
+    # Must collide with no other constant in this module -- an id that happens to equal
+    # OTHER_LEARNER would silently test the scored path instead.
+    unscored = uuid.UUID("eeeeeeee-5555-4555-8555-eeeeeeeeeeee")
+
+    async def _roster_with_unscored(_session, _classroom_id):
+        return [_Learner(LEARNER, "Amara"), _Learner(unscored, "Unscored")]
+
+    monkeypatch.setattr(
+        dashboard_service.data_access, "classroom_roster", _roster_with_unscored
+    )
+
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    card = next(c for c in body["learners"] if c["student_id"] == str(unscored))
+
+    assert card["model_version"] is None
+    assert card["inference_timestamp"] is None
+    assert card["t"] == 0
+    assert card["evidence_status"] == "insufficient_exposure"
+    assert card["watch_flag"] is False
+    assert card["classroom_id"] == str(CLASSROOM)

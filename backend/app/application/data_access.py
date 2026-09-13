@@ -46,7 +46,12 @@ from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.db.models import FeaturesAtT, Panel, Prediction, PipelineRun
-from app.infrastructure.db.models import b_learners, classroom_memberships, classrooms
+from app.infrastructure.db.models import (
+    b_learners,
+    classroom_memberships,
+    classrooms,
+    teacher_profiles,
+)
 
 #: The one value every student-app reader in this module filters to. Never a parameter --
 #: a caller must not be able to ask this layer for TEST rows.
@@ -196,6 +201,57 @@ async def classrooms_for_teacher(
         classrooms.c.source_class == REAL_SOURCE_CLASS,
     )
     return (await session.execute(stmt)).all()
+
+
+async def teacher_display_name(
+    session: AsyncSession, teacher_profile_id: uuid.UUID
+) -> str | None:
+    """`teacher_profiles.name` for the signed-in teacher, or None.
+
+    NOT NULL upstream, so None here means the row is absent or not REAL rather than unnamed --
+    which cannot normally happen, because `resolve_principal` already required a REAL
+    `teacher_profiles` row to mint the principal. Returning None rather than raising keeps a
+    display detail from taking down a page that is otherwise fine.
+    """
+
+    stmt = select(teacher_profiles.c.name).where(
+        teacher_profiles.c.teacher_profile_id == teacher_profile_id,
+        teacher_profiles.c.source_class == REAL_SOURCE_CLASS,
+    )
+    row = (await session.execute(stmt)).first()
+    return None if row is None else row.name
+
+
+async def classroom_for_learner(
+    session: AsyncSession, teacher_profile_id: uuid.UUID, learner_id: uuid.UUID
+) -> Row | None:
+    """The APPROVED classroom this learner sits in, within this teacher's classes.
+
+    `StudentDetail` carries no classroom context at all, so the student-overview screen has no
+    other source for a class name. Scoped by `teacher_profile_id` on purpose: this is a read
+    on behalf of one teacher, and a learner may only ever be seen through a class that teacher
+    owns. It is NOT an ownership guard -- `learner_visible_to_teacher` remains that -- but it
+    must not be able to leak a class name the caller could not otherwise see.
+
+    A learner holds at most one APPROVED membership across all classrooms (the student app
+    enforces it with a partial unique index), so this returns at most one row.
+    """
+
+    stmt = (
+        select(classrooms.c.classroom_id, classrooms.c.name, classrooms.c.grade)
+        .select_from(classroom_memberships)
+        .join(
+            classrooms,
+            classrooms.c.classroom_id == classroom_memberships.c.classroom_id,
+        )
+        .where(
+            classroom_memberships.c.learner_id == learner_id,
+            classroom_memberships.c.state == APPROVED_STATE,
+            classrooms.c.teacher_profile_id == teacher_profile_id,
+            classrooms.c.source_class == REAL_SOURCE_CLASS,
+        )
+    )
+    return (await session.execute(stmt)).first()
 
 
 async def pending_request_counts(
@@ -354,6 +410,10 @@ async def predictions_for_run(
         Prediction.student_id,
         Prediction.t,
         Prediction.model_version,
+        # B6.3d: the frontend shows when a learner was last scored. Selected explicitly like
+        # everything else here -- never `SELECT *`, which would put the never-served
+        # probability columns one logging statement away from exposure.
+        Prediction.inference_timestamp,
         Prediction.evidence_status,
         Prediction.sessions_completed,
         Prediction.watch_flag,
@@ -381,15 +441,22 @@ async def predictions_for_run(
 async def teacher_owns_classroom(
     session: AsyncSession, teacher_profile_id: uuid.UUID, classroom_id: uuid.UUID
 ) -> bool:
-    """True only if `classroom_id` exists and its `teacher_profile_id` matches.
+    """True only if `classroom_id` exists, is REAL, and its `teacher_profile_id` matches.
 
-    A nonexistent classroom, or one owned by a different teacher, returns False -- there is
-    no separate "not found" branch to get wrong.
+    A nonexistent classroom, one owned by a different teacher, or one of TEST provenance
+    returns False -- there is no separate "not found" branch to get wrong.
+
+    The `source_class` filter was missing until B6.3d, which made this guard disagree with
+    `classrooms_for_teacher` (which has always applied it): a TEST-provenance classroom passed
+    the ownership check while never appearing on `/home`. Its sibling guard
+    `learner_visible_to_teacher` filters provenance too. A guard family that disagrees with
+    itself is how an access decision ends up depending on which endpoint you came through.
     """
 
     stmt = select(classrooms.c.classroom_id).where(
         classrooms.c.classroom_id == classroom_id,
         classrooms.c.teacher_profile_id == teacher_profile_id,
+        classrooms.c.source_class == REAL_SOURCE_CLASS,
     )
     return (await session.execute(stmt)).first() is not None
 

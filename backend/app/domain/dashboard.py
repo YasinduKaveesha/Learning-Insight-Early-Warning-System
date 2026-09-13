@@ -32,6 +32,7 @@ THE TWO RULES THAT OVERRIDE EVERYTHING
 
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from typing import Literal
 
@@ -51,6 +52,9 @@ EvidenceStatus = Literal[
 #: D4. Three states. `unknown` is a fourth stored value but is a legitimate display state --
 #: a learner with fewer than three sessions has no slope, and saying so is correct.
 TrajectoryState = Literal["improving", "stable", "needs_attention", "unknown"]
+
+#: D2 permits these two and nothing else. Served as the student app stores them.
+Grade = Literal["GRADE_2", "GRADE_3"]
 
 
 class _Base(BaseModel):
@@ -73,27 +77,53 @@ class SignalOut(_Base):
 
 class LearnerCard(_Base):
     """One learner as they appear in a list. No probabilities, no predicted class, no
-    engagement trajectory."""
+    engagement trajectory.
+
+    Four fields are nullable for one reason worth stating once: **a learner can be on a
+    roster and absent from the pipeline run.** `_cards_for_classroom` builds a card for them
+    anyway, so their class count and their learner list can never disagree. Such a learner has
+    never been scored, so `model_version` and `inference_timestamp` are `None` -- NOT the
+    active run's version. Stamping an unscored learner with a model that never saw them would
+    be a fabricated provenance claim, and a quiet one.
+
+    `last_active_date` and both sparklines are likewise `None` / empty when the panel holds
+    nothing for that learner. Nulls inside a sparkline are PRESERVED, never zero-filled: a
+    session with no Component B activity is an absence, and plotting it as 0% accuracy would
+    invent a bad session out of a missing one.
+    """
 
     student_id: uuid.UUID
     display_name: str
+    classroom_id: uuid.UUID
     t: int
     evidence_status: EvidenceStatus
     sessions_completed: int
     watch_flag: bool
     rank_within_t: int | None = None
     practice_trajectory: TrajectoryState
+    explanation: str | None = None
+    last_active_date: dt.date | None = None
+    accuracy_sparkline: list[float | None] = Field(default_factory=list)
+    engagement_sparkline: list[float | None] = Field(default_factory=list)
+    model_version: str | None = None
+    inference_timestamp: dt.datetime | None = None
 
 
 class ClassCard(_Base):
+    """`name` is nullable upstream -- `classrooms.name` permits NULL, and the student app
+    creates a classroom without one. Serve the null rather than inventing "Untitled"."""
+
     classroom_id: uuid.UUID
-    name: str
+    name: str | None = None
+    grade: Grade | None = None
     learner_count: int
     watch_count: int
     getting_started_count: int
+    pending_request_count: int = 0
 
 
 class HomeSummary(Disclosed):
+    teacher_name: str | None = None
     watch_count: int
     active_students: int
     class_count: int
@@ -111,6 +141,9 @@ class CohortStats(_Base):
 
 class CohortResponse(Disclosed):
     classroom_id: uuid.UUID
+    class_name: str | None = None
+    grade: Grade | None = None
+    pending_request_count: int = 0
     stats: CohortStats
     learners: list[LearnerCard]
 
@@ -125,12 +158,16 @@ class WatchListResponse(Disclosed):
     """
 
     classroom_id: uuid.UUID | None = None
+    #: The population the flagged list is drawn from. Required by frontend_plan.md section 1:
+    #: a count without its total reads as escalation when it is actually saturation.
+    total_students: int = 0
     learners: list[LearnerCard]
 
 
 class StudentDetail(Disclosed):
     student_id: uuid.UUID
     display_name: str
+    class_name: str | None = None
     t: int
     evidence_status: EvidenceStatus
     sessions_completed: int

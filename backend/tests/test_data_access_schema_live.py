@@ -159,3 +159,78 @@ def test_ownership_guards_execute_and_fail_closed():
         )
         is False
     )
+
+
+# ------------------------------------------------------------------------------------------
+# B6.3d readers. Each merely EXECUTES -- that is the check B6.1 lacked.
+# ------------------------------------------------------------------------------------------
+
+
+def test_teacher_display_name_executes_against_the_real_schema():
+    """`teacher_profiles.name` was absent from the shadow `Table` until B6.3d, so this reader
+    would have raised `AttributeError` before reaching the database -- exactly the B6.1 defect
+    this file exists for. A teacher who owns nothing still proves the column resolves."""
+
+    assert _run(lambda s: data_access.teacher_display_name(s, uuid.UUID(int=0))) is None
+
+
+def test_teacher_display_name_returns_a_name_for_a_real_teacher():
+    from sqlalchemy import select
+
+    from app.infrastructure.db.models import teacher_profiles
+
+    async def _pick(session):
+        row = (
+            await session.execute(
+                select(teacher_profiles.c.teacher_profile_id)
+                .where(teacher_profiles.c.source_class == "REAL")
+                .limit(1)
+            )
+        ).first()
+        if row is None:
+            return None
+        return await data_access.teacher_display_name(session, row.teacher_profile_id)
+
+    name = _run(_pick)
+    if name is None:
+        pytest.skip("no REAL teacher_profiles row in the read-only database today")
+    assert isinstance(name, str) and name.strip()
+
+
+def test_classroom_for_learner_executes_against_the_real_schema():
+    """Three-table join (memberships -> classrooms) plus two provenance filters. An empty
+    result still proves every column and both join conditions resolve."""
+
+    row = _run(
+        lambda s: data_access.classroom_for_learner(s, uuid.UUID(int=0), uuid.UUID(int=0))
+    )
+    assert row is None
+
+
+def test_predictions_for_run_selects_inference_timestamp():
+    """Added in B6.3d. Executing against a run that does not exist still compiles the SELECT,
+    which is what catches a column name that is not on the ORM model."""
+
+    rows = _run(lambda s: data_access.predictions_for_run(s, uuid.UUID(int=0)))
+    assert rows == []
+
+
+def test_teacher_owns_classroom_executes_with_the_provenance_filter():
+    """B6.3d added the `source_class = 'REAL'` filter this guard was missing. False for a
+    nonexistent classroom, and the query must still compile."""
+
+    assert (
+        _run(
+            lambda s: data_access.teacher_owns_classroom(
+                s, uuid.UUID(int=0), uuid.UUID(int=0)
+            )
+        )
+        is False
+    )
+
+
+def test_pending_request_counts_executes_for_a_real_classroom_list():
+    """Wired to the API for the first time in B6.3d, having had no caller in `app/` before."""
+
+    counts = _run(lambda s: data_access.pending_request_counts(s, [uuid.UUID(int=0)]))
+    assert counts == {}
