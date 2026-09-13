@@ -130,8 +130,14 @@ interface WireSkills {
     direction: TrajectoryState;
     practice_count: number;
     relative_level: number | null;
+    /** D42: latest mastery, 0-1, rounded to 2 decimals. Bar only, never a number. */
+    mastery_level: number | null;
   }[];
 }
+
+/** D42: mastery_level is on a fixed 0-1 scale, so every skill's bar uses the
+ * same bounds -- a bar's length means the same thing on every row. */
+const MASTERY_BOUNDS = { min: 0, max: 1 };
 
 interface WireSessions {
   sessions: {
@@ -413,14 +419,14 @@ export class HttpClient implements ApiClient {
           skillId: s.skill,
           displayName: SKILL_DISPLAY_NAME[s.skill] ?? s.skill,
           direction: toSkillDirection(s.direction),
-          // Always null today (§8.5: the scale is undocumented), so the screen
-          // draws no bar rather than a flat one.
-          relativeLevel: s.relative_level,
+          // D42: the bar is the latest mastery value. Null (no stored value)
+          // draws no bar rather than an empty one.
+          relativeLevel: s.mastery_level,
           practiceCount: s.practice_count,
         })),
       disclosure: detail.disclosure,
       className: detail.class_name ?? "",
-      skillBounds: {},
+      skillBounds: Object.fromEntries(skills.skills.map((s) => [s.skill, MASTERY_BOUNDS])),
     };
   }
 
