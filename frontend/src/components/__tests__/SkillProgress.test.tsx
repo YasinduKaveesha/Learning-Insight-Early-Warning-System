@@ -75,4 +75,24 @@ describe("SkillProgressRow", () => {
     );
     expect(container.textContent?.toLowerCase()).not.toContain("mastered");
   });
+  it("a known direction with no bar position shows the direction, not 'Not enough data'", () => {
+    // The real backend's shape today: direction computed, relative_level null.
+    const { container } = render(
+      <SkillProgressRow
+        skill={{
+          skillId: "number_sense",
+          displayName: "Number sense",
+          direction: "improving",
+          relativeLevel: null,
+          practiceCount: 11,
+        }}
+        bounds={{ min: -0.5, max: 0.5 }}
+        colorIndex={0}
+      />,
+    );
+    expect(screen.getByText("improving")).toBeInTheDocument();
+    expect(screen.queryByText("Not enough data")).toBeNull();
+    expect(container.querySelector(".bg-skillBar-1")).toBeNull();
+  });
+
 });

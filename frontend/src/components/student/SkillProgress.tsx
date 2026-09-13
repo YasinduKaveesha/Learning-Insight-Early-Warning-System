@@ -37,24 +37,28 @@ const SKILL_BAR_COLOR_CLASSES = [
 export function SkillProgressRow({ skill, bounds, colorIndex }: SkillProgressRowProps) {
   const position = skillBarPositionFromBounds(skill.relativeLevel, bounds);
   const barColorClass = SKILL_BAR_COLOR_CLASSES[colorIndex % SKILL_BAR_COLOR_CLASSES.length];
+  // Direction and bar are INDEPENDENT facts. The mock always had both or
+  // neither, so "no bar" used to stand in for "unknown direction". The real
+  // backend sends a direction for many skills but no bar position yet
+  // (relative_level is ML-gated, backend_plan section 8.5), and treating the
+  // missing bar as missing data hid a real "improving" behind "Not enough
+  // data". "Not enough data" is now shown only when there is NEITHER a bar
+  // nor a direction -- nothing at all to tell the teacher.
+  const directionKnown = skill.direction !== "unknown";
   return (
     <div className="flex flex-col gap-1 py-1.5">
       <div className="flex items-center justify-between">
         <span className="text-[15px] font-bold text-ink-primary">{skill.displayName}</span>
-        {/* UI-refinement pass: when there's no position, the "Not enough
-            data" line below already says so — showing "not enough data"
-            here too was a redundant duplicate. Still shown for a real
-            direction (improving/not moving). */}
-        {position !== null ? (
+        {position !== null || directionKnown ? (
           <span className="text-sm text-ink-secondary">{skillDirectionLabel(skill.direction)}</span>
         ) : null}
       </div>
-      {position === null ? (
-        <p className="text-sm text-ink-secondary">Not enough data</p>
-      ) : (
+      {position !== null ? (
         <div className="h-5 w-full rounded-full bg-surface2">
           <div className={`h-5 rounded-full ${barColorClass}`} style={{ width: `${position}%` }} />
         </div>
+      ) : directionKnown ? null : (
+        <p className="text-sm text-ink-secondary">Not enough data</p>
       )}
     </div>
   );
