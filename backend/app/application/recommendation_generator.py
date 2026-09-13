@@ -13,11 +13,24 @@ Every threshold is the governed stagnation definition the model's LABEL is built
 new. Condition "A" from `QUESTIONS_FOR_ML_TEAM_4` (the accuracy epsilon applied to a mastery
 slope) was rejected; do not reintroduce `EPSILON_PRACTICE` here (D38).
 
-WHAT IS NEVER GENERATED (D36)
------------------------------
-`review` (no prerequisite ordering exists), `try_again` (fails D16 for DD learners), and
-`monitor_progress` (restates the watch flag and would inflate the acceptance rate). A teacher may
-still choose any of them through *modify*.
+THE SECOND RULE -- A PRODUCT DECISION THAT OVERRIDES PART OF D36 (D41)
+---------------------------------------------------------------------
+The ML lead decided on 2026-09-14 that EVERY watch-flagged learner receives a suggestion. A
+flagged learner for whom the D35 rule finds no stagnant skill receives `monitor_progress {}`,
+`trigger.type = watch_flag`, `target_component = both` (D37 provenance: the watch flag is raised
+from Component B and C evidence together), the same expiry.
+
+The ML team had ruled against exactly this (D36): it restates the watch flag, and teachers accept
+it easily, so it can inflate the acceptance rate `docs/13` section 6 makes a research outcome. The
+mitigation built in here is that it carries its OWN `trigger.type`, copied into every decision-log
+row, so acceptance can -- and must -- be reported separately for `stagnation` and `watch_flag`.
+It has NOT had the D16 subgroup check the ML team requires for every trigger (their Q6); that is
+recorded as outstanding in D41.
+
+WHAT IS NEVER GENERATED
+-----------------------
+`review` (no prerequisite ordering exists) and `try_again` (fails D16 for DD learners). A teacher
+may still choose either through *modify*.
 
 WHAT NEVER LEAVES THIS MODULE
 -----------------------------
@@ -58,6 +71,12 @@ ACTION_KIND = "practice"
 #: D37: provenance, not routing -- the component whose evidence raised it.
 TARGET_COMPONENT = "B"
 
+#: D41 -- the watch-list fallback. A distinct trigger type so its decisions are never pooled
+#: with the stagnation trigger's in the research log.
+WATCH_TRIGGER_TYPE = "watch_flag"
+WATCH_ACTION_KIND = "monitor_progress"
+WATCH_TARGET_COMPONENT = "both"
+
 SOURCE_CLASS = "SYNTHETIC"
 SOURCE_SYSTEM = "recommendation_generator"
 PARAMETER_SOURCE_STATUS = "TEST_FIXTURE_ONLY"
@@ -78,13 +97,16 @@ SKILL_SUMMARY_NAME: Mapping[str, str] = {
 
 @dataclass(frozen=True)
 class Candidate:
-    skill: str
+    skill: str | None
     session: int
-    opportunities: int
-    slope: float
     expires_after_session: int
     evidence: dict[str, Any]
     evidence_summary: str
+    kind: str = ACTION_KIND
+    trigger_type: str = TRIGGER_TYPE
+    target_component: str = TARGET_COMPONENT
+    opportunities: int | None = None
+    slope: float | None = None
 
 
 def _number(value: Any) -> float | None:
@@ -179,6 +201,48 @@ def evaluate(
     )
 
 
+def watch_list_summary(session: int) -> str:
+    """Summary for the D41 fallback. States what is true -- the learner is on the watch list and
+    no single skill stands out -- and names no cause, no number but the session, no model."""
+
+    return (
+        f"On the watch list at session {session}, and no single skill stands out in recent "
+        "practice. Suggestion: keep monitoring progress over the next few sessions."
+    )
+
+
+def evaluate_watch_list(
+    *,
+    session: int,
+    watch_flag: bool,
+    barred: bool = False,
+) -> Candidate | None:
+    """D41: a watch-flagged learner with no D35 suggestion gets `monitor_progress`. Pure.
+
+    Call it ONLY after `evaluate` returned None. `barred` carries Q3 rule 3 for this trigger: a
+    dismissed watch-list suggestion that has not yet expired is not re-issued.
+    """
+
+    if not watch_flag or barred:
+        return None
+    return Candidate(
+        skill=None,
+        session=session,
+        expires_after_session=min(session + EXPIRY_SESSIONS, LAST_INTERVENTION_SESSION),
+        evidence={
+            "definition": "watch_flag_d14",
+            "session": session,
+            "watch_flag": True,
+            "stagnant_skill_found": False,
+            "parameter_source_status": PARAMETER_SOURCE_STATUS,
+        },
+        evidence_summary=watch_list_summary(session),
+        kind=WATCH_ACTION_KIND,
+        trigger_type=WATCH_TRIGGER_TYPE,
+        target_component=WATCH_TARGET_COMPONENT,
+    )
+
+
 # --- the pipeline step ----------------------------------------------------------------------
 
 
@@ -252,8 +316,8 @@ async def run_generator(
                 Recommendation.expires_after_session,
                 Recommendation.proposed_action,
             ).where(
+                # Every target: D41 allows one suggestion per learner, B or both.
                 Recommendation.student_id.in_(list(latest_panel)),
-                Recommendation.target_component == TARGET_COMPONENT,
             )
         )
     ).all() if latest_panel else []
@@ -265,24 +329,35 @@ async def run_generator(
         s = panel.intervention_session_number
         mine = [r for r in existing if r.student_id == student_id]
 
+        # One suggestion per learner at a time, whichever trigger raised it.
         if any(r.teacher_status in ACTIVE_STATUSES for r in mine):
             skipped_active += 1
             continue
 
+        unexpired_dismissals = [
+            r for r in mine if r.teacher_status == "dismissed" and r.expires_after_session >= s
+        ]
         # Q3 rule 3: a dismissed skill is not re-issued before that suggestion's expiry.
         barred = frozenset(
             (r.proposed_action or {}).get("detail", {}).get("skill")
-            for r in mine
-            if r.teacher_status == "dismissed" and r.expires_after_session >= s
+            for r in unexpired_dismissals
         ) - {None}
+        watch_flag = bool(flags.get((student_id, s), False))
 
         candidate = evaluate(
             session=s,
-            watch_flag=bool(flags.get((student_id, s), False)),
+            watch_flag=watch_flag,
             mastery=panel.b_mastery,
             slopes=panel.b_mastery_slope_w4,
             opportunities=panel.b_opportunities_w4,
             excluded_skills=barred,
+        ) or evaluate_watch_list(
+            session=s,
+            watch_flag=watch_flag,
+            barred=any(
+                (r.proposed_action or {}).get("kind") == WATCH_ACTION_KIND
+                for r in unexpired_dismissals
+            ),
         )
         if candidate is None:
             skipped_not_eligible += 1
@@ -297,13 +372,16 @@ async def run_generator(
                 student_id=student_id,
                 issued_at_intervention_session=candidate.session,
                 expires_after_session=candidate.expires_after_session,
-                target_component=TARGET_COMPONENT,
+                target_component=candidate.target_component,
                 trigger={
-                    "type": TRIGGER_TYPE,
+                    "type": candidate.trigger_type,
                     "skill": candidate.skill,
                     "evidence": candidate.evidence,
                 },
-                proposed_action={"kind": ACTION_KIND, "detail": {"skill": candidate.skill}},
+                proposed_action={
+                    "kind": candidate.kind,
+                    "detail": {"skill": candidate.skill} if candidate.skill else {},
+                },
                 evidence_summary=candidate.evidence_summary,
                 teacher_status="pending",
                 created_at_utc=now,

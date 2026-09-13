@@ -146,12 +146,54 @@ def test_the_evidence_never_carries_the_mastery_value():
     assert filter_evidence(c.evidence) == c.evidence
 
 
-def test_only_practice_is_ever_generated():
-    """D36: review, try_again and monitor_progress are never generated."""
+def test_review_and_try_again_are_never_generated():
+    """D36 as amended by D41: monitor_progress is now generated (the watch-list fallback), but
+    review (no prerequisite ordering) and try_again (fails D16 for DD) still never are."""
 
     assert gen.ACTION_KIND == "practice"
     assert gen.TRIGGER_TYPE == "stagnation"
     assert gen.TARGET_COMPONENT == "B"
     source = open(gen.__file__, encoding="utf-8").read().split('"""', 2)[2]
-    for kind in ('"review"', '"try_again"', '"monitor_progress"'):
+    for kind in ('"review"', '"try_again"'):
         assert kind not in source
+
+
+# --- D41: the watch-list fallback ---------------------------------------------------------
+
+
+def test_a_flagged_learner_with_no_stagnant_skill_gets_monitor_progress():
+    c = gen.evaluate_watch_list(session=13, watch_flag=True)
+    assert c is not None
+    assert c.kind == "monitor_progress"
+    assert c.skill is None
+    assert c.expires_after_session == 18
+
+
+def test_the_fallback_has_its_own_trigger_type_so_decisions_are_never_pooled():
+    """The one mitigation for the acceptance-rate concern the ML team raised: the decision log
+    copies trigger_type, so stagnation and watch_flag acceptance are reported separately."""
+
+    c = gen.evaluate_watch_list(session=13, watch_flag=True)
+    assert c.trigger_type == "watch_flag" != gen.TRIGGER_TYPE
+    assert c.target_component == "both"
+
+
+def test_the_fallback_requires_the_watch_flag():
+    assert gen.evaluate_watch_list(session=13, watch_flag=False) is None
+
+
+def test_a_dismissed_unexpired_fallback_is_not_reissued():
+    assert gen.evaluate_watch_list(session=13, watch_flag=True, barred=True) is None
+
+
+def test_the_fallback_summary_is_short_and_uses_no_banned_word():
+    text = gen.watch_list_summary(25)
+    assert len(text) <= 280
+    for banned in ("diagnos", "detect", "identif", "screen", "risk", "struggl", "weak", "deficit", "probab", "model"):
+        assert banned not in text.lower()
+
+
+def test_the_fallback_evidence_carries_no_mastery_value_and_passes_the_filter():
+    c = gen.evaluate_watch_list(session=13, watch_flag=True)
+    assert filter_evidence(c.evidence) == c.evidence
+    assert "mastery" not in repr(c.evidence)
