@@ -321,6 +321,23 @@ async def _amain() -> None:  # pragma: no cover - operational entrypoint
 
     Reads ``DATABASE_URL`` and ``T3_ACTIVE_MODEL_VERSION`` from the environment, and the
     source/manifest paths from ``T3_SOURCE_PATH`` / ``T3_MANIFEST_PATH``.
+
+    ``T3_LEARNER_RESOLVER`` selects how a research ``student_id`` becomes a ``learner_id``:
+
+    ``sql`` (default)
+        :class:`SqlLearnerResolver`, matching ``b_learners.name``. This is the seam real
+        live-integration will repoint, and it is the default because it is what the committed
+        live tests exercise. Against today's data it resolves nothing.
+
+    ``demo_map``
+        :class:`DemoMapLearnerResolver`, reading the explicit ``t3_demo_learner_map`` bridge
+        that ``scripts/seed_demo_tenancy.py`` populates. This is what a demo run wants.
+
+    Either way :func:`run_load` refuses a partial load -- an unresolved ``student_id`` raises
+    :class:`LearnerResolutionError` rather than silently dropping a learner. So the source
+    file must contain only students present in the bridge; loading the full 300-student
+    research dataset against a 120-learner demo roster is expected to abort, and that is the
+    guard working, not a bug.
     """
 
     import os
@@ -338,11 +355,23 @@ async def _amain() -> None:  # pragma: no cover - operational entrypoint
     maker = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with maker() as session:
+            resolver_name = os.environ.get("T3_LEARNER_RESOLVER", "sql").strip().lower()
+            if resolver_name == "demo_map":
+                resolver: LearnerResolver = DemoMapLearnerResolver(session)
+            elif resolver_name == "sql":
+                resolver = SqlLearnerResolver(session)
+            else:
+                raise ValueError(
+                    f"T3_LEARNER_RESOLVER={resolver_name!r} is not recognised; "
+                    f"use 'sql' or 'demo_map'"
+                )
+            print(f"learner resolver: {resolver_name}")
+
             result = await run_load(
                 session,
                 source_path=os.environ["T3_SOURCE_PATH"],
                 manifest_path=os.environ["T3_MANIFEST_PATH"],
-                resolver=SqlLearnerResolver(session),
+                resolver=resolver,
                 model_version=os.environ.get("T3_ACTIVE_MODEL_VERSION", "1.0.0"),
             )
     finally:
