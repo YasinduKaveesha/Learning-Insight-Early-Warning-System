@@ -73,6 +73,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import uuid
 from dataclasses import dataclass, field
 import pathlib
@@ -87,7 +88,15 @@ from dotenv import load_dotenv
 # already exported in the shell still wins -- useful for a one-off run against a different
 # target without editing the file. python-dotenv arrives with pydantic-settings; no new
 # dependency.
-load_dotenv(pathlib.Path(__file__).resolve().parents[1] / ".env", override=False)
+_BACKEND_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+# This script lives in backend/scripts/, so sys.path[0] is that directory and `import app`
+# fails. Put the backend root first so the demo-map writer can reuse the project engine
+# instead of opening a second, differently-configured connection.
+if str(_BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_ROOT))
+
+load_dotenv(_BACKEND_ROOT / ".env", override=False)
 
 # Deterministic namespace for Idempotency-Key derivation. A fixed namespace means the key for
 # "create classroom 2A for this teacher" is the same on every run of this script, which is what
@@ -108,6 +117,11 @@ DEFAULT_CLASSROOMS: tuple[tuple[str, str], ...] = (
 
 _TIMEOUT = httpx.Timeout(20.0)
 
+#: Supabase auth rate-limit handling. Bounded on purpose -- see `_supabase_post`.
+_MAX_429_RETRIES = 8
+_INITIAL_BACKOFF_SECONDS = 5.0
+_MAX_BACKOFF_SECONDS = 120.0
+
 
 class SeedError(RuntimeError):
     """A failure this script understands and can explain. Never carries a credential."""
@@ -126,6 +140,7 @@ class Receipt:
     teacher_email: str | None = None
     teacher_profile_id: str | None = None
     classrooms: list[dict[str, Any]] = field(default_factory=list)
+    learners: list[dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> str:
         return json.dumps(
@@ -135,6 +150,7 @@ class Receipt:
                 "teacher_email": self.teacher_email,
                 "teacher_profile_id": self.teacher_profile_id,
                 "classrooms": self.classrooms,
+                "learners": self.learners,
             },
             indent=2,
             sort_keys=True,
@@ -179,6 +195,51 @@ def _error_code(response: httpx.Response) -> str:
     return "UNKNOWN"
 
 
+def _supabase_post(
+    client: httpx.Client,
+    url: str,
+    *,
+    headers: dict[str, str],
+    json_body: dict[str, Any] | None = None,
+    params: dict[str, str] | None = None,
+    what: str = "request",
+) -> httpx.Response:
+    """POST to Supabase, backing off on 429 instead of hammering it.
+
+    Supabase rate-limits the auth endpoints per IP, and provisioning a classroom roster is
+    exactly the shape of traffic that trips it -- this was found at learner 56 of 120. The
+    server tells us how long to wait via `Retry-After` when it can; the exponential fallback
+    covers the case where it does not.
+
+    Deliberately bounded: after `_MAX_429_RETRIES` this raises rather than looping forever, so
+    a genuinely exhausted quota surfaces as a clear failure the operator can act on rather than
+    a script that appears to hang.
+    """
+
+    delay = _INITIAL_BACKOFF_SECONDS
+    for attempt in range(_MAX_429_RETRIES + 1):
+        response = client.post(url, headers=headers, json=json_body, params=params)
+        if response.status_code != 429:
+            return response
+        if attempt == _MAX_429_RETRIES:
+            break
+        retry_after = response.headers.get("retry-after")
+        try:
+            wait = float(retry_after) if retry_after else delay
+        except ValueError:
+            wait = delay
+        wait = min(max(wait, 1.0), _MAX_BACKOFF_SECONDS)
+        print(f"    rate limited on {what}; waiting {wait:.0f}s (attempt {attempt + 1})")
+        time.sleep(wait)
+        delay = min(delay * 2, _MAX_BACKOFF_SECONDS)
+
+    raise SeedError(
+        f"Supabase kept returning 429 for {what} after {_MAX_429_RETRIES} retries. The project "
+        f"auth quota is exhausted for now. Nothing is lost -- every learner provisioned so far "
+        f"is in the receipt, so re-running later resumes from where this stopped."
+    )
+
+
 # ==========================================================================================
 # Supabase -- account creation and sign-in.
 # ==========================================================================================
@@ -199,10 +260,12 @@ def ensure_supabase_user(
         "Authorization": f"Bearer {service_role_key}",
         "Content-Type": "application/json",
     }
-    response = client.post(
+    response = _supabase_post(
+        client,
         f"{supabase_url}/auth/v1/admin/users",
         headers=headers,
-        json={"email": email, "password": password, "email_confirm": True},
+        json_body={"email": email, "password": password, "email_confirm": True},
+        what="account creation",
     )
     if response.status_code in (200, 201):
         return str(response.json()["id"])
@@ -253,11 +316,13 @@ def sign_in(
 ) -> str:
     """Password grant -> access token. The token is returned, never logged or written to disk."""
 
-    response = client.post(
+    response = _supabase_post(
+        client,
         f"{supabase_url}/auth/v1/token",
         params={"grant_type": "password"},
         headers={"apikey": anon_or_service_key, "Content-Type": "application/json"},
-        json={"email": email, "password": password},
+        json_body={"email": email, "password": password},
+        what="sign-in",
     )
     if response.status_code != 200:
         raise SeedError(
@@ -403,6 +468,189 @@ def load_receipt(path: Path) -> dict[str, Any]:
 
 
 # ==========================================================================================
+# Learners (work order B6.3b-2).
+# ==========================================================================================
+
+#: Deterministic name pool. 30 x 4 = 120 distinct "Firstname I." labels, assigned by index so a
+#: re-run produces the SAME name for the SAME learner. These are display labels a teacher reads;
+#: the research id lives in `t3_demo_learner_map` and is never shown on screen.
+_FIRST_NAMES = (
+    "Amaya", "Nethmi", "Sahan", "Dilshan", "Kavindi", "Tharindu", "Ishara", "Ruwan",
+    "Senuri", "Yasas", "Hiruni", "Chamod", "Nimali", "Pasindu", "Oshadi", "Kasun",
+    "Tharushi", "Janith", "Sanduni", "Ravindu", "Imasha", "Dinuka", "Piumi", "Lakmal",
+    "Nadeesha", "Supun", "Ayesha", "Bhanuka", "Malsha", "Kavisha",
+)
+_LAST_INITIALS = ("P.", "S.", "W.", "J.")
+
+#: The demo map is not the output of a pipeline run, so it carries the nil UUID -- the same
+#: convention `principal_resolution.DEMO_BINDING_PIPELINE_RUN_ID` uses for `t3_teacher_bindings`.
+_DEMO_PIPELINE_RUN_ID = "00000000-0000-0000-0000-000000000000"
+
+
+def learner_plan(
+    classrooms: list[dict[str, Any]], per_class: int, email_pattern: str
+) -> list[dict[str, Any]]:
+    """Deterministic roster: index -> (email, name, classroom, research id).
+
+    Determinism matters twice over. A re-run must address the SAME accounts rather than minting
+    a second set, and the STU-xxxx assignment must be stable -- otherwise one run of analytics
+    would attach to a different child than the next, which is the misattribution the unique
+    constraints on `t3_demo_learner_map` exist to prevent.
+    """
+
+    plan: list[dict[str, Any]] = []
+    index = 0
+    for classroom in classrooms:
+        for _ in range(per_class):
+            first = _FIRST_NAMES[index % len(_FIRST_NAMES)]
+            initial = _LAST_INITIALS[(index // len(_FIRST_NAMES)) % len(_LAST_INITIALS)]
+            plan.append(
+                {
+                    "seq": index + 1,
+                    "email": email_pattern.format(n=index + 1),
+                    "name": f"{first} {initial}",
+                    "classroom_id": classroom["classroom_id"],
+                    "classroom_name": classroom["name"],
+                    "invite_token": classroom["invite_token"],
+                    # STU-0001 .. STU-0120; the research dataset numbers from 1.
+                    "research_student_id": f"STU-{index + 1:04d}",
+                }
+            )
+            index += 1
+    return plan
+
+
+def ensure_learner_profile(client: httpx.Client, *, api_base: str, token: str, name: str) -> str:
+    """Create the LEARNER profile or read it back. Returns `learner_id`.
+
+    As with the teacher profile, `profile_type` is set once and irreversibly, so a 409 means
+    "already a learner", not a failure.
+    """
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Idempotency-Key": idempotency_key("learner-profile", name, token[-16:]),
+        "Content-Type": "application/json",
+    }
+    response = client.post(
+        f"{api_base}/api/v1/learner/profile", headers=headers, json={"name": name}
+    )
+    if response.status_code in (200, 201):
+        return str(response.json()["learner_id"])
+    if response.status_code == 409:
+        existing = client.get(
+            f"{api_base}/api/v1/learner/profile", headers={"Authorization": f"Bearer {token}"}
+        )
+        if existing.status_code == 200:
+            return str(existing.json()["learner_id"])
+    raise SeedError(
+        f"Creating a learner profile failed with HTTP {response.status_code} "
+        f"(code {_error_code(response)})."
+    )
+
+
+def request_membership(
+    client: httpx.Client, *, api_base: str, token: str, invite_token: str
+) -> tuple[str, str]:
+    """Ask to join a classroom. Returns (membership_id, state).
+
+    `/classroom-invites/resolve` is deliberately NOT called first: it is a preview step for the
+    child, and this endpoint accepts the join code directly. Skipping it removes one request per
+    learner and changes nothing about the outcome.
+    """
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Idempotency-Key": idempotency_key("membership-request", invite_token, token[-16:]),
+        "Content-Type": "application/json",
+    }
+    response = client.post(
+        f"{api_base}/api/v1/classroom-memberships/requests",
+        headers=headers,
+        json={"invite_token": invite_token},
+    )
+    if response.status_code in (200, 201):
+        body = response.json()
+        return str(body["classroom_membership_id"]), str(body["state"])
+    raise SeedError(
+        f"Membership request failed with HTTP {response.status_code} "
+        f"(code {_error_code(response)})."
+    )
+
+
+def approve_membership(
+    client: httpx.Client, *, api_base: str, teacher_token: str, membership_id: str
+) -> str:
+    """Teacher-side approval.
+
+    A 409 means the membership is no longer PENDING -- approved on an earlier run -- which for a
+    seeder is success, not an error.
+    """
+
+    headers = {
+        "Authorization": f"Bearer {teacher_token}",
+        "Idempotency-Key": idempotency_key("membership-approve", membership_id),
+        "Content-Type": "application/json",
+    }
+    response = client.post(
+        f"{api_base}/api/v1/classroom-memberships/{membership_id}/approve", headers=headers
+    )
+    if response.status_code in (200, 201):
+        return str(response.json()["state"])
+    if response.status_code == 409:
+        return "ALREADY_DECIDED"
+    raise SeedError(
+        f"Approving membership {membership_id} failed with HTTP {response.status_code} "
+        f"(code {_error_code(response)})."
+    )
+
+
+def write_demo_learner_map(database_url: str, pairs: list[tuple[str, str]]) -> int:
+    """Upsert `learner_id -> STU-xxxx` into `t3_demo_learner_map`. Returns rows written.
+
+    This is the ONE table this script writes directly, and it may because Component 3 owns it.
+    `source_class` is SYNTHETIC because that is what the bridge is -- a demo artefact, not
+    something the student application produced. Note this is also the provenance rule that would
+    be WRONG for a student-app table, where REAL is required; the two families are opposites.
+    """
+
+    import asyncio
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.infrastructure.db.engine import create_direct_engine
+
+    async def _run() -> int:
+        engine, target = create_direct_engine(database_url)
+        print(f"  demo-map target: {target}")
+        maker = async_sessionmaker(engine, expire_on_commit=False)
+        written = 0
+        try:
+            async with maker() as session:
+                for learner_id, research_id in pairs:
+                    await session.execute(
+                        text(
+                            "INSERT INTO t3_demo_learner_map "
+                            "(learner_id, research_student_id, source_class, source_system, "
+                            " parameter_source_status, pipeline_run_id) "
+                            "VALUES (:lid, :sid, 'SYNTHETIC', 't3-demo-seed', "
+                            "        'DEMO_ASSIGNED', :prid) "
+                            "ON CONFLICT (learner_id) DO UPDATE "
+                            "SET research_student_id = EXCLUDED.research_student_id"
+                        ),
+                        {"lid": learner_id, "sid": research_id, "prid": _DEMO_PIPELINE_RUN_ID},
+                    )
+                    written += 1
+                await session.commit()
+        finally:
+            await engine.dispose()
+        return written
+
+    return asyncio.run(_run())
+
+
+# ==========================================================================================
 # Phase driver.
 # ==========================================================================================
 
@@ -518,6 +766,144 @@ def seed_teacher_phase(*, dry_run: bool, receipt_path: Path) -> Receipt:
     return receipt
 
 
+
+def seed_learners_phase(*, per_class: int, dry_run: bool, receipt_path: Path) -> None:
+    """Provision `per_class` learners into each of teacher01 classrooms (work order B6.3b-2).
+
+    Depends on `--phase teacher` having run: the classroom ids and, critically, the plaintext
+    join codes live only in the receipt.
+    """
+
+    supabase_url = _require_env("SUPABASE_URL").rstrip("/")
+    service_role_key = _require_env("SUPABASE_SERVICE_ROLE_KEY")
+    publishable_key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "").strip() or service_role_key
+    teacher_email = _require_env("T3_DEMO_TEACHER_EMAIL")
+    teacher_password = _require_env("T3_DEMO_TEACHER_PASSWORD")
+    learner_password = _require_env("T3_DEMO_LEARNER_PASSWORD")
+    email_pattern = os.environ.get(
+        "T3_DEMO_LEARNER_EMAIL_PATTERN", "c3demo.learner{n:03d}@example.com"
+    )
+    api_base = os.environ.get("T3_STUDENT_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+    database_url = _require_env("DATABASE_URL")
+
+    prior = load_receipt(receipt_path)
+    classrooms = prior.get("classrooms") or []
+    if not classrooms:
+        raise SeedError(
+            "No classrooms in the receipt. Run `--phase teacher` first -- the classroom ids and "
+            "the plaintext join codes exist nowhere else."
+        )
+    missing = [c["name"] for c in classrooms if not c.get("invite_token")]
+    if missing:
+        raise SeedError(
+            f"No usable join code for classroom(s) {', '.join(missing)}. The app stores only a "
+            f"SHA-256 hash, so the plaintext cannot be recovered -- delete those entries from the "
+            f"receipt and re-run `--phase teacher` to mint fresh invites."
+        )
+
+    plan = learner_plan(classrooms, per_class, email_pattern)
+    done = {entry["email"]: entry for entry in prior.get("learners", []) if entry.get("learner_id")}
+
+    print(f"Student API : {api_base}")
+    print(f"Classrooms  : {len(classrooms)} x {per_class} learners = {len(plan)} total")
+    print(f"Email shape : {email_pattern.format(n=1)}")
+    print(f"Already done: {len(done)}")
+
+    if dry_run:
+        print("\n--dry-run: nothing was created. Re-run without it to apply.")
+        return
+
+    receipt = Receipt(
+        supabase_user_id=prior.get("supabase_user_id"),
+        supabase_subject=prior.get("supabase_subject"),
+        teacher_email=prior.get("teacher_email"),
+        teacher_profile_id=prior.get("teacher_profile_id"),
+        classrooms=classrooms,
+    )
+
+    created = reused = 0
+    with httpx.Client(timeout=_TIMEOUT) as client:
+        teacher_token = sign_in(
+            client,
+            supabase_url=supabase_url,
+            anon_or_service_key=publishable_key,
+            email=teacher_email,
+            password=teacher_password,
+        )
+        print("Teacher signed in.\n")
+
+        for item in plan:
+            existing = done.get(item["email"])
+            if existing:
+                receipt.learners.append(existing)
+                reused += 1
+                continue
+
+            user_id = ensure_supabase_user(
+                client,
+                supabase_url=supabase_url,
+                service_role_key=service_role_key,
+                email=item["email"],
+                password=learner_password,
+            )
+            learner_token = sign_in(
+                client,
+                supabase_url=supabase_url,
+                anon_or_service_key=publishable_key,
+                email=item["email"],
+                password=learner_password,
+            )
+            learner_id = ensure_learner_profile(
+                client, api_base=api_base, token=learner_token, name=item["name"]
+            )
+            membership_id, _ = request_membership(
+                client,
+                api_base=api_base,
+                token=learner_token,
+                invite_token=item["invite_token"],
+            )
+            state = approve_membership(
+                client,
+                api_base=api_base,
+                teacher_token=teacher_token,
+                membership_id=membership_id,
+            )
+            receipt.learners.append(
+                {
+                    "seq": item["seq"],
+                    "email": item["email"],
+                    "name": item["name"],
+                    "supabase_user_id": user_id,
+                    "learner_id": learner_id,
+                    "classroom_id": item["classroom_id"],
+                    "classroom_name": item["classroom_name"],
+                    "membership_id": membership_id,
+                    "membership_state": state,
+                    "research_student_id": item["research_student_id"],
+                }
+            )
+            created += 1
+            if created % 10 == 0:
+                print(f"  provisioned {created} new learner(s)...")
+            # Write through often: 120 accounts is a long run, and losing the receipt halfway
+            # would orphan every Supabase account created so far.
+            receipt_path.parent.mkdir(parents=True, exist_ok=True)
+            receipt_path.write_text(receipt.to_json(), encoding="utf-8")
+
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    receipt_path.write_text(receipt.to_json(), encoding="utf-8")
+    print(f"\nLearners: {created} created, {reused} already present.")
+
+    pairs = [
+        (entry["learner_id"], entry["research_student_id"])
+        for entry in receipt.learners
+        if entry.get("learner_id")
+    ]
+    written = write_demo_learner_map(database_url, pairs)
+    print(f"t3_demo_learner_map: {written} row(s) upserted.")
+    print(f"Receipt written to {receipt_path}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Seed the Component 3 demo tenancy through the student application's API."
@@ -527,12 +913,18 @@ def main(argv: list[str] | None = None) -> int:
         choices=("teacher", "learners"),
         default="teacher",
         help="'teacher' seeds teacher01 and six classrooms (B6.3b-1). "
-        "'learners' is B6.3b-2 and is not implemented yet.",
+        "'learners' provisions the roster and the demo bridge (B6.3b-2).",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print what would be done and exit without creating anything.",
+    )
+    parser.add_argument(
+        "--per-class",
+        type=int,
+        default=20,
+        help="Learners per classroom for --phase learners (default 20 -> 120 across six).",
     )
     parser.add_argument(
         "--receipt",
@@ -542,17 +934,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.phase == "learners":
-        print(
-            "Phase 'learners' (B6.3b-2) is not implemented in this work order. It provisions "
-            "120 learner accounts, their membership requests and approvals, and the "
-            "t3_demo_learner_map bridge.",
-            file=sys.stderr,
-        )
-        return 2
-
     try:
-        seed_teacher_phase(dry_run=args.dry_run, receipt_path=args.receipt)
+        if args.phase == "learners":
+            seed_learners_phase(
+                per_class=args.per_class, dry_run=args.dry_run, receipt_path=args.receipt
+            )
+        else:
+            seed_teacher_phase(dry_run=args.dry_run, receipt_path=args.receipt)
     except SeedError as exc:
         print(f"\nFAILED: {exc}", file=sys.stderr)
         return 1
