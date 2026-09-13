@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.health import router as health_router
+from app.api.routes.recommendations import router as recommendations_router
 from app.infrastructure import model_loading
 from app.infrastructure.db import engine as db_engine
 from app.infrastructure.logging import configure_logging, request_id_ctx
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
 
     application.include_router(health_router)
     application.include_router(dashboard_router)
+    application.include_router(recommendations_router)
 
     return application
 

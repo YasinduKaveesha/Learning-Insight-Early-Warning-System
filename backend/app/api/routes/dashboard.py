@@ -10,7 +10,8 @@ unauthenticated read. Ownership is not checked in this module -- the service del
 no hint as to whether it exists.
 
 NOT IN THIS WORK ORDER (named owners so nobody builds them here by accident):
-`/classes/{id}/key` (GET and POST) and every `/recommendations` route -- B7.
+`/classes/{id}/key` -- B7 serves the key on the cohort response instead. The
+`/recommendations` routes live in `app/api/routes/recommendations.py`.
 """
 
 from __future__ import annotations
