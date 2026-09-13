@@ -143,6 +143,12 @@ class CohortResponse(Disclosed):
     classroom_id: uuid.UUID
     class_name: str | None = None
     grade: Grade | None = None
+    #: The permanent class key (D1), or None when this classroom has never had one minted.
+    #: None is a real state, not a placeholder: classrooms created through the student app's
+    #: API -- which is every classroom that exists today -- carry no `t3_classroom_keys` row
+    #: until Component 3 mints one. Serving None lets the client say "no key yet" instead of
+    #: rendering six blank characters that a teacher would read aloud as a key.
+    class_key: str | None = None
     pending_request_count: int = 0
     stats: CohortStats
     learners: list[LearnerCard]

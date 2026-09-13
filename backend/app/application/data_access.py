@@ -45,7 +45,13 @@ from dataclasses import dataclass
 from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.db.models import FeaturesAtT, Panel, Prediction, PipelineRun
+from app.infrastructure.db.models import (
+    ClassroomKey,
+    FeaturesAtT,
+    Panel,
+    PipelineRun,
+    Prediction,
+)
 from app.infrastructure.db.models import (
     b_learners,
     classroom_memberships,
@@ -284,6 +290,36 @@ async def pending_request_counts(
 # ==========================================================================================
 # t3_* readers -- scoped by the active pipeline_run_id. NEVER filtered by source_class.
 # ==========================================================================================
+
+
+async def class_keys_for_classrooms(
+    session: AsyncSession, classroom_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """The permanent class key for each of `classroom_ids`, for those that have one.
+
+    **The one t3_ reader that is NOT scoped by `pipeline_run_id`, and the reason is D1.** The
+    key is generated once at class creation and never rotated; it is a property of the
+    classroom, not of a pipeline run. `t3_classroom_keys` carries `pipeline_run_id` because
+    `plan/backend_plan.md` section 4 gives every new table the provenance columns, not because
+    the key belongs to a run -- so scoping this read by the active run would make a teacher's
+    key disappear the moment a new run was published, which is precisely the permanence D1
+    promises. Scoped by `classroom_id` instead, and the caller has already passed the
+    ownership guard.
+
+    A classroom with no key is ABSENT from the result rather than mapped to `""`. The demo
+    classrooms were created through the student app's API, which knows nothing about
+    `t3_classroom_keys`, so missing is a real state the UI has to handle -- and an empty
+    string looks like a key that is blank rather than a key that was never minted.
+    """
+
+    if not classroom_ids:
+        return {}
+
+    stmt = select(ClassroomKey.classroom_id, ClassroomKey.class_key).where(
+        ClassroomKey.classroom_id.in_(classroom_ids)
+    )
+    return {row.classroom_id: row.class_key for row in (await session.execute(stmt)).all()}
+
 
 
 async def panel_rows_for_run(

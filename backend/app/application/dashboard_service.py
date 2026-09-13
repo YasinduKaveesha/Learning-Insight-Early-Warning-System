@@ -331,11 +331,16 @@ async def cohort(
         (c for c in classrooms if c.classroom_id == classroom_id), None
     )
     pending = await data_access.pending_request_counts(session, [classroom_id])
+    # Absent from the mapping => no key has ever been minted for this classroom. Do not
+    # mint one here: this is a GET, and a read that writes is a side effect someone will
+    # trip over. D1 calls the key permanent, which argues for creating it once, explicitly.
+    keys = await data_access.class_keys_for_classrooms(session, [classroom_id])
 
     return CohortResponse(
         classroom_id=classroom_id,
         class_name=None if this_class is None else this_class.name,
         grade=None if this_class is None else this_class.grade,
+        class_key=keys.get(classroom_id),
         pending_request_count=pending.get(classroom_id, 0),
         stats=_stats_for(cards),
         learners=cards,

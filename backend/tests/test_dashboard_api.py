@@ -236,7 +236,13 @@ def client(monkeypatch):
             return None
         return _ClassroomRow(CLASSROOM, "Grade 3 Maths", "GRADE_3")
 
+    async def _class_keys(_session, classroom_ids):
+        # Only CLASSROOM has ever had a key minted. A classroom without one is ABSENT from
+        # the mapping, which is what lets the endpoint serve null rather than "".
+        return {CLASSROOM: "7K4P92"} if CLASSROOM in classroom_ids else {}
+
     da = dashboard_service.data_access
+    monkeypatch.setattr(da, "class_keys_for_classrooms", _class_keys)
     monkeypatch.setattr(da, "panel_rows_for_run", _panel_rows)
     monkeypatch.setattr(da, "pending_request_counts", _pending_counts)
     monkeypatch.setattr(da, "teacher_display_name", _teacher_name)
@@ -431,6 +437,27 @@ def test_cohort_serves_class_name_grade_and_pending_requests(client):
     assert body["class_name"] == "Grade 3 Maths"
     assert body["grade"] == "GRADE_3"
     assert body["pending_request_count"] == 3
+
+
+def test_cohort_serves_the_permanent_class_key(client):
+    """B7. D1 makes the key permanent, so the cohort response carries it rather than the
+    client fetching it separately -- and the frontend has no key endpoint to call."""
+
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    assert body["class_key"] == "7K4P92"
+
+
+def test_cohort_serves_a_null_class_key_when_none_was_ever_minted(monkeypatch, client):
+    """Never `""`. Every classroom that exists today was created through the student app's
+    API, which writes no `t3_classroom_keys` row, so "no key yet" is the ORDINARY state --
+    and six blank characters is something a teacher would try to read aloud."""
+
+    async def _no_keys(_session, _classroom_ids):
+        return {}
+
+    monkeypatch.setattr(dashboard_service.data_access, "class_keys_for_classrooms", _no_keys)
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    assert body["class_key"] is None
 
 
 def test_watch_list_carries_the_population_it_was_drawn_from(client):

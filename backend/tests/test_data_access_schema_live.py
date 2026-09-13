@@ -234,3 +234,18 @@ def test_pending_request_counts_executes_for_a_real_classroom_list():
 
     counts = _run(lambda s: data_access.pending_request_counts(s, [uuid.UUID(int=0)]))
     assert counts == {}
+
+
+def test_class_keys_for_classrooms_executes_against_the_real_schema():
+    """B7. The reader is NOT scoped by `pipeline_run_id` -- see its docstring -- so the thing
+    worth pinning is that the SELECT compiles and that an unknown classroom is ABSENT from
+    the mapping rather than present with an empty-string key."""
+
+    keys = _run(lambda s: data_access.class_keys_for_classrooms(s, [uuid.UUID(int=0)]))
+    assert keys == {}
+
+
+def test_class_keys_for_classrooms_short_circuits_on_an_empty_list():
+    """No database round trip, and an `IN ()` that Postgres would reject is never built."""
+
+    assert _run(lambda s: data_access.class_keys_for_classrooms(s, [])) == {}
