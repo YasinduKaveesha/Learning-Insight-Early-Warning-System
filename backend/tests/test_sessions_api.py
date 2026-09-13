@@ -257,31 +257,25 @@ def test_no_mastery_value_is_ever_served(client):
             assert banned not in body
 
 
-def test_a_skill_with_too_few_observations_has_no_slope(client):
-    """`place_value` has 2 observations. Fewer than four means `unknown`, never `stable` --
-    "we cannot tell yet" and "flat" are different claims about a child."""
+def test_skill_direction_is_withheld_for_every_skill(client):
+    """D38. The old chip applied the accuracy-rate epsilon to a mastery slope and read 76% of
+    practised skills as stable. Until it is re-specified and D16-checked, every skill -- however
+    many observations it has -- serves `unknown`. `counting` has 8 observations and a clearly
+    positive slope in this fixture, which is exactly the case that must NOT report a direction."""
 
     skills = {s["skill"]: s for s in client.get(SKILLS).json()["skills"]}
-    assert skills["place_value"]["direction"] == "unknown"
+    assert skills, "the fixture must still return skills"
+    assert {s["direction"] for s in skills.values()} == {"unknown"}
+    # The practice count is a restatement of b_opportunities_w4 and is unaffected.
+    assert skills["counting"]["practice_count"] == 8
     assert skills["place_value"]["practice_count"] == 2
 
 
-def test_skills_with_enough_observations_report_a_direction(client):
-    skills = {s["skill"]: s for s in client.get(SKILLS).json()["skills"]}
-    assert skills["counting"]["direction"] == "improving"
-    assert skills["fractions"]["direction"] == "needs_attention"
-    assert skills["counting"]["practice_count"] == 8
+def test_the_skill_chip_no_longer_applies_the_accuracy_epsilon():
+    """D38: `EPSILON_PRACTICE` applies to `b_accuracy_rate` only. The function that applied it to
+    a mastery slope is gone, so it cannot be quietly re-wired."""
 
-
-def test_skill_progress_uses_the_decision_layers_epsilon(client):
-    """One epsilon, not two. A skill chip and a trajectory chip must not be able to disagree
-    on screen because someone tuned one constant and missed the other."""
-
-    from app.application.decision_layer import EPSILON_PRACTICE
-
-    assert dashboard_service._skill_direction(EPSILON_PRACTICE, 10) == "stable"
-    assert dashboard_service._skill_direction(EPSILON_PRACTICE + 0.001, 10) == "improving"
-    assert dashboard_service._skill_direction(-EPSILON_PRACTICE - 0.001, 10) == "needs_attention"
+    assert not hasattr(dashboard_service, "_skill_direction")
 
 
 # --- reports ----------------------------------------------------------------------------

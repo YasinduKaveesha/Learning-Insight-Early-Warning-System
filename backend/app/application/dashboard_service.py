@@ -33,7 +33,6 @@ from typing import Any, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application import data_access
-from app.application.decision_layer import EPSILON_PRACTICE
 from app.domain.dashboard import (
     ClassCard,
     CohortResponse,
@@ -45,7 +44,6 @@ from app.domain.dashboard import (
     WatchListResponse,
 )
 from app.domain.sessions import (
-    MIN_OBSERVATIONS_FOR_SLOPE,
     ClassReportResponse,
     ClassTrendPoint,
     EarlyWarningPoint,
@@ -565,23 +563,14 @@ async def session_history(
     )
 
 
-def _skill_direction(slope: float | None, observations: int) -> str:
-    """Rule 3. Fewer than four observations means the slope is not reportable -- `unknown`,
-    never `stable`. "We cannot tell yet" and "flat" are different claims about a child, and
-    collapsing them is how a learner with almost no data comes to look settled.
-
-    The threshold reuses `EPSILON_PRACTICE` from the decision layer rather than inventing a
-    second one: the same instrument argument applies, and two epsilons that drift apart would
-    let a skill chip and a trajectory chip disagree on screen.
-    """
-
-    if observations < MIN_OBSERVATIONS_FOR_SLOPE or slope is None:
-        return "unknown"
-    if slope > EPSILON_PRACTICE:
-        return "improving"
-    if slope < -EPSILON_PRACTICE:
-        return "needs_attention"
-    return "stable"
+#: D38 (ML team ruling, ANSWERS_TO_APP_TEAM_4 section 6.1). The skill chip used to apply
+#: `EPSILON_PRACTICE` to `b_mastery_slope_w4`. That threshold was derived in D11 for
+#: `b_accuracy_rate` -- a 2-4-item ratio -- and on a BKT mastery slope (cohort median +0.031 per
+#: session) it read 76.1% of practised skills as "stable" and 0.24% as "needs attention": a chip
+#: that almost never says a skill is not progressing. Until the chip is re-specified on the D35
+#: stagnation definition and has had its own D16 check, direction is WITHHELD for every skill.
+#: `unknown` is the honest value: the client already renders it without a bar or a verdict.
+SKILL_DIRECTION_WITHHELD: str = "unknown"
 
 
 async def skill_progress(
@@ -618,7 +607,7 @@ async def skill_progress(
         skills.append(
             SkillProgress(
                 skill=skill,
-                direction=_skill_direction(slopes.get(skill), observations),
+                direction=SKILL_DIRECTION_WITHHELD,  # D38
                 practice_count=observations,
                 relative_level=None,
             )
