@@ -123,9 +123,11 @@ def test_gate1_upgrade_downgrade_upgrade_round_trip() -> None:
         head_revision = command.heads(cfg)  # smoke: does not raise
         del head_revision
 
-        command.downgrade(cfg, "-1")
+        # An explicit target, not "-1": 0008 is no longer head (B7 added 0009), and a relative
+        # step would now undo 0009 and leave this assertion testing the wrong migration.
+        command.downgrade(cfg, "0007_demo_learner_map")
         assert _table_exists(_LIVE_URL, "t3_teacher_bindings") is False, (
-            "downgrade -1 must drop t3_teacher_bindings"
+            "downgrading below 0008 must drop t3_teacher_bindings"
         )
 
         command.upgrade(cfg, "head")

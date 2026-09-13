@@ -667,3 +667,66 @@ class Recommendation(ProvenanceCoreMixin, Base):
         ),
         nullable=False,
     )
+
+
+class RecommendationTransition(ProvenanceMixin, Base):
+    """`t3_recommendation_transitions` -- the append-only log of every teacher decision (B7).
+
+    `docs/13` section 6: the distribution of accept / dismiss / modify is **the evaluation signal
+    for the recommendation logic**, so the log must be complete rather than best-effort. Complete
+    is enforced by construction, not by care: the transition service writes this row IN THE SAME
+    TRANSACTION as the status change on `t3_recommendations`, so a decision without a log row
+    cannot be committed.
+
+    The state machine is pinned here too, where a later endpoint cannot bypass it:
+
+    * **`ck_t3_reco_transition_from_pending`** -- every decision leaves `pending`. `accepted`,
+      `dismissed` and `modified` are terminal (`docs/13` section 3).
+    * **`uq_t3_reco_transition_once`** -- one decision per recommendation, ever.
+    * **`ck_t3_reco_transition_modified`** -- the modified action is present exactly when the
+      decision is `modified`, mirroring `ck_t3_reco_modified` on the envelope.
+
+    `trigger_type` is COPIED from `t3_recommendations.trigger->>'type'` at decision time, so the
+    log stays interpretable on its own. `teacher_profile_id` carries no FK: the log must outlive
+    changes to another team's `teacher_profiles` row. `pipeline_run_id` is copied from the
+    recommendation, plain `uuid NOT NULL` with no FK, as in `t3_teacher_bindings`.
+
+    Nothing reads this table to decide what Component B or C does (D10).
+    """
+
+    __tablename__ = "t3_recommendation_transitions"
+    __table_args__ = (
+        CheckConstraint(
+            "from_status = 'pending'",
+            name=conv("ck_t3_reco_transition_from_pending"),
+        ),
+        CheckConstraint(
+            "to_status IN ('accepted', 'dismissed', 'modified')",
+            name=conv("ck_t3_reco_transition_to_status"),
+        ),
+        CheckConstraint(
+            "(teacher_modified_action IS NOT NULL) = (to_status = 'modified')",
+            name=conv("ck_t3_reco_transition_modified"),
+        ),
+        UniqueConstraint("recommendation_id", name=conv("uq_t3_reco_transition_once")),
+        source_class_check(),
+    )
+
+    transition_id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
+    recommendation_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey(
+            "t3_recommendations.recommendation_id",
+            name="fk_t3_reco_transitions_recommendation_id",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+    teacher_profile_id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    from_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    trigger_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    teacher_modified_action: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    occurred_at_utc: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
