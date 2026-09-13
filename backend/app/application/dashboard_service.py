@@ -31,6 +31,7 @@ from typing import Any, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application import data_access
+from app.application.decision_layer import EPSILON_PRACTICE
 from app.domain.dashboard import (
     ClassCard,
     CohortResponse,
@@ -40,6 +41,18 @@ from app.domain.dashboard import (
     SignalOut,
     StudentDetail,
     WatchListResponse,
+)
+from app.domain.sessions import (
+    MIN_OBSERVATIONS_FOR_SLOPE,
+    ClassReportResponse,
+    ClassTrendPoint,
+    EarlyWarningPoint,
+    GameSession,
+    PracticeSession,
+    SessionHistoryResponse,
+    SessionRecord,
+    SkillProgress,
+    SkillProgressResponse,
 )
 
 WARMUP_FLOOR = 3
@@ -301,3 +314,242 @@ async def student_detail(
 async def _display_name_for(session: AsyncSession, learner_id: uuid.UUID) -> str:
     learners = await data_access.real_learners(session, learner_ids=[learner_id])
     return learners[0].name if learners else "Unknown learner"
+
+
+# ==========================================================================================
+# B6.2 -- session history, skill progress and class reports
+# ==========================================================================================
+
+
+def _data_quality(row: Any) -> str:
+    """Rule 2 of `app/domain/sessions.py`. A technical fault and a disengaged learner produce
+    the same low engagement number and demand opposite responses from a teacher, so the
+    distinction is made HERE, once, from the guard columns the panel carries for exactly this
+    purpose -- never inferred downstream from the score itself.
+
+    `c_session_technical_issue_flag` is checked FIRST and independently of
+    `c_telemetry_quality_status`: migration 0005 added it precisely because the status string
+    alone could not separate the two cases.
+    """
+
+    if row.c_session_technical_issue_flag:
+        return "technical_issue"
+    status = (row.c_telemetry_quality_status or "").strip().lower()
+    if status and status not in {"ok", "complete", "good"}:
+        return "incomplete_telemetry"
+    return "ok"
+
+
+def _practice_session(row: Any) -> PracticeSession | None:
+    if not row.b_present:
+        return None
+    return PracticeSession(
+        accuracy_rate=row.b_accuracy_rate,
+        total_questions=row.b_total_questions,
+        correct_responses=row.b_correct_responses,
+        hint_requests=row.b_hint_requests,
+        median_item_response_time_sec=row.b_median_item_response_time_sec,
+    )
+
+
+def _game_session(row: Any) -> GameSession | None:
+    """Suppresses the engagement and frustration figures when the telemetry is not
+    trustworthy, rather than serving them with a caveat.
+
+    A caveat is a field a client can forget to render; a `None` cannot be rendered as a low
+    score at all. Making the honest thing the only available thing is the point -- this is
+    the one place in the codebase where a technical fault could turn into a claim about a
+    child, and it is closed by construction rather than by convention.
+    """
+
+    if not row.c_present:
+        return None
+
+    quality = _data_quality(row)
+    trustworthy = quality == "ok"
+
+    return GameSession(
+        accuracy_rate=row.c_accuracy_rate,
+        task_completion_rate=row.c_task_completion_rate,
+        median_task_latency_sec=row.c_median_game_task_latency_sec,
+        engagement_score=row.c_engagement_score if trustworthy else None,
+        engagement_components=row.c_engagement_components if trustworthy else None,
+        frustration_index=row.c_frustration_index if trustworthy else None,
+        frustration_components=row.c_frustration_components if trustworthy else None,
+        learner_state=row.c_learner_state,
+        current_difficulty_level=row.c_current_difficulty_level,
+        difficulty_trend=row.c_difficulty_trend,
+        data_quality=quality,
+    )
+
+
+async def session_history(
+    session: AsyncSession,
+    teacher_profile_id: uuid.UUID,
+    student_id: uuid.UUID,
+    *,
+    model_version: str,
+) -> SessionHistoryResponse:
+    if not await data_access.learner_visible_to_teacher(
+        session, teacher_profile_id, student_id
+    ):
+        raise LearnerNotVisibleError(str(student_id))
+
+    run = (
+        await data_access.active_pipeline_run(
+            session, active_model_version=model_version
+        )
+    ).pipeline_run_id
+    rows = await data_access.session_history_for_student(session, run, student_id)
+
+    return SessionHistoryResponse(
+        student_id=student_id,
+        display_name=await _display_name_for(session, student_id),
+        sessions=[
+            SessionRecord(
+                session_number=row.intervention_session_number,
+                session_date=row.intervention_session_date,
+                practice_present=bool(row.b_present),
+                games_present=bool(row.c_present),
+                practice=_practice_session(row),
+                games=_game_session(row),
+            )
+            for row in rows
+        ],
+    )
+
+
+def _skill_direction(slope: float | None, observations: int) -> str:
+    """Rule 3. Fewer than four observations means the slope is not reportable -- `unknown`,
+    never `stable`. "We cannot tell yet" and "flat" are different claims about a child, and
+    collapsing them is how a learner with almost no data comes to look settled.
+
+    The threshold reuses `EPSILON_PRACTICE` from the decision layer rather than inventing a
+    second one: the same instrument argument applies, and two epsilons that drift apart would
+    let a skill chip and a trajectory chip disagree on screen.
+    """
+
+    if observations < MIN_OBSERVATIONS_FOR_SLOPE or slope is None:
+        return "unknown"
+    if slope > EPSILON_PRACTICE:
+        return "improving"
+    if slope < -EPSILON_PRACTICE:
+        return "needs_attention"
+    return "stable"
+
+
+async def skill_progress(
+    session: AsyncSession,
+    teacher_profile_id: uuid.UUID,
+    student_id: uuid.UUID,
+    *,
+    model_version: str,
+) -> SkillProgressResponse:
+    """Direction and practice count per skill. NO mastery value is read, computed or
+    returned -- `b_mastery` is not even selected by the reader."""
+
+    if not await data_access.learner_visible_to_teacher(
+        session, teacher_profile_id, student_id
+    ):
+        raise LearnerNotVisibleError(str(student_id))
+
+    run = (
+        await data_access.active_pipeline_run(
+            session, active_model_version=model_version
+        )
+    ).pipeline_run_id
+    rows = await data_access.session_history_for_student(session, run, student_id)
+    if not rows:
+        raise NoPredictionsError(str(student_id))
+
+    latest = rows[-1]
+    slopes = latest.b_mastery_slope_w4 or {}
+    opportunities = latest.b_opportunities_w4 or {}
+
+    skills = []
+    for skill in sorted(set(slopes) | set(opportunities)):
+        observations = int(opportunities.get(skill) or 0)
+        skills.append(
+            SkillProgress(
+                skill=skill,
+                direction=_skill_direction(slopes.get(skill), observations),
+                practice_count=observations,
+                relative_level=None,
+            )
+        )
+
+    return SkillProgressResponse(
+        student_id=student_id,
+        display_name=await _display_name_for(session, student_id),
+        skills=skills,
+    )
+
+
+async def class_report(
+    session: AsyncSession,
+    teacher_profile_id: uuid.UUID,
+    classroom_id: uuid.UUID,
+    *,
+    model_version: str,
+) -> ClassReportResponse:
+    """The early-warning curve and the trajectory trend, both computed PER `t`.
+
+    Neither is pooled across `t`. The curve exists to answer "at session 4, how many of this
+    class were we flagging?" -- a single pooled flag rate answers nothing, because it is
+    dominated by whichever `t` the class is clustered at.
+    """
+
+    if not await data_access.teacher_owns_classroom(
+        session, teacher_profile_id, classroom_id
+    ):
+        raise ClassroomNotVisibleError(str(classroom_id))
+
+    run = (
+        await data_access.active_pipeline_run(
+            session, active_model_version=model_version
+        )
+    ).pipeline_run_id
+    roster = await data_access.classroom_roster(session, classroom_id)
+    roster_ids = {learner.learner_id for learner in roster}
+
+    predictions = [
+        row
+        for row in await data_access.predictions_for_run(session, run)
+        if row.student_id in roster_ids
+    ]
+
+    by_t: dict[int, list[Any]] = {}
+    for row in predictions:
+        by_t.setdefault(row.t, []).append(row)
+
+    curve = []
+    trend = []
+    for t in sorted(by_t):
+        rows = by_t[t]
+        flagged = sum(1 for r in rows if r.watch_flag)
+        curve.append(
+            EarlyWarningPoint(
+                t=t,
+                learners_with_prediction=len(rows),
+                watch_flagged=flagged,
+                flag_rate=flagged / len(rows),
+            )
+        )
+        trend.append(
+            ClassTrendPoint(
+                t=t,
+                improving=sum(1 for r in rows if r.practice_trajectory == "improving"),
+                stable=sum(1 for r in rows if r.practice_trajectory == "stable"),
+                needs_attention=sum(
+                    1 for r in rows if r.practice_trajectory == "needs_attention"
+                ),
+                unknown=sum(1 for r in rows if r.practice_trajectory == "unknown"),
+            )
+        )
+
+    return ClassReportResponse(
+        classroom_id=classroom_id,
+        learner_count=len(roster_ids),
+        early_warning_curve=curve,
+        practice_trajectory_trend=trend,
+    )

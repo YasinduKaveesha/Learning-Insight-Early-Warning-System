@@ -10,8 +10,7 @@ unauthenticated read. Ownership is not checked in this module -- the service del
 no hint as to whether it exists.
 
 NOT IN THIS WORK ORDER (named owners so nobody builds them here by accident):
-`/students/{id}/sessions`, `/classes/{id}/reports`, `/classes/{id}/key` (GET and POST), and
-every `/recommendations` route -- B6.2 and B7.
+`/classes/{id}/key` (GET and POST) and every `/recommendations` route -- B7.
 """
 
 from __future__ import annotations
@@ -28,6 +27,11 @@ from app.domain.dashboard import (
     HomeSummary,
     StudentDetail,
     WatchListResponse,
+)
+from app.domain.sessions import (
+    ClassReportResponse,
+    SessionHistoryResponse,
+    SkillProgressResponse,
 )
 from app.infrastructure.settings import get_settings
 
@@ -133,5 +137,68 @@ async def student(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"stage": "predictions", "error": "no analytics for this learner yet"},
         ) from exc
+    except ActivePipelineRunError as exc:
+        raise _no_active_run(exc) from exc
+
+
+# --- B6.2: session history, skill progress and class reports ---------------------------
+
+
+@router.get("/students/{student_id}/sessions", response_model=SessionHistoryResponse)
+async def student_sessions(
+    student_id: uuid.UUID, principal: CurrentPrincipal, session: DbSession
+) -> SessionHistoryResponse:
+    """Panel history with Component B and Component C as SEPARATE field groups. An empty
+    history is a legitimate 200 with `sessions: []` -- unlike `/students/{id}`, there is no
+    claim being made here that an empty list could be misread as."""
+
+    try:
+        return await dashboard_service.session_history(
+            session,
+            principal.teacher_profile_id,
+            student_id,
+            model_version=_active_model_version(),
+        )
+    except dashboard_service.LearnerNotVisibleError as exc:
+        raise _FORBIDDEN from exc
+    except ActivePipelineRunError as exc:
+        raise _no_active_run(exc) from exc
+
+
+@router.get("/students/{student_id}/skills", response_model=SkillProgressResponse)
+async def student_skills(
+    student_id: uuid.UUID, principal: CurrentPrincipal, session: DbSession
+) -> SkillProgressResponse:
+    try:
+        return await dashboard_service.skill_progress(
+            session,
+            principal.teacher_profile_id,
+            student_id,
+            model_version=_active_model_version(),
+        )
+    except dashboard_service.LearnerNotVisibleError as exc:
+        raise _FORBIDDEN from exc
+    except dashboard_service.NoPredictionsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"stage": "sessions", "error": "no session history for this learner yet"},
+        ) from exc
+    except ActivePipelineRunError as exc:
+        raise _no_active_run(exc) from exc
+
+
+@router.get("/classes/{classroom_id}/reports", response_model=ClassReportResponse)
+async def class_reports(
+    classroom_id: uuid.UUID, principal: CurrentPrincipal, session: DbSession
+) -> ClassReportResponse:
+    try:
+        return await dashboard_service.class_report(
+            session,
+            principal.teacher_profile_id,
+            classroom_id,
+            model_version=_active_model_version(),
+        )
+    except dashboard_service.ClassroomNotVisibleError as exc:
+        raise _FORBIDDEN from exc
     except ActivePipelineRunError as exc:
         raise _no_active_run(exc) from exc
