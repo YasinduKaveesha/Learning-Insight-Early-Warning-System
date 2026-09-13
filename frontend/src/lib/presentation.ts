@@ -273,6 +273,21 @@ export interface RecommendationDisplay {
   /** The skill key the suggestion targets, used to pre-select the skill in
    * the modify form. Optional so hand-authored fixtures need not carry it. */
   targetSkillId?: string | null;
+  /** D13 source label. Optional; the card falls back to the practice label. */
+  sourceLabel?: string;
+}
+
+/** The card's title: the skill when there is one, otherwise the suggestion
+ * type -- a watch-list suggestion (D41) names no skill, and a blank title
+ * would read as missing data. */
+export function recommendationTitle(r: RecommendationDisplay): string {
+  return r.targetSkillDisplayName || recommendationLabel(r.kind);
+}
+
+/** D13 source label by trigger. `watch_flag` (D41) is raised from recent
+ * learning activity overall; `stagnation` (D35) from practice activity. */
+export function recommendationSourceLabel(triggerType: string): string {
+  return triggerType === "watch_flag" ? SNAPSHOT_FRAMING : SUGGESTION_SOURCE_LABEL;
 }
 
 /** The teacher's replacement action, as the backend stores it: a kind plus

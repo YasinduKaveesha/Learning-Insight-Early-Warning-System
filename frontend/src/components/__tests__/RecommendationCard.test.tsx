@@ -153,6 +153,26 @@ describe("RecommendationCard", () => {
     }
   });
 
+  it("a watch-list suggestion with no skill is titled by its type, with its own source label (D41)", () => {
+    render(
+      <RecommendationCard
+        recommendation={{
+          ...BASE,
+          kind: "monitor_progress",
+          targetSkillDisplayName: "",
+          targetSkillId: null,
+          sourceLabel: "Based on recent learning activity",
+        }}
+        onAccept={vi.fn()}
+        onDismiss={vi.fn()}
+        onModify={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Monitor Progress")).toBeInTheDocument();
+    expect(screen.getByText("Based on recent learning activity")).toBeInTheDocument();
+    expect(screen.queryByText("Based on practice activity")).not.toBeInTheDocument();
+  });
+
   it("shows a save error as an alert", () => {
     render(<RecommendationCard recommendation={BASE} errorMessage="This suggestion was already decided." onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
     expect(screen.getByRole("alert")).toHaveTextContent("This suggestion was already decided.");

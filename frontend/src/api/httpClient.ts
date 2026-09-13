@@ -42,6 +42,7 @@ import {
   EARLY_WARNING_TREND_EXPLANATION,
   RecommendationConflictError,
   modifiedActionSummary,
+  recommendationSourceLabel,
   skillDisplayName,
 } from "../lib/presentation";
 import { supabase } from "./supabaseClient";
@@ -178,6 +179,7 @@ function toRecommendationDisplay(r: WireRecommendation): RecommendationDisplay {
     kind: r.proposed_action.kind,
     targetSkillId: skillId,
     targetSkillDisplayName: skillDisplayName(skillId),
+    sourceLabel: recommendationSourceLabel(r.trigger.type),
     evidenceSummary: r.evidence_summary,
     status: r.teacher_status,
     modifiedActionSummary: modified

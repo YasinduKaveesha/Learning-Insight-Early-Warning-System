@@ -4,6 +4,7 @@ import {
   SKILL_OPTIONS,
   SUGGESTION_SOURCE_LABEL,
   recommendationDecisionLine,
+  recommendationTitle,
   type ModifiedAction,
   type RecommendationDisplay,
 } from "../../lib/presentation";
@@ -54,7 +55,7 @@ export function RecommendationCard({
             "Practice — ") — just the skill name now, matching the plain
             text style used elsewhere (e.g. skill progress rows). */}
         <span className="text-[17px] font-bold text-ink-primary">
-          {recommendation.targetSkillDisplayName}
+          {recommendationTitle(recommendation)}
         </span>
       </div>
 
@@ -62,7 +63,9 @@ export function RecommendationCard({
           UI-refinement pass: the "Why: " label is dropped — just the
           evidence text now. */}
       <p className="text-sm text-ink-primary">{recommendation.evidenceSummary}</p>
-      <p className="text-[12px] text-ink-secondary">{SUGGESTION_SOURCE_LABEL}</p>
+      <p className="text-[12px] text-ink-secondary">
+        {recommendation.sourceLabel ?? SUGGESTION_SOURCE_LABEL}
+      </p>
 
       {errorMessage ? (
         <p role="alert" className="text-sm font-medium text-ink-primary">
