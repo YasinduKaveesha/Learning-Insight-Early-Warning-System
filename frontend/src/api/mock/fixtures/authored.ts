@@ -19,10 +19,16 @@ import type {
   SessionEntry,
   SkillProgress,
 } from "../../types";
-import type { PendingRequestDisplay, RecommendationDisplay } from "../../../lib/presentation";
+import type {
+  ModifiedAction,
+  PendingRequestDisplay,
+  RecommendationDisplay,
+} from "../../../lib/presentation";
 import {
   DuplicateClassNameError,
   EARLY_WARNING_TREND_EXPLANATION,
+  RecommendationConflictError,
+  modifiedActionSummary,
   type Grade,
 } from "../../../lib/presentation";
 import earlyWarningTrendJson from "./earlyWarningTrend.json";
@@ -408,7 +414,25 @@ const DEMO_RECOMMENDATIONS: Record<string, RecommendationDisplay> = {
 
 export function recommendationsForStudent(studentId: string): RecommendationDisplay[] {
   const recommendation = DEMO_RECOMMENDATIONS[studentId];
-  return recommendation ? [recommendation] : [];
+  return recommendation ? [{ ...recommendation }] : [];
+}
+
+/** Mock state only, like CREATED_CLASSES. Mirrors the real state machine:
+ * a decision leaves "pending" exactly once, and a second one is refused with
+ * the same RecommendationConflictError the real client raises on a 409. */
+export function decideRecommendationFixture(
+  recommendationId: string,
+  status: "accepted" | "dismissed" | "modified",
+  action: ModifiedAction | null,
+): RecommendationDisplay {
+  const entry = Object.values(DEMO_RECOMMENDATIONS).find(
+    (r) => r.recommendationId === recommendationId,
+  );
+  if (!entry) throw new Error(`Unknown recommendation: ${recommendationId}`);
+  if (entry.status !== "pending") throw new RecommendationConflictError("already_decided");
+  entry.status = status;
+  entry.modifiedActionSummary = action ? modifiedActionSummary(action.kind, action.skillId) : null;
+  return { ...entry };
 }
 
 // --- Hand-authored: Join requests (docs/11 §4, Step 6) ----------------------

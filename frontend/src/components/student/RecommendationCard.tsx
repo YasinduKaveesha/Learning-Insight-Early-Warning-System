@@ -1,11 +1,25 @@
 import { useId, useState } from "react";
-import { SUGGESTION_SOURCE_LABEL, type RecommendationDisplay } from "../../lib/presentation";
+import {
+  RECOMMENDATION_KIND_OPTIONS,
+  SKILL_OPTIONS,
+  SUGGESTION_SOURCE_LABEL,
+  recommendationDecisionLine,
+  type ModifiedAction,
+  type RecommendationDisplay,
+} from "../../lib/presentation";
 
 export interface RecommendationCardProps {
   recommendation: RecommendationDisplay;
   onAccept: (recommendationId: string) => void;
   onDismiss: (recommendationId: string) => void;
-  onModify: (recommendationId: string, modifiedTo: string) => void;
+  /** A KIND plus an optional skill -- never free text (2026-09-14, option A):
+   * docs/13 §6 needs modifications that can be counted. */
+  onModify: (recommendationId: string, action: ModifiedAction) => void;
+  /** True while this card's decision is being saved; buttons are disabled so
+   * a double tap cannot send two decisions. */
+  isSaving?: boolean;
+  /** A teacher-facing message when saving failed. */
+  errorMessage?: string | null;
 }
 
 /**
@@ -23,10 +37,15 @@ export function RecommendationCard({
   onAccept,
   onDismiss,
   onModify,
+  isSaving = false,
+  errorMessage = null,
 }: RecommendationCardProps) {
   const [isModifying, setIsModifying] = useState(false);
-  const [modifiedText, setModifiedText] = useState("");
-  const modifyFieldId = useId();
+  const [modifiedKind, setModifiedKind] = useState("");
+  const [modifiedSkill, setModifiedSkill] = useState(recommendation.targetSkillId ?? "");
+  const kindFieldId = useId();
+  const skillFieldId = useId();
+  const decisionLine = recommendationDecisionLine(recommendation);
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-suggestionPurple-border bg-suggestionPurple-bg p-4">
@@ -45,25 +64,63 @@ export function RecommendationCard({
       <p className="text-sm text-ink-primary">{recommendation.evidenceSummary}</p>
       <p className="text-[12px] text-ink-secondary">{SUGGESTION_SOURCE_LABEL}</p>
 
-      {isModifying ? (
+      {errorMessage ? (
+        <p role="alert" className="text-sm font-medium text-ink-primary">
+          {errorMessage}
+        </p>
+      ) : null}
+
+      {decisionLine !== null ? (
+        // A decided suggestion cannot be decided again -- the server refuses
+        // -- so its buttons are not offered. This one line replaces them.
+        // (Partly reverses the UI-refinement pass that removed all status
+        // feedback; that removal predates saving decisions.)
+        <p className="text-sm font-semibold text-ink-primary">{decisionLine}</p>
+      ) : isModifying ? (
         <div className="flex flex-col gap-2">
-          <label htmlFor={modifyFieldId} className="text-sm font-medium text-ink-primary">
+          <label htmlFor={kindFieldId} className="text-sm font-medium text-ink-primary">
             What should this be changed to?
           </label>
-          <textarea
-            id={modifyFieldId}
-            value={modifiedText}
-            onChange={(e) => setModifiedText(e.target.value)}
+          <select
+            id={kindFieldId}
+            value={modifiedKind}
+            onChange={(e) => setModifiedKind(e.target.value)}
             className="min-h-[44px] rounded-lg border border-border-strong p-2 text-sm"
-          />
+          >
+            <option value="">Choose a suggestion</option>
+            {RECOMMENDATION_KIND_OPTIONS.map((o) => (
+              <option key={o.kind} value={o.kind}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <label htmlFor={skillFieldId} className="text-sm font-medium text-ink-primary">
+            Skill
+          </label>
+          <select
+            id={skillFieldId}
+            value={modifiedSkill}
+            onChange={(e) => setModifiedSkill(e.target.value)}
+            className="min-h-[44px] rounded-lg border border-border-strong p-2 text-sm"
+          >
+            <option value="">No specific skill</option>
+            {SKILL_OPTIONS.map((s) => (
+              <option key={s.skillId} value={s.skillId}>
+                {s.displayName}
+              </option>
+            ))}
+          </select>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => {
-                onModify(recommendation.recommendationId, modifiedText);
+                onModify(recommendation.recommendationId, {
+                  kind: modifiedKind,
+                  skillId: modifiedSkill === "" ? null : modifiedSkill,
+                });
                 setIsModifying(false);
               }}
-              disabled={modifiedText.trim().length === 0}
+              disabled={modifiedKind === "" || isSaving}
               className="min-h-[44px] flex-1 rounded-lg bg-primary px-3 text-sm font-bold text-foreground disabled:opacity-40"
             >
               Save change
@@ -95,6 +152,7 @@ export function RecommendationCard({
           <button
             type="button"
             onClick={() => onAccept(recommendation.recommendationId)}
+            disabled={isSaving}
             className="min-h-[44px] w-full rounded-lg bg-suggestionPurple-accept px-3 text-sm font-bold text-white"
           >
             Accept
@@ -102,6 +160,7 @@ export function RecommendationCard({
           <button
             type="button"
             onClick={() => setIsModifying(true)}
+            disabled={isSaving}
             className="min-h-[44px] w-full rounded-lg border-2 border-border-strong px-3 text-sm font-semibold text-ink-primary"
           >
             Modify
@@ -114,6 +173,7 @@ export function RecommendationCard({
             <button
               type="button"
               onClick={() => onDismiss(recommendation.recommendationId)}
+            disabled={isSaving}
               className="min-h-[44px] w-full rounded-lg bg-suggestionPurple-dismissBg px-3 text-sm font-medium text-foreground underline underline-offset-2"
             >
               Dismiss

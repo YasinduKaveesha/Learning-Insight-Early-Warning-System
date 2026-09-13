@@ -93,21 +93,69 @@ describe("RecommendationCard", () => {
     expect(onDismiss).toHaveBeenCalledWith("rec-1");
   });
 
-  it("Modify opens an input and passes the captured text to onModify", async () => {
+  it("Modify offers a choice of the four kinds and the seven skills — never free text", async () => {
+    const onModify = vi.fn();
+    render(<RecommendationCard recommendation={{ ...BASE, targetSkillId: "place_value" }} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={onModify} />);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    const kind = screen.getByLabelText("What should this be changed to?");
+    const skill = screen.getByLabelText("Skill");
+    // The skill starts on the suggestion's own skill.
+    expect(skill).toHaveValue("place_value");
+    // Four kinds plus the placeholder; seven skills plus "No specific skill".
+    expect(kind.querySelectorAll("option")).toHaveLength(5);
+    expect(skill.querySelectorAll("option")).toHaveLength(8);
+
+    await userEvent.selectOptions(kind, "try_again");
+    await userEvent.selectOptions(skill, "subtraction");
+    await userEvent.click(screen.getByRole("button", { name: "Save change" }));
+    expect(onModify).toHaveBeenCalledWith("rec-1", { kind: "try_again", skillId: "subtraction" });
+  });
+
+  it("'No specific skill' sends a null skill", async () => {
     const onModify = vi.fn();
     render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={onModify} />);
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
-    const textbox = screen.getByRole("textbox");
-    await userEvent.type(textbox, "Practice place value instead of subtraction");
+    await userEvent.selectOptions(screen.getByLabelText("What should this be changed to?"), "monitor_progress");
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
-    expect(onModify).toHaveBeenCalledWith("rec-1", "Practice place value instead of subtraction");
+    expect(onModify).toHaveBeenCalledWith("rec-1", { kind: "monitor_progress", skillId: null });
   });
 
-  it("does not offer to save an empty modification", async () => {
+  it("does not offer to save a modification until a kind is chosen", async () => {
     const onModify = vi.fn();
     render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={onModify} />);
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
     expect(screen.getByRole("button", { name: "Save change" })).toBeDisabled();
+  });
+
+  it.each([
+    ["accepted", null, "You accepted this suggestion."],
+    ["dismissed", null, "You dismissed this suggestion."],
+    ["modified", "Review · Place value", "You changed this to: Review · Place value."],
+  ] as const)("a %s suggestion shows its outcome and offers no buttons", (status, summary, line) => {
+    render(
+      <RecommendationCard
+        recommendation={{ ...BASE, status, modifiedActionSummary: summary }}
+        onAccept={vi.fn()}
+        onDismiss={vi.fn()}
+        onModify={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(line)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("while saving, the buttons are disabled so a double tap cannot send two decisions", () => {
+    render(<RecommendationCard recommendation={BASE} isSaving onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
+    for (const name of ["Accept", "Modify", "Dismiss"]) {
+      expect(screen.getByRole("button", { name })).toBeDisabled();
+    }
+  });
+
+  it("shows a save error as an alert", () => {
+    render(<RecommendationCard recommendation={BASE} errorMessage="This suggestion was already decided." onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("This suggestion was already decided.");
   });
 
   it('renders no "Accept all" control', () => {

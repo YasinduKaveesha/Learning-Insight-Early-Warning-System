@@ -2,7 +2,12 @@
 // Swapping to the real FastAPI service changes only this file.
 
 import type { HomeSummary, LearnerSnapshot, SessionEntry, SkillProgress } from "./types";
-import type { Grade, PendingRequestDisplay, RecommendationDisplay } from "../lib/presentation";
+import type {
+  Grade,
+  ModifiedAction,
+  PendingRequestDisplay,
+  RecommendationDisplay,
+} from "../lib/presentation";
 import { DuplicateClassNameError, isDuplicateClassNameError } from "../lib/presentation";
 import { MockClient } from "./mock/mockClient";
 import { HttpClient } from "./httpClient";
@@ -120,6 +125,19 @@ export interface ApiClient {
   // includes a Suggestions section; there is no recommendation endpoint or
   // specification behind this yet.
   getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]>;
+
+  /** A teacher's decision on one suggestion, SAVED (docs/13 §6: the log of
+   * decisions is a research output). Each resolves to the updated suggestion.
+   * Rejects with RecommendationConflictError (detect with
+   * isRecommendationConflictError) when it was already decided or has
+   * expired; any other failure is a plain Error. Saving a decision never
+   * changes what Component B or C does (D10). */
+  acceptRecommendation(recommendationId: string): Promise<RecommendationDisplay>;
+  dismissRecommendation(recommendationId: string): Promise<RecommendationDisplay>;
+  modifyRecommendation(
+    recommendationId: string,
+    action: ModifiedAction,
+  ): Promise<RecommendationDisplay>;
 
   // --- Step 6: class management --------------------------------------------
 

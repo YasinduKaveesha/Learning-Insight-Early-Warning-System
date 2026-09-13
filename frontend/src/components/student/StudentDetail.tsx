@@ -11,7 +11,13 @@ import { RecommendationCard } from "./RecommendationCard";
 import { SkillProgressList } from "./SkillProgress";
 import { GettingStartedNotice } from "../status/GettingStartedNotice";
 import { PriorityBadge } from "../status/PriorityBadge";
-import { SNAPSHOT_FRAMING, type RecommendationDisplay, toWatchStatus } from "../../lib/presentation";
+import {
+  SNAPSHOT_FRAMING,
+  isRecommendationConflictError,
+  recommendationDecisionError,
+  type RecommendationDisplay,
+  toWatchStatus,
+} from "../../lib/presentation";
 
 export interface StudentDetailProps {
   studentId: string | undefined;
@@ -45,18 +51,33 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
     enabled: !!studentId,
   });
 
-  // No write-back in v1 (D10) — accept/dismiss/modify only ever update this
-  // screen's own local state, seeded from the fetched list. There is no
-  // persistence layer for a teacher's decision to land in.
-  const [localRecommendations, setLocalRecommendations] = useState<
-    RecommendationDisplay[] | null
-  >(null);
-  const recommendations = localRecommendations ?? recommendationsQuery.data ?? [];
+  // Decisions are SAVED to Component 3's decision log (docs/13 §6 — the log
+  // is a research output). Saving never changes what Component B or C does
+  // (D10). The returned suggestion replaces the one on screen, so what the
+  // teacher sees is what the server stored, not what the click assumed.
+  const [savedRecommendations, setSavedRecommendations] = useState<
+    Record<string, RecommendationDisplay>
+  >({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const recommendations = (recommendationsQuery.data ?? []).map(
+    (r) => savedRecommendations[r.recommendationId] ?? r,
+  );
 
-  function updateRecommendation(id: string, patch: Partial<RecommendationDisplay>) {
-    setLocalRecommendations(
-      recommendations.map((r) => (r.recommendationId === id ? { ...r, ...patch } : r)),
-    );
+  async function decide(id: string, save: () => Promise<RecommendationDisplay>) {
+    setSavingId(id);
+    setErrors(({ [id]: _dropped, ...rest }) => rest);
+    try {
+      const saved = await save();
+      setSavedRecommendations((prev) => ({ ...prev, [id]: saved }));
+    } catch (e) {
+      setErrors((prev) => ({ ...prev, [id]: recommendationDecisionError(e) }));
+      // Already decided or expired elsewhere (another tab, another device):
+      // re-read so the card shows the stored state rather than stale buttons.
+      if (isRecommendationConflictError(e)) void recommendationsQuery.refetch();
+    } finally {
+      setSavingId(null);
+    }
   }
 
   const isPending = overviewQuery.isPending;
@@ -140,10 +161,12 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
                   <RecommendationCard
                     key={r.recommendationId}
                     recommendation={r}
-                    onAccept={(id) => updateRecommendation(id, { status: "accepted" })}
-                    onDismiss={(id) => updateRecommendation(id, { status: "dismissed" })}
-                    onModify={(id, modifiedTo) =>
-                      updateRecommendation(id, { status: "modified", modifiedActionSummary: modifiedTo })
+                    isSaving={savingId === r.recommendationId}
+                    errorMessage={errors[r.recommendationId] ?? null}
+                    onAccept={(id) => decide(id, () => client.acceptRecommendation(id))}
+                    onDismiss={(id) => decide(id, () => client.dismissRecommendation(id))}
+                    onModify={(id, action) =>
+                      decide(id, () => client.modifyRecommendation(id, action))
                     }
                   />
                 ))}

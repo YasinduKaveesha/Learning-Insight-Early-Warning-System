@@ -270,6 +270,16 @@ export interface RecommendationDisplay {
   /** What the teacher changed it to, when status is "modified". */
   modifiedActionSummary: string | null;
   expiresAfterSession: number;
+  /** The skill key the suggestion targets, used to pre-select the skill in
+   * the modify form. Optional so hand-authored fixtures need not carry it. */
+  targetSkillId?: string | null;
+}
+
+/** The teacher's replacement action, as the backend stores it: a kind plus
+ * an optional skill. Never free text (decision on 2026-09-14, option A). */
+export interface ModifiedAction {
+  kind: string;
+  skillId: string | null;
 }
 
 const RECOMMENDATION_LABEL: Record<RecommendationKind, string> = {
@@ -284,6 +294,87 @@ const RECOMMENDATION_FALLBACK = "Suggestion";
 /** An unrecognised kind renders a readable fallback — it must never throw. */
 export function recommendationLabel(kind: string): string {
   return (RECOMMENDATION_LABEL as Record<string, string>)[kind] ?? RECOMMENDATION_FALLBACK;
+}
+
+/** The four kinds a teacher may choose when MODIFYING a suggestion (D7). The
+ * system itself only ever generates `practice` (D35/D36); a teacher may pick
+ * any of the four — docs/13 §6: modifications say what the system SHOULD have
+ * suggested, so they must be countable, not free text. */
+export const RECOMMENDATION_KIND_OPTIONS: { kind: RecommendationKind; label: string }[] = (
+  Object.keys(RECOMMENDATION_LABEL) as RecommendationKind[]
+).map((kind) => ({ kind, label: RECOMMENDATION_LABEL[kind] }));
+
+/** The seven skills, in their frozen order, with teacher-facing names. One
+ * definition, shared by the skill list, the suggestion card and the client. */
+export const SKILL_OPTIONS: { skillId: string; displayName: string }[] = [
+  { skillId: "counting", displayName: "Counting" },
+  { skillId: "number_sense", displayName: "Number sense" },
+  { skillId: "place_value", displayName: "Place value" },
+  { skillId: "addition", displayName: "Addition" },
+  { skillId: "subtraction", displayName: "Subtraction" },
+  { skillId: "multiplication", displayName: "Multiplication" },
+  { skillId: "division", displayName: "Division" },
+];
+
+export function skillDisplayName(skillId: string | null | undefined): string {
+  if (!skillId) return "";
+  return SKILL_OPTIONS.find((s) => s.skillId === skillId)?.displayName ?? skillId.replace(/_/g, " ");
+}
+
+/** What a teacher changed a suggestion to, e.g. "Review · Place value". */
+export function modifiedActionSummary(kind: string, skillId: string | null): string {
+  const skill = skillDisplayName(skillId);
+  return skill ? `${recommendationLabel(kind)} · ${skill}` : recommendationLabel(kind);
+}
+
+/** The single line a DECIDED suggestion shows in place of its buttons. A
+ * decided suggestion cannot be decided again (the server refuses), so its
+ * buttons must not be offered. */
+export function recommendationDecisionLine(r: RecommendationDisplay): string | null {
+  switch (r.status) {
+    case "accepted":
+      return "You accepted this suggestion.";
+    case "dismissed":
+      return "You dismissed this suggestion.";
+    case "modified":
+      return r.modifiedActionSummary
+        ? `You changed this to: ${r.modifiedActionSummary}.`
+        : "You changed this suggestion.";
+    default:
+      return null;
+  }
+}
+
+/** Thrown when a decision is refused because the suggestion was already
+ * decided or has expired. Recognised by `.code`, not `instanceof` — see
+ * DuplicateClassNameError for why. */
+export class RecommendationConflictError extends Error {
+  readonly code = "RECOMMENDATION_CONFLICT" as const;
+  readonly reason: string; // "already_decided" | "expired", or a future server reason
+  constructor(reason: string) {
+    super(`Recommendation decision refused: ${reason}`);
+    this.reason = reason;
+    this.name = "RecommendationConflictError";
+  }
+}
+
+export function isRecommendationConflictError(e: unknown): e is RecommendationConflictError {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code: unknown }).code === "RECOMMENDATION_CONFLICT"
+  );
+}
+
+/** Teacher-facing message for a failed decision. Never a raw error string. */
+export function recommendationDecisionError(e: unknown): string {
+  if (isRecommendationConflictError(e)) {
+    return e.reason === "expired"
+      ? "This suggestion has expired, so it can no longer be changed."
+      : "This suggestion was already decided.";
+  }
+  return "Couldn't save your decision. Check your connection and try again.";
 }
 
 // --- Classes (D1, D2) ------------------------------------------------------

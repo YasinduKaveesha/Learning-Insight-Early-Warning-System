@@ -11,7 +11,12 @@ import type {
   StudentOverviewResponse,
   WatchListResponse,
 } from "../client";
-import type { Grade, PendingRequestDisplay, RecommendationDisplay } from "../../lib/presentation";
+import type {
+  Grade,
+  ModifiedAction,
+  PendingRequestDisplay,
+  RecommendationDisplay,
+} from "../../lib/presentation";
 import { filterExplanation, sortCohortOrder, toWatchStatus } from "../../lib/presentation";
 import {
   ALL_CLASS_STUDENTS,
@@ -24,6 +29,7 @@ import {
   approveJoinRequest as approveJoinRequestFixture,
   classReportsFor,
   createClassRecord,
+  decideRecommendationFixture,
   joinRequestsForClass,
   pendingRequestCountForClass,
   recommendationsForStudent,
@@ -170,6 +176,29 @@ export class MockClient implements ApiClient {
 
   getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]> {
     return delay(recommendationsForStudent(studentId));
+  }
+
+  // Each wraps the fixture call so a refusal REJECTS rather than throwing
+  // synchronously — the real client can only ever reject.
+  acceptRecommendation(recommendationId: string): Promise<RecommendationDisplay> {
+    return Promise.resolve().then(() =>
+      delay(decideRecommendationFixture(recommendationId, "accepted", null)),
+    );
+  }
+
+  dismissRecommendation(recommendationId: string): Promise<RecommendationDisplay> {
+    return Promise.resolve().then(() =>
+      delay(decideRecommendationFixture(recommendationId, "dismissed", null)),
+    );
+  }
+
+  modifyRecommendation(
+    recommendationId: string,
+    action: ModifiedAction,
+  ): Promise<RecommendationDisplay> {
+    return Promise.resolve().then(() =>
+      delay(decideRecommendationFixture(recommendationId, "modified", action)),
+    );
   }
 
   createClass(name: string, grade: Grade): Promise<CreateClassResult> {

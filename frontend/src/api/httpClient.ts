@@ -32,8 +32,18 @@ import type {
   SkillProgress,
   TrajectoryState,
 } from "./types";
-import type { Grade, PendingRequestDisplay, RecommendationDisplay } from "../lib/presentation";
-import { EARLY_WARNING_TREND_EXPLANATION, recommendationLabel } from "../lib/presentation";
+import type {
+  Grade,
+  ModifiedAction,
+  PendingRequestDisplay,
+  RecommendationDisplay,
+} from "../lib/presentation";
+import {
+  EARLY_WARNING_TREND_EXPLANATION,
+  RecommendationConflictError,
+  modifiedActionSummary,
+  skillDisplayName,
+} from "../lib/presentation";
 import { supabase } from "./supabaseClient";
 
 const API_BASE: string = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8100").replace(
@@ -141,16 +151,40 @@ interface WireAction {
   detail: { skill?: unknown } & Record<string, unknown>;
 }
 
+interface WireRecommendation {
+  recommendation_id: string;
+  expires_after_session: number;
+  trigger: { type: string; skill: string | null };
+  proposed_action: WireAction;
+  evidence_summary: string;
+  teacher_status: "pending" | "accepted" | "dismissed" | "modified";
+  teacher_modified_action: WireAction | null;
+}
+
 interface WireRecommendations {
-  recommendations: {
-    recommendation_id: string;
-    expires_after_session: number;
-    trigger: { type: string; skill: string | null };
-    proposed_action: WireAction;
-    evidence_summary: string;
-    teacher_status: "pending" | "accepted" | "dismissed" | "modified";
-    teacher_modified_action: WireAction | null;
-  }[];
+  recommendations: WireRecommendation[];
+}
+
+function actionSkill(action: WireAction | null): string | null {
+  const skill = action?.detail?.skill;
+  return typeof skill === "string" ? skill : null;
+}
+
+function toRecommendationDisplay(r: WireRecommendation): RecommendationDisplay {
+  const skillId = actionSkill(r.proposed_action) ?? r.trigger.skill ?? null;
+  const modified = r.teacher_modified_action;
+  return {
+    recommendationId: r.recommendation_id,
+    kind: r.proposed_action.kind,
+    targetSkillId: skillId,
+    targetSkillDisplayName: skillDisplayName(skillId),
+    evidenceSummary: r.evidence_summary,
+    status: r.teacher_status,
+    modifiedActionSummary: modified
+      ? modifiedActionSummary(modified.kind, actionSkill(modified))
+      : null,
+    expiresAfterSession: r.expires_after_session,
+  };
 }
 
 interface WireReport {
@@ -161,6 +195,40 @@ interface WireReport {
 }
 
 // --- transport ---------------------------------------------------------------
+
+/**
+ * POST a teacher decision. A 409 becomes RecommendationConflictError with the
+ * server's named reason ("already_decided" | "expired"), so the screen can say
+ * which; every other failure is a plain Error.
+ */
+async function postDecision<T>(path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (supabase) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  const response = await fetch(`${API_BASE}${PREFIX}${path}`, {
+    method: "POST",
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (response.status === 409) {
+    let reason = "already_decided";
+    try {
+      const payload = (await response.json()) as { detail?: { error?: unknown } };
+      if (typeof payload.detail?.error === "string") reason = payload.detail.error;
+    } catch {
+      // An unreadable body is still a conflict.
+    }
+    throw new RecommendationConflictError(reason);
+  }
+  if (!response.ok) {
+    throw new Error(`Request to ${path} failed with HTTP ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
 
 async function get<T>(path: string): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -378,31 +446,42 @@ export class HttpClient implements ApiClient {
   }
 
   async getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]> {
-    // B7. Real endpoint, and today it is always empty: nothing generates a
-    // recommendation until the ML team rules on the trigger -> action mapping
-    // (dev_docs/QUESTIONS_FOR_ML_TEAM_4.md). Empty renders "No suggestions
-    // right now", which is true.
-    //
-    // Accept / dismiss / modify on the card still update only this screen's
-    // local state: ApiClient has no method to persist a decision yet. The
-    // backend endpoints exist (POST /recommendations/{id}/accept|dismiss|modify).
+    // D35: the one generated suggestion (practice on a stagnant skill, for a
+    // watch-flagged learner). `active` includes accepted/modified ones, which
+    // render as decided -- see recommendationDecisionLine.
     const w = await get<WireRecommendations>(
       `/students/${encodeURIComponent(studentId)}/recommendations?status=active`,
     );
-    return w.recommendations.map((r) => {
-      const skill = r.proposed_action.detail.skill ?? r.trigger.skill ?? null;
-      const modified = r.teacher_modified_action;
-      return {
-        recommendationId: r.recommendation_id,
-        kind: r.proposed_action.kind,
-        targetSkillDisplayName:
-          typeof skill === "string" ? (SKILL_DISPLAY_NAME[skill] ?? skill) : "",
-        evidenceSummary: r.evidence_summary,
-        status: r.teacher_status,
-        modifiedActionSummary: modified ? recommendationLabel(modified.kind) : null,
-        expiresAfterSession: r.expires_after_session,
-      };
-    });
+    return w.recommendations.map(toRecommendationDisplay);
+  }
+
+  async acceptRecommendation(recommendationId: string): Promise<RecommendationDisplay> {
+    return toRecommendationDisplay(
+      await postDecision<WireRecommendation>(`/recommendations/${encodeURIComponent(recommendationId)}/accept`),
+    );
+  }
+
+  async dismissRecommendation(recommendationId: string): Promise<RecommendationDisplay> {
+    return toRecommendationDisplay(
+      await postDecision<WireRecommendation>(`/recommendations/${encodeURIComponent(recommendationId)}/dismiss`),
+    );
+  }
+
+  async modifyRecommendation(
+    recommendationId: string,
+    action: ModifiedAction,
+  ): Promise<RecommendationDisplay> {
+    return toRecommendationDisplay(
+      await postDecision<WireRecommendation>(
+        `/recommendations/${encodeURIComponent(recommendationId)}/modify`,
+        {
+          teacher_modified_action: {
+            kind: action.kind,
+            detail: action.skillId ? { skill: action.skillId } : {},
+          },
+        },
+      ),
+    );
   }
 
   createClass(_name: string, _grade: Grade): Promise<CreateClassResult> {

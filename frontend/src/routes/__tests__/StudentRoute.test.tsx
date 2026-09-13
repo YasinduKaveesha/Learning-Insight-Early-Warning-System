@@ -14,6 +14,9 @@ vi.mock("../../api/client", () => ({
     getStudentOverview: vi.fn(),
     getStudentSessions: vi.fn(),
     getStudentRecommendations: vi.fn(),
+    acceptRecommendation: vi.fn(),
+    dismissRecommendation: vi.fn(),
+    modifyRecommendation: vi.fn(),
     createClass: vi.fn(),
     getJoinRequests: vi.fn(),
     approveJoinRequest: vi.fn(),
@@ -246,23 +249,74 @@ describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () 
     expect(screen.queryByText(/accept all/i)).not.toBeInTheDocument();
   });
 
-  // UI-refinement pass: the status/expiry line (which used to show
-  // "Modified: ...") is removed entirely, so this now only confirms the
-  // modify flow completes (the textarea closes, back to Accept/Modify/
-  // Dismiss) — not that the modified text renders anywhere, since it no
-  // longer does.
-  it("Modify closes the input and returns to the action buttons after saving", async () => {
+  it("Accept is SAVED through the client and the card shows the stored outcome", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
     vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
+    vi.mocked(client.acceptRecommendation).mockResolvedValue({ ...BASE_REC, status: "accepted" });
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    expect(client.acceptRecommendation).toHaveBeenCalledWith("rec-1");
+    await waitFor(() => expect(screen.getByText("You accepted this suggestion.")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Accept" })).not.toBeInTheDocument();
+  });
+
+  it("Modify saves a kind and a skill through the client", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
+    vi.mocked(client.modifyRecommendation).mockResolvedValue({
+      ...BASE_REC,
+      status: "modified",
+      modifiedActionSummary: "Review · Place value",
+    });
     renderStudent("s-1");
     await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
 
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
-    await userEvent.type(screen.getByRole("textbox"), "Try place value instead");
+    await userEvent.selectOptions(screen.getByLabelText("What should this be changed to?"), "review");
+    await userEvent.selectOptions(screen.getByLabelText("Skill"), "place_value");
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
 
-    await waitFor(() => expect(screen.queryByRole("textbox")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Accept" })).toBeInTheDocument();
+    expect(client.modifyRecommendation).toHaveBeenCalledWith("rec-1", { kind: "review", skillId: "place_value" });
+    await waitFor(() =>
+      expect(screen.getByText("You changed this to: Review · Place value.")).toBeInTheDocument(),
+    );
+  });
+
+  it("a refused decision says why, never a raw error, and re-reads the list", async () => {
+    const { RecommendationConflictError } = await import("../../lib/presentation");
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
+    vi.mocked(client.dismissRecommendation).mockRejectedValue(new RecommendationConflictError("expired"));
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
+    const readsBefore = vi.mocked(client.getStudentRecommendations).mock.calls.length;
+
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("This suggestion has expired"),
+    );
+    expect(screen.queryByText(/RECOMMENDATION_CONFLICT|refused/)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(vi.mocked(client.getStudentRecommendations).mock.calls.length).toBeGreaterThan(readsBefore),
+    );
+  });
+
+  it("a network failure shows a retryable message and keeps the buttons", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
+    vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
+    vi.mocked(client.acceptRecommendation).mockRejectedValue(new Error("HTTP 500"));
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Couldn't save your decision"));
+    expect(screen.queryByText(/500/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accept" })).toBeEnabled();
   });
 
   it("Accept/Modify/Dismiss are equally weighted and visually distinct", async () => {
