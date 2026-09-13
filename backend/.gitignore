@@ -14,3 +14,7 @@ venv/
 # data rule, so the D18 golden vector runs in CI. 10 learners, base features only:
 # no population, no dd_subtype, no split, no future_* columns.
 !tests/fixtures/*.csv
+
+# Seeder receipt: carries plaintext classroom invite tokens and the demo teacher
+# subject. Regenerate with scripts/seed_demo_tenancy.py; never commit it.
+scripts/demo_tenancy_receipt.json
