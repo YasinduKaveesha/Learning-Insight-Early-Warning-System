@@ -9,6 +9,16 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/testSetup.ts'],
+    // Hermetic auth env. A developer's .env.local (VITE_USE_MOCK=false plus a
+    // real Supabase project) is loaded in test mode too, which would silently
+    // switch every test onto the real HttpClient and break the rollback-path
+    // gate (frontend_plan section 11.0 gate 5). Tests always start from "no
+    // Supabase configured"; a test that wants otherwise stubs it itself.
+    env: {
+      VITE_USE_MOCK: 'true',
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_ANON_KEY: '',
+    },
     // Hardening-pass fix (defect B): the default 'forks' pool spawns a
     // fresh child process AND a fresh jsdom environment per test file
     // (28 files) — the cumulative environment-setup cost is exactly what a

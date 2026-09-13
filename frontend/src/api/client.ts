@@ -5,6 +5,8 @@ import type { HomeSummary, LearnerSnapshot, SessionEntry, SkillProgress } from "
 import type { Grade, PendingRequestDisplay, RecommendationDisplay } from "../lib/presentation";
 import { DuplicateClassNameError, isDuplicateClassNameError } from "../lib/presentation";
 import { MockClient } from "./mock/mockClient";
+import { HttpClient } from "./httpClient";
+import { isSupabaseConfigured } from "./supabaseClient";
 
 // Re-exported so a caller can `import { DuplicateClassNameError } from
 // "api/client"` alongside the rest of the seam's types, without needing to
@@ -144,6 +146,7 @@ export interface ApiClient {
   getClassReports(classId: string): Promise<ClassReportsResponse>;
 }
 
-// Fixtures land in Step 3; this stub keeps the seam typed and importable now.
-// Swapping to the real FastAPI service means changing only this line.
-export const client: ApiClient = new MockClient();
+// VITE_USE_MOCK=true, or no Supabase project configured, keeps the whole app
+// on MockClient -- the rollback path if the backend is down (frontend_plan
+// section 11.0 gate 5). MockClient is deliberately NOT deleted.
+export const client: ApiClient = isSupabaseConfigured ? new HttpClient() : new MockClient();
