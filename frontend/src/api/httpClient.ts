@@ -33,7 +33,7 @@ import type {
   TrajectoryState,
 } from "./types";
 import type { Grade, PendingRequestDisplay, RecommendationDisplay } from "../lib/presentation";
-import { EARLY_WARNING_TREND_EXPLANATION } from "../lib/presentation";
+import { EARLY_WARNING_TREND_EXPLANATION, recommendationLabel } from "../lib/presentation";
 import { supabase } from "./supabaseClient";
 
 const API_BASE: string = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8100").replace(
@@ -133,6 +133,23 @@ interface WireSessions {
       learner_state: string | null;
       data_quality: "ok" | "technical_issue" | "incomplete_telemetry";
     } | null;
+  }[];
+}
+
+interface WireAction {
+  kind: string;
+  detail: { skill?: unknown } & Record<string, unknown>;
+}
+
+interface WireRecommendations {
+  recommendations: {
+    recommendation_id: string;
+    expires_after_session: number;
+    trigger: { type: string; skill: string | null };
+    proposed_action: WireAction;
+    evidence_summary: string;
+    teacher_status: "pending" | "accepted" | "dismissed" | "modified";
+    teacher_modified_action: WireAction | null;
   }[];
 }
 
@@ -380,10 +397,32 @@ export class HttpClient implements ApiClient {
     }));
   }
 
-  getStudentRecommendations(_studentId: string): Promise<RecommendationDisplay[]> {
-    // B7 -- no recommendation endpoint exists. Empty renders "No suggestions
-    // right now", which is true; the mock's authored suggestions are not.
-    return Promise.resolve([]);
+  async getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]> {
+    // B7. Real endpoint, and today it is always empty: nothing generates a
+    // recommendation until the ML team rules on the trigger -> action mapping
+    // (dev_docs/QUESTIONS_FOR_ML_TEAM_4.md). Empty renders "No suggestions
+    // right now", which is true.
+    //
+    // Accept / dismiss / modify on the card still update only this screen's
+    // local state: ApiClient has no method to persist a decision yet. The
+    // backend endpoints exist (POST /recommendations/{id}/accept|dismiss|modify).
+    const w = await get<WireRecommendations>(
+      `/students/${encodeURIComponent(studentId)}/recommendations?status=active`,
+    );
+    return w.recommendations.map((r) => {
+      const skill = r.proposed_action.detail.skill ?? r.trigger.skill ?? null;
+      const modified = r.teacher_modified_action;
+      return {
+        recommendationId: r.recommendation_id,
+        kind: r.proposed_action.kind,
+        targetSkillDisplayName:
+          typeof skill === "string" ? (SKILL_DISPLAY_NAME[skill] ?? skill) : "",
+        evidenceSummary: r.evidence_summary,
+        status: r.teacher_status,
+        modifiedActionSummary: modified ? recommendationLabel(modified.kind) : null,
+        expiresAfterSession: r.expires_after_session,
+      };
+    });
   }
 
   createClass(_name: string, _grade: Grade): Promise<CreateClassResult> {
