@@ -508,3 +508,15 @@ def test_a_learner_with_no_prediction_gets_null_provenance(client, monkeypatch):
     assert card["evidence_status"] == "insufficient_exposure"
     assert card["watch_flag"] is False
     assert card["classroom_id"] == str(CLASSROOM)
+
+
+def test_student_detail_serves_the_classroom_id_for_the_back_link(client):
+    """`StudentDetail.tsx` links back to `/classes/{snapshot.classId}`.
+
+    Lives here rather than in `test_sessions_api.py` because only this module's prediction
+    double carries everything `/students/{id}` reads.
+    """
+
+    body = client.get(f"/api/v1/t3/students/{LEARNER}").json()
+    assert body["classroom_id"] == str(CLASSROOM)
+    assert body["class_name"] == "Grade 3 Maths"

@@ -53,6 +53,7 @@ from app.domain.sessions import (
     PracticeSession,
     SessionHistoryResponse,
     SessionRecord,
+    ParticipationBucket,
     SkillProgress,
     SkillProgressResponse,
 )
@@ -438,6 +439,7 @@ async def student_detail(
     return StudentDetail(
         student_id=student_id,
         display_name=roster_name,
+        classroom_id=None if classroom_row is None else classroom_row.classroom_id,
         class_name=None if classroom_row is None else classroom_row.name,
         t=latest.t,
         evidence_status=latest.evidence_status,
@@ -624,6 +626,31 @@ async def skill_progress(
     )
 
 
+#: Bands for the participation histogram. Chosen around D6's warm-up floor of three sessions
+#: rather than as even arithmetic ranges: "below the floor" is a state the product already
+#: treats as distinct, so the first band means something a teacher can act on. The upper bands
+#: are even so the shape is not an artefact of the bucketing.
+PARTICIPATION_BUCKETS: tuple[tuple[str, int, int], ...] = (
+    ("Fewer than 3 sessions", 0, 2),
+    ("3-5 sessions", 3, 5),
+    ("6-10 sessions", 6, 10),
+    ("11-15 sessions", 11, 15),
+    ("16+ sessions", 16, 10**6),
+)
+
+
+def _participation(sessions_completed: Sequence[int]) -> list[ParticipationBucket]:
+    """Bucket learners by sessions completed, keeping empty bands."""
+
+    return [
+        ParticipationBucket(
+            bucket_label=label,
+            student_count=sum(1 for n in sessions_completed if low <= n <= high),
+        )
+        for label, low, high in PARTICIPATION_BUCKETS
+    ]
+
+
 async def class_report(
     session: AsyncSession,
     teacher_profile_id: uuid.UUID,
@@ -657,6 +684,15 @@ async def class_report(
         if row.student_id in roster_ids
     ]
 
+    # The histogram counts LEARNERS, so it uses each learner's latest snapshot -- not every
+    # prediction row, which would count a learner once per session and turn a class of 20 into
+    # a bar chart of 606.
+    latest = _latest_by_student(predictions)
+    participation = _participation([row.sessions_completed for row in latest.values()])
+
+    classrooms = await data_access.classrooms_for_teacher(session, teacher_profile_id)
+    this_class = next((c for c in classrooms if c.classroom_id == classroom_id), None)
+
     by_t: dict[int, list[Any]] = {}
     for row in predictions:
         by_t.setdefault(row.t, []).append(row)
@@ -688,6 +724,8 @@ async def class_report(
 
     return ClassReportResponse(
         classroom_id=classroom_id,
+        class_name=None if this_class is None else this_class.name,
+        participation=participation,
         learner_count=len(roster_ids),
         early_warning_curve=curve,
         practice_trajectory_trend=trend,

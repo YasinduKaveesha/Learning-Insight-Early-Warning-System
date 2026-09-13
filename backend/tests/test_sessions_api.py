@@ -78,6 +78,10 @@ class _PredRow:
         self.t = t
         self.watch_flag = watch_flag
         self.practice_trajectory = trajectory
+        # B6.5: the participation histogram buckets learners by this. It equals `t` on every
+        # real row (the decision layer writes them together and a live test pins it), so the
+        # double mirrors that rather than inventing an independent value.
+        self.sessions_completed = t
 
 
 @pytest.fixture
@@ -116,7 +120,25 @@ def client(monkeypatch):
     async def _real_learners(_session, *, learner_ids=None):
         return [_Learner(LEARNER, "Amara")]
 
+    class _ClassroomRow:
+        def __init__(self, classroom_id, name, grade="GRADE_3"):
+            self.classroom_id = classroom_id
+            self.name = name
+            self.grade = grade
+
+    async def _classrooms(_session, teacher_profile_id):
+        # B6.5: `class_report` and `student_detail` now need the class name (and, for the
+        # student screen, the id to link back with).
+        return [_ClassroomRow(CLASSROOM, "Grade 3 Maths")] if teacher_profile_id == TEACHER else []
+
+    async def _classroom_for_learner(_session, teacher_profile_id, learner_id):
+        if teacher_profile_id != TEACHER:
+            return None
+        return _ClassroomRow(CLASSROOM, "Grade 3 Maths")
+
     da = dashboard_service.data_access
+    monkeypatch.setattr(da, "classrooms_for_teacher", _classrooms)
+    monkeypatch.setattr(da, "classroom_for_learner", _classroom_for_learner)
     monkeypatch.setattr(da, "active_pipeline_run", _active_run)
     monkeypatch.setattr(da, "session_history_for_student", _history)
     monkeypatch.setattr(da, "classroom_roster", _roster)
@@ -328,3 +350,42 @@ def test_every_b62_route_requires_a_principal(monkeypatch):
     with TestClient(create_app()) as bare:
         for route in ALL_ROUTES:
             assert bare.get(route).status_code in (401, 403), route
+
+
+# ------------------------------------------------------------------------------------------
+# B6.5 — the Reports fields the current UI renders.
+# ------------------------------------------------------------------------------------------
+
+
+def test_class_report_serves_the_class_name(client):
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/reports").json()
+    assert body["class_name"] == "Grade 3 Maths"
+
+
+def test_participation_counts_learners_not_prediction_rows(client):
+    """The histogram is per LEARNER, from each one's latest snapshot.
+
+    Counting every prediction row instead would count a learner once per session and turn a
+    class of twenty into a chart of several hundred -- a bar chart that looks like a cohort and
+    is actually a session log.
+    """
+
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/reports").json()
+    total = sum(b["student_count"] for b in body["participation"])
+    assert total == body["learner_count"] or total <= body["learner_count"]
+    assert total <= len(body["early_warning_curve"]) * body["learner_count"]
+
+
+def test_participation_keeps_empty_bands(client):
+    """A band that vanishes at zero makes the chart change shape for an invisible reason."""
+
+    body = client.get(f"/api/v1/t3/classes/{CLASSROOM}/reports").json()
+    labels = [b["bucket_label"] for b in body["participation"]]
+    assert labels == [
+        "Fewer than 3 sessions",
+        "3-5 sessions",
+        "6-10 sessions",
+        "11-15 sessions",
+        "16+ sessions",
+    ]
+

@@ -167,6 +167,8 @@ class WatchListResponse(Disclosed):
 class StudentDetail(Disclosed):
     student_id: uuid.UUID
     display_name: str
+    #: The student screen links back to its class, so the id must travel with the name.
+    classroom_id: uuid.UUID | None = None
     class_name: str | None = None
     t: int
     evidence_status: EvidenceStatus

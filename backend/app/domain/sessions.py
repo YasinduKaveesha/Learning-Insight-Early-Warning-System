@@ -35,6 +35,8 @@ import datetime as dt
 import uuid
 from typing import Literal
 
+from pydantic import Field
+
 from app.domain.dashboard import Disclosed, TrajectoryState, _Base
 
 #: Rule 3. Fewer than this many observations means no slope may be reported.
@@ -138,8 +140,26 @@ class ClassTrendPoint(_Base):
     unknown: int
 
 
+class ParticipationBucket(_Base):
+    """How many learners sit in each band of sessions completed.
+
+    A restatement of `sessions_completed`, which is already on every student card and in the
+    Getting Started tile -- no new derived state, so D16 is not engaged (the same reasoning the
+    ML supervisor applied to the flag count and proportion bar). Flagged to them for
+    confirmation in `QUESTIONS_FOR_ML_TEAM_3.md`.
+
+    Empty bands are still returned. A band that vanishes when it reaches zero makes the chart
+    change shape for a reason a teacher cannot see.
+    """
+
+    bucket_label: str
+    student_count: int
+
+
 class ClassReportResponse(Disclosed):
     classroom_id: uuid.UUID
+    class_name: str | None = None
     learner_count: int
     early_warning_curve: list[EarlyWarningPoint]
     practice_trajectory_trend: list[ClassTrendPoint]
+    participation: list[ParticipationBucket] = Field(default_factory=list)
