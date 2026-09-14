@@ -131,6 +131,14 @@ class HomeSummary(Disclosed):
     classes: list[ClassCard]
 
 
+class ClassKeyResponse(Disclosed):
+    """The permanent class key (D1). Returned by the mint endpoint; the same value rides on
+    `CohortResponse.class_key` for every later read, so a client never needs to ask twice."""
+
+    classroom_id: uuid.UUID
+    class_key: str = Field(min_length=6, max_length=6)
+
+
 class CohortStats(_Base):
     learner_count: int
     watch_count: int

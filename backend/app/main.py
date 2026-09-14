@@ -11,6 +11,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.class_keys import router as class_keys_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.health import router as health_router
 from app.api.routes.recommendations import router as recommendations_router
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
 
     application.include_router(health_router)
     application.include_router(dashboard_router)
+    application.include_router(class_keys_router)
     application.include_router(recommendations_router)
 
     return application
