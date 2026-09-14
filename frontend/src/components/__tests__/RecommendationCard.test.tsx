@@ -18,7 +18,7 @@ describe("RecommendationCard", () => {
   it("renders the known kinds through the lookup", () => {
     for (const kind of ["practice", "review", "try_again", "monitor_progress"]) {
       const { unmount } = render(
-        <RecommendationCard recommendation={{ ...BASE, kind }} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />,
+        <RecommendationCard recommendation={{ ...BASE, kind }} onAccept={vi.fn()} onModify={vi.fn()} />,
       );
       unmount();
     }
@@ -30,7 +30,6 @@ describe("RecommendationCard", () => {
         <RecommendationCard
           recommendation={{ ...BASE, kind: "some_new_kind_never_seen" }}
           onAccept={vi.fn()}
-          onDismiss={vi.fn()}
           onModify={vi.fn()}
         />,
       ),
@@ -39,7 +38,7 @@ describe("RecommendationCard", () => {
   });
 
   it("shows the evidence WITH the action, not behind a tap", () => {
-    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
+    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onModify={vi.fn()} />);
     expect(screen.getByText(new RegExp(BASE.evidenceSummary))).toBeInTheDocument();
   });
 
@@ -48,54 +47,33 @@ describe("RecommendationCard", () => {
   // direction — that also removes the only place "Accepted" / "Dismissed"
   // / "Modified: ..." feedback rendered for an already-actioned card.
   it("does not render a status/expiry line", () => {
-    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
+    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onModify={vi.fn()} />);
     expect(screen.queryByText(/Not yet applied/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Expires after session/)).not.toBeInTheDocument();
   });
 
-  it("Accept, Modify and Dismiss are labelled distinctly and are visually separated, not merely adjacent siblings", () => {
-    // Step 4 review ruling A: "never adjacent" means visually, not only in
-    // DOM order — a 4px spacer div satisfies the letter and not the point.
-    // This asserts real visual distinction: three different visual weights
-    // (solid / outline / understated-with-a-rule-above-it), not three
-    // identically-styled buttons a thumb could confuse.
-    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
+  it("Accept and Modify are labelled distinctly and visually separated, and there is no Dismiss", () => {
+    // Step 4 review ruling A: "never adjacent" means visually, not only in DOM
+    // order. Dismiss was removed at explicit direction, 2026-09-14 (D51).
+    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onModify={vi.fn()} />);
     const accept = screen.getByRole("button", { name: "Accept" });
     const modify = screen.getByRole("button", { name: "Modify" });
-    const dismiss = screen.getByRole("button", { name: "Dismiss" });
 
-    // Distinct labels (never colour/position alone).
     expect(accept.textContent).not.toBe(modify.textContent);
-    expect(modify.textContent).not.toBe(dismiss.textContent);
-
-    // Distinct visual treatment — not three buttons sharing one className.
     expect(accept.className).not.toBe(modify.className);
-    expect(modify.className).not.toBe(dismiss.className);
-    expect(accept.className).not.toBe(dismiss.className);
-
-    // Dismiss sits behind an explicit visual break (a rule + extra top
-    // margin), giving it real distance from Accept — not just DOM order.
-    const dismissWrapper = dismiss.parentElement!;
-    expect(dismissWrapper.className).toMatch(/border-t/);
+    expect(screen.queryByRole("button", { name: /dismiss/i })).not.toBeInTheDocument();
   });
 
   it("calls onAccept with the recommendation id", async () => {
     const onAccept = vi.fn();
-    render(<RecommendationCard recommendation={BASE} onAccept={onAccept} onDismiss={vi.fn()} onModify={vi.fn()} />);
+    render(<RecommendationCard recommendation={BASE} onAccept={onAccept} onModify={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Accept" }));
     expect(onAccept).toHaveBeenCalledWith("rec-1");
   });
 
-  it("calls onDismiss with the recommendation id", async () => {
-    const onDismiss = vi.fn();
-    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={onDismiss} onModify={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-    expect(onDismiss).toHaveBeenCalledWith("rec-1");
-  });
-
   it("Modify offers a choice of the four kinds and the seven skills — never free text", async () => {
     const onModify = vi.fn();
-    render(<RecommendationCard recommendation={{ ...BASE, targetSkillId: "place_value" }} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={onModify} />);
+    render(<RecommendationCard recommendation={{ ...BASE, targetSkillId: "place_value" }} onAccept={vi.fn()} onModify={onModify} />);
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
@@ -115,7 +93,7 @@ describe("RecommendationCard", () => {
 
   it("'No specific skill' sends a null skill", async () => {
     const onModify = vi.fn();
-    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={onModify} />);
+    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onModify={onModify} />);
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
     await userEvent.selectOptions(screen.getByLabelText("What should this be changed to?"), "monitor_progress");
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
@@ -124,7 +102,7 @@ describe("RecommendationCard", () => {
 
   it("does not offer to save a modification until a kind is chosen", async () => {
     const onModify = vi.fn();
-    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={onModify} />);
+    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onModify={onModify} />);
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
     expect(screen.getByRole("button", { name: "Save change" })).toBeDisabled();
   });
@@ -138,7 +116,6 @@ describe("RecommendationCard", () => {
       <RecommendationCard
         recommendation={{ ...BASE, status, modifiedActionSummary: summary }}
         onAccept={vi.fn()}
-        onDismiss={vi.fn()}
         onModify={vi.fn()}
       />,
     );
@@ -147,8 +124,8 @@ describe("RecommendationCard", () => {
   });
 
   it("while saving, the buttons are disabled so a double tap cannot send two decisions", () => {
-    render(<RecommendationCard recommendation={BASE} isSaving onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
-    for (const name of ["Accept", "Modify", "Dismiss"]) {
+    render(<RecommendationCard recommendation={BASE} isSaving onAccept={vi.fn()} onModify={vi.fn()} />);
+    for (const name of ["Accept", "Modify"]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
   });
@@ -164,7 +141,6 @@ describe("RecommendationCard", () => {
           sourceLabel: "Based on recent learning activity",
         }}
         onAccept={vi.fn()}
-        onDismiss={vi.fn()}
         onModify={vi.fn()}
       />,
     );
@@ -174,12 +150,12 @@ describe("RecommendationCard", () => {
   });
 
   it("shows a save error as an alert", () => {
-    render(<RecommendationCard recommendation={BASE} errorMessage="This suggestion was already decided." onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
+    render(<RecommendationCard recommendation={BASE} errorMessage="This suggestion was already decided." onAccept={vi.fn()} onModify={vi.fn()} />);
     expect(screen.getByRole("alert")).toHaveTextContent("This suggestion was already decided.");
   });
 
   it('renders no "Accept all" control', () => {
-    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onDismiss={vi.fn()} onModify={vi.fn()} />);
+    render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onModify={vi.fn()} />);
     expect(screen.queryByText(/accept all/i)).not.toBeInTheDocument();
   });
 });

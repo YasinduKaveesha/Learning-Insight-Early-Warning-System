@@ -68,8 +68,8 @@ export function CreateClassDialog({
               onClick={() => setGrade("GRADE_2")}
               className={`min-h-[44px] flex-1 rounded-lg border px-3 text-base font-medium ${
                 grade === "GRADE_2"
-                  ? "border-primary bg-primary text-foreground"
-                  : "border-border-strong text-ink-primary"
+                  ? "border-watch-watching-fg bg-watch-watching-fg text-white"
+                  : "border-border-strong bg-surface1 text-ink-primary"
               }`}
             >
               Grade 2
@@ -80,8 +80,8 @@ export function CreateClassDialog({
               onClick={() => setGrade("GRADE_3")}
               className={`min-h-[44px] flex-1 rounded-lg border px-3 text-base font-medium ${
                 grade === "GRADE_3"
-                  ? "border-primary bg-primary text-foreground"
-                  : "border-border-strong text-ink-primary"
+                  ? "border-watch-watching-fg bg-watch-watching-fg text-white"
+                  : "border-border-strong bg-surface1 text-ink-primary"
               }`}
             >
               Grade 3
@@ -91,7 +91,7 @@ export function CreateClassDialog({
 
         <button
           type="submit"
-          className="min-h-[44px] rounded-lg bg-primary px-3 text-sm font-bold text-foreground"
+          className="min-h-[44px] rounded-full bg-watch-watching-fg px-3 text-sm font-bold text-white"
         >
           Create class
         </button>

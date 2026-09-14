@@ -203,7 +203,7 @@ describe("ClassroomRoute — empty cohort shows the class key", () => {
     mockCohort([], { studentCount: 0, classKey: "4T7N26" });
     renderClassroom();
     await waitFor(() =>
-      expect(screen.getByText("No students yet. Share the key 4T7N26.")).toBeInTheDocument(),
+      expect(screen.getByText("No students yet. Share the class key so students can join.")).toBeInTheDocument(),
     );
   });
 
@@ -409,18 +409,73 @@ describe("ClassroomRoute — decision B: a handled suggestion moves the card, no
     expect(names[1]).toContain("Kavya");
   });
 
-  it("the To Watch COUNT does not drop — it gains a 'handled' caption instead", async () => {
-    // Accepting a suggestion must not be a way to clear the watch list (D36/D44).
-    mockCohort([WATCHED_1, HANDLED], { toWatchCount: 2, handledCount: 1 });
+  it("the To Watch tile shows the deducted count, with no 'handled' caption (D50)", async () => {
+    // The client has already subtracted handled learners from toWatchCount; the
+    // tile shows that number as-is and says nothing about how it was reached.
+    mockCohort([WATCHED_1, HANDLED], { toWatchCount: 1, handledCount: 1 });
     renderClassroom();
-    await waitFor(() => expect(screen.getByText("1 handled")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Dilshan")).toBeInTheDocument());
     const tile = screen.getByText("To Watch").closest("div")!.parentElement!;
-    expect(tile.textContent).toContain("2");
+    expect(tile.textContent).toContain("1");
+    expect(screen.queryByText(/handled/i)).not.toBeInTheDocument();
   });
 
   it("a modified suggestion reads differently from an accepted one", async () => {
     mockCohort([{ ...HANDLED, suggestionStatus: "modified" }], { handledCount: 1 });
     renderClassroom();
     await waitFor(() => expect(screen.getByText("Suggestion changed")).toBeInTheDocument());
+  });
+});
+
+describe("ClassroomRoute — scroll layout: pinned top bar, sticky section titles", () => {
+  // jsdom cannot scroll; these pin the structure the scrolling depends on.
+
+  it("pins the top bar and the search box together", async () => {
+    mockCohort(ORDERED_COHORT);
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    const pinned = screen.getByRole("link", { name: "Home" }).closest(".sticky") as HTMLElement;
+    expect(pinned).not.toBeNull();
+    expect(pinned.className).toMatch(/top-0/);
+    expect(pinned.className).toMatch(/z-20/);
+    expect(pinned.contains(screen.getByLabelText("Search students"))).toBe(true);
+  });
+
+  it("the three tiles and the join-requests banner are pinned too — only the student cards scroll", async () => {
+    // On the CLASS page the tiles stay still (explicit direction, 2026-09-14).
+    // Home differs on purpose: there the tiles slide under the watch card.
+    mockCohort(ORDERED_COHORT, { pendingRequestCount: 1 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    const pinned = screen.getByRole("link", { name: "Home" }).closest(".sticky") as HTMLElement;
+    for (const label of ["Students", "To Watch", "Getting Started"]) {
+      expect(pinned.contains(screen.getByText(label))).toBe(true);
+    }
+    expect(pinned.contains(screen.getByText(/1 join request pending/))).toBe(true);
+    // ...and no student card is in it.
+    expect(pinned.contains(screen.getByText("Amara"))).toBe(false);
+  });
+
+  it("each section title sticks beneath the pinned block, so only the cards scroll", async () => {
+    mockCohort(ORDERED_COHORT);
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    for (const title of ["Students to Watch", "All Students"]) {
+      const holder = screen.getByText(title).closest(".sticky") as HTMLElement;
+      expect(holder).not.toBeNull();
+      expect(holder.className).toMatch(/z-10/);
+      expect(holder.className).toMatch(/bg-background/);
+      // Set from the pinned block's measured height, not a hard-coded guess.
+      expect(holder.style.top).toMatch(/px$/);
+      // A card is NOT inside the sticky title, so the cards are what scroll.
+      expect(holder.contains(screen.getByText("Amara"))).toBe(false);
+    }
+  });
+
+  it("an empty class pins only the top bar -- no search box to pin", async () => {
+    mockCohort([], { studentCount: 0, classKey: "4T7N26" });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText(/No students yet/)).toBeInTheDocument());
+    expect(screen.queryByLabelText("Search students")).not.toBeInTheDocument();
   });
 });

@@ -12,7 +12,6 @@ import {
 export interface RecommendationCardProps {
   recommendation: RecommendationDisplay;
   onAccept: (recommendationId: string) => void;
-  onDismiss: (recommendationId: string) => void;
   /** A KIND plus an optional skill -- never free text (2026-09-14, option A):
    * docs/13 §6 needs modifications that can be counted. */
   onModify: (recommendationId: string, action: ModifiedAction) => void;
@@ -36,7 +35,6 @@ export interface RecommendationCardProps {
 export function RecommendationCard({
   recommendation,
   onAccept,
-  onDismiss,
   onModify,
   isSaving = false,
   errorMessage = null,
@@ -138,17 +136,20 @@ export function RecommendationCard({
           </div>
         </div>
       ) : (
-        // Accept / Modify / Dismiss: equally weighted, NEVER adjacent — and
-        // at 375px "never adjacent" means visually, not just in DOM order
-        // (Step 4 review ruling A). A mis-tap here decides something about a
-        // child, so each control gets real vertical distance and a distinct
-        // visual weight, not just a 4px spacer: Accept is a full-width solid
-        // block, Modify is a full-width outline block one gap below it, and
-        // Dismiss sits below a rule with extra top margin, deliberately the
-        // furthest thumb-travel from Accept. None of the three uses colour
-        // to signal "less/more correct" — the weight difference is about
-        // making the tap targets unmistakably separate finger-hits, not
-        // about ranking the choices.
+        // Accept / Modify: equally weighted, NEVER adjacent — and at 375px
+        // "never adjacent" means visually, not just in DOM order (Step 4
+        // review ruling A). A mis-tap here decides something about a child, so
+        // each control gets real vertical distance and a distinct visual
+        // weight: Accept is a full-width solid block, Modify a full-width
+        // outline block one gap below it. Neither colour signals "more
+        // correct" -- the difference is about separate finger-hits.
+        //
+        // DISMISS WAS REMOVED at explicit direction, 2026-09-14 (D51). The
+        // backend's dismiss endpoint still exists; this screen no longer
+        // offers it. A teacher who disagrees modifies the suggestion or leaves
+        // it, and a suggestion left alone expires unanswered (D47) -- which is
+        // why D44's reporting now reads "expired unanswered" as the place
+        // disagreement goes.
         <div className="flex flex-col gap-3 pt-1">
           {/* UI-refinement pass: solid dark purple matching the card's own
               theme (suggestionPurple.accept), white text — 7.38:1. */}
@@ -168,20 +169,6 @@ export function RecommendationCard({
           >
             Modify
           </button>
-          <div className="mt-2 border-t border-border pt-3">
-            {/* UI-refinement pass: a deeper purple tint than the card's own
-                background (suggestionPurple.dismissBg), foreground text —
-                9.27:1 — replacing the previous danger-soft/pink pairing so
-                Dismiss reads as part of this card's own colour family. */}
-            <button
-              type="button"
-              onClick={() => onDismiss(recommendation.recommendationId)}
-            disabled={isSaving}
-              className="min-h-[44px] w-full rounded-lg bg-suggestionPurple-dismissBg px-3 text-sm font-medium text-foreground underline underline-offset-2"
-            >
-              Dismiss
-            </button>
-          </div>
         </div>
       )}
     </div>

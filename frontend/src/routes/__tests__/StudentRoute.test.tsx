@@ -83,9 +83,11 @@ describe("StudentRoute — watching student", () => {
     await waitFor(() => expect(screen.getByText(/Priority 1 in Grade 3 Blue/)).toBeInTheDocument());
     expect(screen.queryByText("Worth watching right now")).not.toBeInTheDocument();
     expect(screen.queryByText("Why?")).not.toBeInTheDocument();
+    // The explanation paragraph was removed from this card at explicit
+    // direction, 2026-09-14 -- the card carries only its scope/priority line.
     expect(
-      screen.getByText("Subtraction has not improved across the last four sessions."),
-    ).toBeInTheDocument();
+      screen.queryByText("Subtraction has not improved across the last four sessions."),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Skill progress")).toBeInTheDocument();
 
     // Order: status block before "Skill progress" before "Suggestions".
@@ -289,12 +291,12 @@ describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () 
     const { RecommendationConflictError } = await import("../../lib/presentation");
     vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
     vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
-    vi.mocked(client.dismissRecommendation).mockRejectedValue(new RecommendationConflictError("expired"));
+    vi.mocked(client.acceptRecommendation).mockRejectedValue(new RecommendationConflictError("expired"));
     renderStudent("s-1");
     await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
     const readsBefore = vi.mocked(client.getStudentRecommendations).mock.calls.length;
 
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
 
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("This suggestion has expired"),
@@ -319,16 +321,15 @@ describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () 
     expect(screen.getByRole("button", { name: "Accept" })).toBeEnabled();
   });
 
-  it("Accept/Modify/Dismiss are equally weighted and visually distinct", async () => {
+  it("offers Accept and Modify, visually distinct, and no Dismiss (D51)", async () => {
     vi.mocked(client.getStudentOverview).mockResolvedValue(overviewFor("s-1"));
     vi.mocked(client.getStudentRecommendations).mockResolvedValue([BASE_REC]);
     renderStudent("s-1");
     await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
     const accept = screen.getByRole("button", { name: "Accept" });
     const modify = screen.getByRole("button", { name: "Modify" });
-    const dismiss = screen.getByRole("button", { name: "Dismiss" });
     expect(accept.className).not.toBe(modify.className);
-    expect(modify.className).not.toBe(dismiss.className);
+    expect(screen.queryByRole("button", { name: /dismiss/i })).not.toBeInTheDocument();
   });
 });
 
@@ -411,5 +412,28 @@ describe("StudentRoute — framing, disclosure, forbidden vocabulary", () => {
     await waitFor(() => expect(screen.getByText(/still building a learning history/)).toBeInTheDocument());
     const text = container.textContent!.toLowerCase();
     for (const term of FORBIDDEN) expect(text).not.toContain(term);
+  });
+});
+
+describe("StudentRoute — pinned header and tabs", () => {
+  it("the header and the Overview/Sessions tabs stay pinned; the content does not", async () => {
+    vi.mocked(client.getStudentOverview).mockResolvedValue({
+      snapshot: makeSnapshot({}),
+      skills: SKILLS,
+      disclosure: "d",
+      className: "Grade 3 Blue",
+      skillBounds: BOUNDS,
+    });
+    renderStudent("s-1");
+    await waitFor(() => expect(screen.getByText("Skill progress")).toBeInTheDocument());
+
+    const pinned = screen.getByText("Overview").closest(".sticky") as HTMLElement;
+    expect(pinned).not.toBeNull();
+    expect(pinned.className).toMatch(/top-0/);
+    expect(pinned.contains(screen.getByRole("link", { name: "Sessions" }))).toBe(true);
+    expect(pinned.contains(screen.getByRole("link", { name: "Home" }))).toBe(true);
+    // Content scrolls beneath it.
+    expect(pinned.contains(screen.getByText("Skill progress"))).toBe(false);
+    expect(pinned.contains(screen.getByText("Suggestions"))).toBe(false);
   });
 });

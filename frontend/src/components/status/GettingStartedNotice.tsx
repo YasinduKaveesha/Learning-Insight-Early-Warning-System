@@ -1,3 +1,4 @@
+import { gettingStartedProgress } from "../../lib/presentation";
 import { NeutralNotice } from "../shared/NeutralNotice";
 
 export interface GettingStartedNoticeProps {
@@ -24,11 +25,16 @@ export function GettingStartedNotice({
   return (
     <NeutralNotice title="Getting Started" tone={name ? "green" : "neutral"}>
       {name
-        ? `${name} is still building a learning history — ${sessionsCompleted} of ${sessionsRequired} sessions completed. More activity is needed before the system can identify a clear learning pattern.`
+        ? sessionsCompleted <= 0
+          ? // A child who joined today has not started, which is different from
+            // having started and not got far. "0 of 3 sessions completed" reads
+            // as a stalled progress bar for someone with nothing to stall.
+            `${name} has just joined and has not completed a session yet. After ${sessionsRequired} sessions the dashboard can start showing how they are getting on.`
+          : `${name} is still building a learning history — ${sessionsCompleted} of ${sessionsRequired} sessions completed. More activity is needed before the system can identify a clear learning pattern.`
         : "This student is still building a learning history. More activity is needed before the system can identify a clear learning pattern."}
       {!name ? (
         <span className="mt-2 block text-sm text-ink-secondary">
-          {sessionsCompleted} of {sessionsRequired} sessions
+          {gettingStartedProgress(sessionsCompleted, sessionsRequired)}
         </span>
       ) : null}
     </NeutralNotice>

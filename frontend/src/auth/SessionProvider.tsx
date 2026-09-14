@@ -5,8 +5,10 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { createTeacherProfile } from "../api/studentAppClient";
 import { isSupabaseConfigured, supabase } from "../api/supabaseClient";
-import { classifySignInError, type AuthFailure } from "./authErrors";
+import { authFailure, classifySignInError, classifySignUpError } from "./authErrors";
+import type { AuthFailure } from "./authErrors";
 
 export type SessionStatus =
   // resolving getSession() on first load
@@ -19,6 +21,10 @@ export type SessionStatus =
   // whole app runs anyway; the guard treats this as "let through"
   | "mock";
 
+export type SignUpResult =
+  | { ok: true; needsConfirmation: boolean }
+  | { ok: false; failure: AuthFailure };
+
 export interface SessionContextValue {
   status: SessionStatus;
   session: Session | null;
@@ -26,6 +32,9 @@ export interface SessionContextValue {
   isAuthed: boolean;
   /** Resolves to null on success, or an AuthFailure to render. */
   signIn: (email: string, password: string) => Promise<AuthFailure | null>;
+  /** Create a teacher account: a Supabase identity AND the student app's
+   * teacher profile, which the dashboard requires (D3). See signUp below. */
+  signUp: (name: string, email: string, password: string) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
 }
 
@@ -76,6 +85,34 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           return classifySignInError(error as { status?: number; message?: string });
         }
         return null;
+      },
+      async signUp(name, email, password) {
+        if (!supabase) return { ok: true, needsConfirmation: false };
+
+        const trimmedName = name.trim();
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          // Stored on the Supabase user as well, so the name survives even if the
+          // teacher-profile call below fails and has to be retried.
+          options: { data: { name: trimmedName } },
+        });
+        if (error) {
+          return { ok: false, failure: classifySignUpError(error as { status?: number; message?: string }) };
+        }
+
+        // No session means the project requires email confirmation: there is no
+        // token yet, so the teacher profile cannot be created until they sign in.
+        if (!data.session) return { ok: true, needsConfirmation: true };
+
+        try {
+          // A Supabase identity alone is not a teacher. Without this the dashboard
+          // answers 403 to everything, which reads as a broken login.
+          await createTeacherProfile(trimmedName);
+        } catch {
+          return { ok: false, failure: authFailure("profile_setup_failed") };
+        }
+        return { ok: true, needsConfirmation: false };
       },
       async signOut() {
         if (supabase) await supabase.auth.signOut();

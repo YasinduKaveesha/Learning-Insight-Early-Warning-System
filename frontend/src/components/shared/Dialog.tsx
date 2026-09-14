@@ -9,6 +9,11 @@ export interface DialogProps {
   titleId: string;
   title: string;
   children: ReactNode;
+  /** "sheet" (default): a bottom sheet on phones, centred from 640px up.
+   * "center": always centred both ways over a blurred page, with no close
+   * button -- for a confirmation whose own buttons are the only way out
+   * (Escape still closes it). */
+  placement?: "sheet" | "center";
 }
 
 /**
@@ -17,7 +22,14 @@ export interface DialogProps {
  * this app (ClassKeyDialog, CreateClassDialog, ClassInfoDialog) is built on
  * this one so the accessibility contract lives in exactly one place.
  */
-export function Dialog({ isOpen, onClose, titleId, title, children }: DialogProps) {
+export function Dialog({
+  isOpen,
+  onClose,
+  titleId,
+  title,
+  children,
+  placement = "sheet",
+}: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -57,6 +69,26 @@ export function Dialog({ isOpen, onClose, titleId, title, children }: DialogProp
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  if (placement === "center") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 px-4 backdrop-blur-sm">
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className="w-full max-w-sm rounded-2xl bg-surface1 p-5 shadow-elevated"
+        >
+          <h2 id={titleId} className="mb-3 text-xl font-bold text-ink-primary">
+            {title}
+          </h2>
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 sm:items-center">

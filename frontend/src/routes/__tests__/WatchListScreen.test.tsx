@@ -330,3 +330,43 @@ describe("WatchListScreen — per class (/classes/:classId/watch)", () => {
     expect(screen.getByText("Third")).toBeInTheDocument();
   });
 });
+
+describe("WatchListScreen — pinned header, no disclosure footer (2026-09-14)", () => {
+  function mockTeacherWide() {
+    vi.mocked(client.getWatchList).mockResolvedValue({
+      totalStudents: 24,
+      disclosure: "Literature-informed synthetic data — not clinical evidence.",
+      students: [AMARA, KAVINDU],
+    });
+    vi.mocked(client.getHome).mockResolvedValue({
+      teacherName: "Ms Perera",
+      studentsToWatch: 2,
+      activeStudents: 24,
+      classCount: 2,
+      gettingStarted: 1,
+      classes: [
+        { classId: "class-1", name: "Grade 3 Blue", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 },
+        { classId: "class-2", name: "Grade 3 Green", grade: "GRADE_3", studentCount: 8, toWatchCount: 1, pendingRequestCount: 0 },
+      ],
+      disclosure: "Literature-informed synthetic data — not clinical evidence.",
+    });
+    renderRoute(<WatchListScreen />, { path: "/watch", initialPath: "/watch" });
+  }
+
+  it("keeps the header, and its Home button, pinned while the list scrolls", async () => {
+    mockTeacherWide();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    const header = screen.getByRole("link", { name: "Home" }).closest("header") as HTMLElement;
+    expect(header.className).toMatch(/sticky/);
+    expect(header.className).toMatch(/top-0/);
+    expect(header.className).toMatch(/bg-background/);
+    // The cards are not inside it, so they are what scrolls.
+    expect(header.contains(screen.getByText("Amara"))).toBe(false);
+  });
+
+  it("no longer shows the disclosure footer at the bottom", async () => {
+    mockTeacherWide();
+    await waitFor(() => expect(screen.getByText("Amara")).toBeInTheDocument());
+    expect(screen.queryByText(/Literature-informed synthetic data/)).not.toBeInTheDocument();
+  });
+});

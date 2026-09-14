@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomeRoute from "../home/HomeRoute";
@@ -18,6 +18,7 @@ vi.mock("../../api/client", async () => {
       getStudentSessions: vi.fn(),
       getStudentRecommendations: vi.fn(),
       createClass: vi.fn(),
+      deleteClass: vi.fn(),
       getJoinRequests: vi.fn(),
       approveJoinRequest: vi.fn(),
       rejectJoinRequest: vi.fn(),
@@ -256,5 +257,97 @@ describe("HomeRoute — framing, disclosure, and forbidden vocabulary", () => {
     await waitFor(() => expect(screen.getByText("Grade 3 Blue")).toBeInTheDocument());
     const text = container.textContent!.toLowerCase();
     for (const term of FORBIDDEN) expect(text).not.toContain(term);
+  });
+});
+
+describe("HomeRoute — scroll layout: pinned watch card, sticky 'Your Classes'", () => {
+  // jsdom has no layout engine, so it cannot scroll. These pin the STRUCTURE the
+  // scrolling depends on: what is pinned, what slides under it, what sticks.
+  beforeEach(() => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+  });
+
+  it("pins the buttons and the watch card together at the top", async () => {
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Students to Watch")).toBeInTheDocument());
+    const pinned = screen.getByText("Students to Watch").closest(".sticky") as HTMLElement;
+    expect(pinned).not.toBeNull();
+    expect(pinned.className).toMatch(/top-0/);
+    // The Add-class and Profile buttons ride with it.
+    expect(pinned.contains(screen.getByRole("button", { name: "Add class" }))).toBe(true);
+    expect(pinned.contains(screen.getByRole("link", { name: "Profile" }))).toBe(true);
+    // Its page-coloured background is what hides the tiles scrolling beneath it.
+    expect(pinned.className).toMatch(/bg-background/);
+  });
+
+  it("the three stat tiles are NOT pinned, so they slide up under the watch card", async () => {
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Active Students")).toBeInTheDocument());
+    const pinned = screen.getByText("Students to Watch").closest(".sticky") as HTMLElement;
+    for (const label of ["Active Students", "Classes", "Getting Started"]) {
+      expect(pinned.contains(screen.getByText(label))).toBe(false);
+    }
+  });
+
+  it("'Your Classes' sticks beneath the pinned block, above the class cards", async () => {
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Your Classes")).toBeInTheDocument());
+    const heading = screen.getByRole("heading", { name: "Your Classes" });
+    expect(heading.className).toMatch(/sticky/);
+    expect(heading.className).toMatch(/bg-background/);
+    // Below the pinned block in stacking order, so it passes under the watch card.
+    expect(heading.className).toMatch(/z-10/);
+    const pinned = screen.getByText("Students to Watch").closest(".sticky") as HTMLElement;
+    expect(pinned.className).toMatch(/z-20/);
+    // Its offset is set from the pinned block's measured height (a number, not a guess).
+    expect(heading.style.top).toMatch(/px$/);
+  });
+});
+
+describe("HomeRoute — swipe a class card to delete it (2026-09-14)", () => {
+  function swipeLeft(card: HTMLElement) {
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 300, clientY: 100, button: 0, pointerType: "touch" });
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 250, clientY: 100, pointerType: "touch" });
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 200, clientY: 100, pointerType: "touch" });
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 200, clientY: 100, pointerType: "touch" });
+  }
+
+  it("swipe, Delete, are-you-sure Yes, type the name, Delete -- then the class list is reloaded", async () => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+    vi.mocked(client.deleteClass).mockReset().mockResolvedValue(undefined);
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Grade 3 Blue")).toBeInTheDocument());
+
+    swipeLeft(screen.getByTestId("swipe-card"));
+    await userEvent.click(screen.getByRole("button", { name: "Delete Grade 3 Blue" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Delete “Grade 3 Blue”?" });
+    expect(dialog).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Yes" }));
+    expect(client.deleteClass).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText(/to confirm/), "Grade 3 Blue");
+    const loadsBefore = vi.mocked(client.getHome).mock.calls.length;
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(client.deleteClass).toHaveBeenCalledWith("class-1", "Grade 3 Blue");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(vi.mocked(client.getHome).mock.calls.length).toBeGreaterThan(loadsBefore));
+  });
+
+  it("No closes the dialog, slides the card back and deletes nothing", async () => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+    vi.mocked(client.deleteClass).mockReset();
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Grade 3 Blue")).toBeInTheDocument());
+
+    const card = screen.getByTestId("swipe-card");
+    swipeLeft(card);
+    await userEvent.click(screen.getByRole("button", { name: "Delete Grade 3 Blue" }));
+    await userEvent.click(await screen.findByRole("button", { name: "No" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(card.style.transform).toBe("translateX(0px)");
+    expect(client.deleteClass).not.toHaveBeenCalled();
   });
 });

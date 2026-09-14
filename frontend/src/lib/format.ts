@@ -53,3 +53,17 @@ export function describeTrend(label: string, values: number[]): string {
   if (delta < -threshold) return `${label} has fallen across the last ${values.length} sessions.`;
   return `${label} has stayed broadly steady across the last ${values.length} sessions.`;
 }
+
+/**
+ * The whole "Last active ..." line, or the honest alternative when a learner
+ * has never been active.
+ *
+ * A child who joined a class today has no last-active date at all, and the
+ * card used to render the label with nothing after it -- "Last active" and a
+ * blank. That reads as a value that failed to load rather than a child who
+ * has not started. Seen on the first real join, 2026-09-14.
+ */
+export function lastActiveLabel(isoDate: string | null | undefined, now: Date = new Date()): string {
+  if (!isoDate || !isoDate.trim()) return "No activity yet";
+  return `Last active ${formatRelativeDate(isoDate, now)}`;
+}

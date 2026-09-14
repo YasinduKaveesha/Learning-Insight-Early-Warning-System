@@ -282,3 +282,16 @@ describe("StudentSessionsRoute — framing, disclosure, forbidden vocabulary", (
     for (const term of FORBIDDEN) expect(text).not.toContain(term);
   });
 });
+
+describe("StudentSessionsRoute — pinned header and tabs", () => {
+  it("the header and tabs stay pinned; the session cards scroll beneath them", async () => {
+    vi.mocked(client.getStudentSessions).mockResolvedValue([]);
+    renderSessions();
+    await waitFor(() => expect(screen.getByText("Overview")).toBeInTheDocument());
+    const pinned = screen.getByText("Overview").closest(".sticky") as HTMLElement;
+    expect(pinned).not.toBeNull();
+    expect(pinned.className).toMatch(/top-0/);
+    expect(pinned.contains(screen.getByText("Sessions"))).toBe(true);
+    expect(pinned.contains(screen.getByRole("link", { name: "Home" }))).toBe(true);
+  });
+});

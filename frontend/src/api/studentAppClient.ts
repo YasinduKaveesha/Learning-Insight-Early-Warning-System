@@ -161,3 +161,22 @@ export async function createTeacherProfile(name: string): Promise<void> {
     throw e;
   }
 }
+
+/** Delete a classroom this teacher owns (student-app migration 20260914_0009).
+ *
+ * A SOFT delete, done entirely by the student app: the classroom leaves every
+ * teacher screen, its join code stops working, and each learner in it is sent
+ * back to "enter a classroom code". No learner data is erased -- sessions,
+ * attempts and Component 3's records are keyed by the learner, so they follow
+ * the child into whichever classroom they join next.
+ *
+ * `confirmationName` is the name the teacher typed. The student app checks it
+ * against the real name as well (422 CLASSROOM_NAME_MISMATCH), so a client that
+ * skipped the check still cannot delete.
+ */
+export async function deleteClassroom(classroomId: string, confirmationName: string): Promise<void> {
+  await request(`/classrooms/${encodeURIComponent(classroomId)}/delete`, {
+    method: "POST",
+    body: { confirmation_name: confirmationName },
+  });
+}

@@ -6,7 +6,6 @@ import { client } from "../../api/client";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingSkeleton } from "../shared/LoadingSkeleton";
 import { SectionHeader } from "../shared/SectionHeader";
-import { ExplanationBlock } from "./ExplanationBlock";
 import { RecommendationCard } from "./RecommendationCard";
 import { SkillProgressList } from "./SkillProgress";
 import { GettingStartedNotice } from "../status/GettingStartedNotice";
@@ -93,45 +92,66 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
 
   return (
     <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
-      <header className="flex items-center justify-between gap-2">
-        <Link
-          to={overviewQuery.data ? `/classes/${overviewQuery.data.snapshot.classId}` : "/classes"}
-          aria-label="Back"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
-        >
-          <ArrowLeft aria-hidden="true" size={22} />
-        </Link>
-        <h1 className="flex-1 truncate text-center text-[18px] font-bold text-ink-primary">
-          {isPending ? "" : (overviewQuery.data?.snapshot.displayName ?? "Student")}
-        </h1>
-        <Link
-          to="/"
-          aria-label="Home"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
-        >
-          <House aria-hidden="true" size={22} />
-        </Link>
-      </header>
-
-      {showSessionsTab ? (
-        // Hardening-pass fix: these tabs were sized to their text
-        // (pb-2 only), well under the 44px touch-target minimum — fixed
-        // with a flex+min-h wrapper on each tab rather than changing what
-        // they say or do.
-        // UI-refinement pass: pill-shaped, coloured, centered — replacing
-        // the underline-tab look.
-        <div className="flex justify-center gap-3">
-          <span className="flex min-h-[44px] items-center justify-center rounded-full bg-watch-watching-bg px-5 text-base font-bold text-watch-watching-fg">
-            Overview
-          </span>
+      {/* PINNED: the header and the Overview/Sessions tabs stay at the top; only
+          the content below scrolls (explicit direction, 2026-09-14). -mx-4 and
+          -mt-4 stretch its page-coloured background over the column padding,
+          so content scrolling up disappears beneath it cleanly. */}
+      <div className="sticky top-0 z-20 -mx-4 -mt-4 flex flex-col gap-4 bg-background px-4 pb-2 pt-4">
+        <header className="flex items-center justify-between gap-2">
+          {/* Back goes to this student's class. Until the class is known (still
+              loading, or a learner with no class) it goes Home and SAYS so with
+              the Home icon -- an arrow must never point somewhere that is not
+              actually back. It used to fall back to /classes, a page that no
+              longer exists. */}
+          {overviewQuery.data?.snapshot.classId ? (
+            <Link
+              to={`/classes/${overviewQuery.data.snapshot.classId}`}
+              aria-label="Back to class"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+            >
+              <ArrowLeft aria-hidden="true" size={22} />
+            </Link>
+          ) : (
+            <Link
+              to="/"
+              aria-label="Home"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+            >
+              <House aria-hidden="true" size={22} />
+            </Link>
+          )}
+          <h1 className="flex-1 truncate text-center text-[18px] font-bold text-ink-primary">
+            {isPending ? "" : (overviewQuery.data?.snapshot.displayName ?? "Student")}
+          </h1>
           <Link
-            to={studentId ? `/students/${studentId}/sessions` : "#"}
-            className="flex min-h-[44px] items-center justify-center rounded-full bg-surface2 px-5 text-base font-bold text-ink-secondary"
+            to="/"
+            aria-label="Home"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
           >
-            Sessions
+            <House aria-hidden="true" size={22} />
           </Link>
-        </div>
-      ) : null}
+        </header>
+
+        {showSessionsTab ? (
+          // Hardening-pass fix: these tabs were sized to their text
+          // (pb-2 only), well under the 44px touch-target minimum — fixed
+          // with a flex+min-h wrapper on each tab rather than changing what
+          // they say or do.
+          // UI-refinement pass: pill-shaped, coloured, centered — replacing
+          // the underline-tab look.
+          <div className="flex justify-center gap-3">
+            <span className="flex min-h-[44px] items-center justify-center rounded-full bg-watch-watching-bg px-5 text-base font-bold text-watch-watching-fg">
+              Overview
+            </span>
+            <Link
+              to={studentId ? `/students/${studentId}/sessions` : "#"}
+              className="flex min-h-[44px] items-center justify-center rounded-full bg-surface2 px-5 text-base font-bold text-ink-secondary"
+            >
+              Sessions
+            </Link>
+          </div>
+        ) : null}
+      </div>
 
       {isPending ? (
         <>
@@ -172,7 +192,6 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
                     isSaving={savingId === r.recommendationId}
                     errorMessage={errors[r.recommendationId] ?? null}
                     onAccept={(id) => decide(id, () => client.acceptRecommendation(id))}
-                    onDismiss={(id) => decide(id, () => client.dismissRecommendation(id))}
                     onModify={(id, action) =>
                       decide(id, () => client.modifyRecommendation(id, action))
                     }
@@ -214,6 +233,10 @@ function StatusAndWhy({
     return null;
   }
 
+  // The explanation paragraph ("Flagged for teacher review. Signals
+  // contributing to this include ...") was removed from this card at explicit
+  // direction, 2026-09-14. The card now carries only the scope line.
+  //
   // UI-refinement pass: the "Worth watching right now" status badge is
   // removed — the card's own green tint (watch.noConcern) carries the
   // status instead. Note: watch.noConcern is normally "no current
@@ -231,7 +254,6 @@ function StatusAndWhy({
           {snapshotFraming(snapshot.sessionsCompleted, className)}
         </p>
       )}
-      <ExplanationBlock explanation={snapshot.explanation} showHeading={false} />
     </div>
   );
 }

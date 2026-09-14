@@ -41,6 +41,7 @@ import type {
 import {
   EARLY_WARNING_TREND_EXPLANATION,
   RecommendationConflictError,
+  watchCountAfterHandled,
   modifiedActionSummary,
   recommendationSourceLabel,
   skillDisplayName,
@@ -357,7 +358,11 @@ export class HttpClient implements ApiClient {
     const w = await get<WireHome>("/home");
     return {
       teacherName: w.teacher_name ?? "",
-      studentsToWatch: w.watch_count,
+      // D50: flagged minus handled, everywhere a watch count is shown.
+      studentsToWatch: watchCountAfterHandled(
+        w.watch_count,
+        w.classes.reduce((sum, c) => sum + (c.handled_count ?? 0), 0),
+      ),
       activeStudents: w.active_students,
       classCount: w.class_count,
       gettingStarted: w.getting_started_count,
@@ -368,7 +373,7 @@ export class HttpClient implements ApiClient {
         // creates; the null branch is type-level only.
         grade: c.grade ?? "GRADE_2",
         studentCount: c.learner_count,
-        toWatchCount: c.watch_count,
+        toWatchCount: watchCountAfterHandled(c.watch_count, c.handled_count),
         pendingRequestCount: c.pending_request_count,
         handledCount: c.handled_count ?? 0,
       })),
@@ -382,7 +387,7 @@ export class HttpClient implements ApiClient {
       classId: w.classroom_id,
       className: w.class_name ?? "",
       studentCount: w.stats.learner_count,
-      toWatchCount: w.stats.watch_count,
+      toWatchCount: watchCountAfterHandled(w.stats.watch_count, w.stats.handled_count),
       handledCount: w.stats.handled_count ?? 0,
       gettingStartedCount: w.stats.getting_started_count,
       pendingRequestCount: w.pending_request_count,
@@ -399,7 +404,10 @@ export class HttpClient implements ApiClient {
     return {
       totalStudents: w.total_students,
       disclosure: w.disclosure,
-      students: withoutPriority(w.learners.map(toSnapshot)),
+      // D50: a learner whose suggestion is handled leaves the watch list, so
+      // the list matches the deducted count. They remain on the class page,
+      // blue, under All Students.
+      students: withoutPriority(w.learners.map(toSnapshot)).filter((s) => !s.suggestionStatus),
     };
   }
 
@@ -408,7 +416,10 @@ export class HttpClient implements ApiClient {
     return {
       totalStudents: w.total_students,
       disclosure: w.disclosure,
-      students: withoutPriority(w.learners.map(toSnapshot)),
+      // D50: a learner whose suggestion is handled leaves the watch list, so
+      // the list matches the deducted count. They remain on the class page,
+      // blue, under All Students.
+      students: withoutPriority(w.learners.map(toSnapshot)).filter((s) => !s.suggestionStatus),
     };
   }
 
@@ -532,6 +543,11 @@ export class HttpClient implements ApiClient {
    * no key and the next attempt mints one. The reverse order is impossible -- there is nothing
    * to attach a key to -- and a key is never rotated to "repair" anything.
    */
+  async deleteClass(classId: string, confirmationName: string): Promise<void> {
+    // Straight to the student app: Component 3 never writes classrooms (D3/D10).
+    await studentApp.deleteClassroom(classId, confirmationName);
+  }
+
   async createClass(name: string, grade: Grade): Promise<CreateClassResult> {
     const created = await studentApp.createClassroom(name, grade);
 

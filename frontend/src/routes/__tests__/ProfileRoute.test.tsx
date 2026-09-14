@@ -27,7 +27,8 @@ const signOut = vi.fn(async () => {});
 vi.mock("../../auth/SessionProvider", () => ({
   useSession: () => ({
     status: "authenticated",
-    session: null,
+    // The email row reads the signed-in Supabase user; the dashboard stores no copy.
+    session: { user: { email: "ms.perera@example.com" } },
     isAuthed: true,
     signIn: vi.fn(),
     signOut,
@@ -55,20 +56,48 @@ beforeEach(() => {
   signOut.mockClear();
 });
 
-describe("ProfileRoute — minimal, per plan §3", () => {
-  it("shows the teacher name and a sign-out affordance", async () => {
+describe("ProfileRoute — the teacher's own details, per plan §3", () => {
+  it("shows the teacher's name, email, class count and student count, and a log-out button", async () => {
     vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
     renderProfile();
-    await waitFor(() => expect(screen.getByText("Ms Perera")).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    // Once under the avatar, once in the Name row.
+    await waitFor(() => expect(screen.getAllByText("Ms Perera")).toHaveLength(2));
+
+    expect(screen.getByText("Email")).toBeInTheDocument();
+    expect(screen.getByText("ms.perera@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Classes")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("Students")).toBeInTheDocument();
+    expect(screen.getByText("83")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
   });
 
-  it("invents nothing beyond name and sign-out — no settings/preferences copy", async () => {
+  it("every row is a value the system already holds — no settings or preferences", async () => {
     vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
     renderProfile();
-    await waitFor(() => expect(screen.getByText("Ms Perera")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Ms Perera").length).toBeGreaterThan(0));
     expect(screen.queryByText(/settings/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/preferences/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/edit/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("ProfileRoute — layout", () => {
+  it("has no visible 'Profile' title, but keeps one for screen readers", async () => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+    renderProfile();
+    await waitFor(() => expect(screen.getAllByText("Ms Perera")).toHaveLength(2));
+    const heading = screen.getByRole("heading", { level: 1, name: "Profile" });
+    expect(heading).toHaveClass("sr-only");
+  });
+
+  it("has a Home button in a bottom bar that links back to the dashboard", async () => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+    renderProfile();
+    await waitFor(() => expect(screen.getAllByText("Ms Perera")).toHaveLength(2));
+    const home = screen.getByRole("link", { name: "Home" });
+    expect(home).toHaveAttribute("href", "/");
+    expect(home.closest("nav")).toHaveAttribute("aria-label", "Profile navigation");
   });
 });
 
@@ -109,8 +138,8 @@ describe("ProfileRoute — sign out (B6.3e-1 gate 5)", () => {
       </QueryClientProvider>,
     );
 
-    await screen.findByText("Ms Perera");
-    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    await screen.findAllByText("Ms Perera");
+    await userEvent.click(screen.getByRole("button", { name: "Log out" }));
 
     await waitFor(() => expect(screen.getByText("Login screen")).toBeInTheDocument());
     expect(signOut).toHaveBeenCalledTimes(1);

@@ -64,9 +64,11 @@
 
 export const colors = {
   // --- Ported directly from theme.ts ---------------------------------------
-  // UI-refinement pass: was a light grey, changed to white at explicit
-  // direction — see deviation note 1 above for what this affects.
-  background: "#ffffff",
+  // The page behind the cards. Grey -> white (UI-refinement pass) -> grey again
+  // at explicit direction, 2026-09-14: a white card needs a page that is not
+  // also white. See deviation note 1 above, which measured `textMuted` against
+  // the ORIGINAL grey -- that measurement applies again now.
+  background: "#f2f3f5",
   foreground: "#2f3136",
   surface1: "#ffffff",
   surface2: "#eaebee",

@@ -135,6 +135,54 @@ export function gettingStartedProgress(sessionsCompleted: number, sessionsRequir
 }
 
 /**
+ * Home's class order (explicit direction, 2026-09-14):
+ *
+ * 1. Classes with pending JOIN REQUESTS come first, most requests first,
+ *    whatever their watch list -- a waiting request is an action only the
+ *    teacher can take.
+ * 2. Everything else (and ties within step 1) by the share of the class on the
+ *    watch list, HIGHEST first, so the class needing most attention leads.
+ *
+ * Uses the watch count the card DISPLAYS (already minus handled learners, D50),
+ * so the order always agrees with the numbers on screen. A class with no
+ * students has no share at all -- it sorts after classes that do. Remaining
+ * ties go to the larger number of students to watch, then to the class name,
+ * so the order is stable between reloads.
+ */
+export function sortClassesByWatchShare<
+  T extends {
+    name: string;
+    studentCount: number;
+    toWatchCount: number;
+    pendingRequestCount?: number;
+  },
+>(classes: readonly T[]): T[] {
+  const share = (c: T) => (c.studentCount > 0 ? c.toWatchCount / c.studentCount : -1);
+  const requests = (c: T) => c.pendingRequestCount ?? 0;
+  return [...classes].sort(
+    (a, b) =>
+      requests(b) - requests(a) ||
+      share(b) - share(a) ||
+      b.toWatchCount - a.toWatchCount ||
+      a.name.localeCompare(b.name),
+  );
+}
+
+/**
+ * The watch count a teacher sees: flagged learners MINUS those whose
+ * suggestion they have already accepted or modified (D50, 2026-09-14).
+ *
+ * The one place this subtraction happens, so Home, the class cards, the class
+ * page and the watch list can never disagree. The API still carries both
+ * numbers (`watch_count` and `handled_count`), so the raw flagged figure stays
+ * available for research reporting -- D44 needs it -- even though no screen
+ * shows it. Clamped at zero so an inconsistent reply can never show a negative.
+ */
+export function watchCountAfterHandled(flagged: number, handled: number | undefined): number {
+  return Math.max(0, flagged - (handled ?? 0));
+}
+
+/**
  * Decision B, 2026-09-14: a watch-flagged learner whose open suggestion the
  * teacher has accepted or modified. On the class page they move out of
  * "Students to Watch" into "All Students", keeping the blue watching tint so

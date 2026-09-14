@@ -13,6 +13,9 @@
 
 export type AuthFailureKind =
   | "bad_credentials"
+  | "email_taken"
+  | "weak_password"
+  | "profile_setup_failed"
   | "token_invalid"
   | "not_a_teacher"
   | "demo_mode_on"
@@ -45,6 +48,21 @@ const FAILURES: Record<AuthFailureKind, Omit<AuthFailure, "kind">> = {
   demo_mode_on: {
     message:
       "The dashboard is running in demo mode when it should not be. Ask an administrator to turn that off, then sign in again.",
+    retryable: false,
+  },
+  email_taken: {
+    message: "An account already exists for that email. Sign in instead.",
+    retryable: false,
+  },
+  weak_password: {
+    message: "Choose a password of at least 8 characters.",
+    retryable: true,
+  },
+  profile_setup_failed: {
+    // The account exists but is not a teacher yet, so the dashboard would answer
+    // 403 for everything. Say what actually happened rather than "login failed".
+    message:
+      "Your account was created, but setting it up as a teacher didn't finish. Try signing in — if that fails, create the account again.",
     retryable: false,
   },
   unknown: {
@@ -90,5 +108,20 @@ export function classifySignInError(
   }
   if (error.status === 401) return authFailure("token_invalid");
   if (error.status === 403) return authFailure("not_a_teacher");
+  return authFailure("unknown");
+}
+
+/** Sign-up failures read differently from sign-in ones: an email already in use
+ * is not a wrong password, and telling a teacher to "check their credentials"
+ * when the real answer is "you already have an account" sends them in circles. */
+export function classifySignUpError(
+  error: { status?: number; message?: string } | null | undefined,
+): AuthFailure {
+  if (!error) return authFailure("unknown");
+  const message = error.message ?? "";
+  if (/already registered|already exists|user already/i.test(message)) {
+    return authFailure("email_taken");
+  }
+  if (error.status === 422 || /password/i.test(message)) return authFailure("weak_password");
   return authFailure("unknown");
 }

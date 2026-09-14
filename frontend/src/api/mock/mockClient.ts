@@ -29,6 +29,7 @@ import {
   approveJoinRequest as approveJoinRequestFixture,
   classReportsFor,
   createClassRecord,
+  deleteClassRecord,
   decideRecommendationFixture,
   joinRequestsForClass,
   pendingRequestCountForClass,
@@ -63,7 +64,8 @@ function studentsInClass(classId: string): LearnerSnapshot[] {
 }
 
 function allStudents(): LearnerSnapshot[] {
-  return Object.values(ALL_CLASS_STUDENTS).flat().map(withFilteredExplanation);
+  // Only classes that still exist: a deleted class's learners leave every count.
+  return allClasses().flatMap((c) => studentsInClass(c.classId));
 }
 
 // sortCohortOrder lives in lib/presentation.ts now (Step 6 fix) — this mock
@@ -199,6 +201,18 @@ export class MockClient implements ApiClient {
     return Promise.resolve().then(() =>
       delay(decideRecommendationFixture(recommendationId, "modified", action)),
     );
+  }
+
+  deleteClass(classId: string, confirmationName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        deleteClassRecord(classId, confirmationName);
+      } catch (e) {
+        reject(e as Error);
+        return;
+      }
+      setTimeout(resolve, MOCK_LATENCY_MS);
+    });
   }
 
   createClass(name: string, grade: Grade): Promise<CreateClassResult> {

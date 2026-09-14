@@ -71,8 +71,21 @@ const SEED_CLASSES: ClassRecord[] = [
 // same as every other in-memory mutation in this mock client.
 const CREATED_CLASSES: ClassRecord[] = [];
 
+// Classes deleted during this session. Mock state only, like CREATED_CLASSES.
+const DELETED_CLASS_IDS = new Set<string>();
+
 export function allClasses(): ClassRecord[] {
-  return [...SEED_CLASSES, ...CREATED_CLASSES];
+  return [...SEED_CLASSES, ...CREATED_CLASSES].filter((c) => !DELETED_CLASS_IDS.has(c.classId));
+}
+
+/** Mirrors the student app: the typed name must match exactly (ends trimmed). */
+export function deleteClassRecord(classId: string, confirmationName: string): void {
+  const record = allClasses().find((c) => c.classId === classId);
+  if (!record) throw new Error(`No class ${classId}`);
+  if (confirmationName.trim() !== record.name.trim()) {
+    throw new Error("The confirmation does not match the class name.");
+  }
+  DELETED_CLASS_IDS.add(classId);
 }
 
 function classKeyTaken(key: string): boolean {

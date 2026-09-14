@@ -39,40 +39,44 @@ export default function StudentSessionsRoute() {
 
   return (
     <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
-      <header className="flex items-center justify-between gap-2">
-        <Link
-          to={studentId ? `/students/${studentId}` : "/classes"}
-          aria-label="Back"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
-        >
-          <ArrowLeft aria-hidden="true" size={22} />
-        </Link>
-        <h1 className="flex-1 truncate text-center text-[18px] font-bold text-ink-primary">
-          {overviewQuery.data?.snapshot.displayName ?? "Student"}
-        </h1>
-        <Link
-          to="/"
-          aria-label="Home"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
-        >
-          <House aria-hidden="true" size={22} />
-        </Link>
-      </header>
+      {/* PINNED, matching the Overview page: header and tabs stay at the top,
+          only the session cards scroll (explicit direction, 2026-09-14). */}
+      <div className="sticky top-0 z-20 -mx-4 -mt-4 flex flex-col gap-4 bg-background px-4 pb-2 pt-4">
+        <header className="flex items-center justify-between gap-2">
+          <Link
+            to={studentId ? `/students/${studentId}` : "/"}
+            aria-label="Back"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+          >
+            <ArrowLeft aria-hidden="true" size={22} />
+          </Link>
+          <h1 className="flex-1 truncate text-center text-[18px] font-bold text-ink-primary">
+            {overviewQuery.data?.snapshot.displayName ?? "Student"}
+          </h1>
+          <Link
+            to="/"
+            aria-label="Home"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+          >
+            <House aria-hidden="true" size={22} />
+          </Link>
+        </header>
 
-      {/* Hardening-pass fix: matches StudentDetail's tab-bar fix — was
-          sized to text only (pb-2), under the 44px touch-target minimum.
-          UI-refinement pass: pill-shaped, coloured, centered — matching
-          StudentDetail's Overview/Sessions tabs. */}
-      <div className="flex justify-center gap-3">
-        <Link
-          to={studentId ? `/students/${studentId}` : "/classes"}
-          className="flex min-h-[44px] items-center justify-center rounded-full bg-surface2 px-5 text-base font-bold text-ink-secondary"
-        >
-          Overview
-        </Link>
-        <span className="flex min-h-[44px] items-center justify-center rounded-full bg-watch-watching-bg px-5 text-base font-bold text-watch-watching-fg">
-          Sessions
-        </span>
+        {/* Hardening-pass fix: matches StudentDetail's tab-bar fix — was
+            sized to text only (pb-2), under the 44px touch-target minimum.
+            UI-refinement pass: pill-shaped, coloured, centered — matching
+            StudentDetail's Overview/Sessions tabs. */}
+        <div className="flex justify-center gap-3">
+          <Link
+            to={studentId ? `/students/${studentId}` : "/"}
+            className="flex min-h-[44px] items-center justify-center rounded-full bg-surface2 px-5 text-base font-bold text-ink-secondary"
+          >
+            Overview
+          </Link>
+          <span className="flex min-h-[44px] items-center justify-center rounded-full bg-watch-watching-bg px-5 text-base font-bold text-watch-watching-fg">
+            Sessions
+          </span>
+        </div>
       </div>
 
       {isPending ? (

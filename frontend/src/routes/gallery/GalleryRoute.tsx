@@ -244,9 +244,9 @@ export default function GalleryRoute() {
       </GallerySection>
 
       <GallerySection title="RecommendationCard — pending / unknown kind / accepted">
-        <RecommendationCard recommendation={PENDING_RECOMMENDATION} onAccept={noop} onDismiss={noop} onModify={noop} />
-        <RecommendationCard recommendation={UNKNOWN_KIND_RECOMMENDATION} onAccept={noop} onDismiss={noop} onModify={noop} />
-        <RecommendationCard recommendation={ACCEPTED_RECOMMENDATION} onAccept={noop} onDismiss={noop} onModify={noop} />
+        <RecommendationCard recommendation={PENDING_RECOMMENDATION} onAccept={noop} onModify={noop} />
+        <RecommendationCard recommendation={UNKNOWN_KIND_RECOMMENDATION} onAccept={noop} onModify={noop} />
+        <RecommendationCard recommendation={ACCEPTED_RECOMMENDATION} onAccept={noop} onModify={noop} />
       </GallerySection>
 
       <GallerySection title="SessionCard — normal / no games / incomplete telemetry">
@@ -286,7 +286,7 @@ export default function GalleryRoute() {
 
       <GallerySection title="Four states — Loading / Empty / Error / Getting Started">
         <Row label="Loading"><LoadingSkeleton rows={2} /></Row>
-        <Row label="Empty"><EmptyState message="No students yet. Share the key 7K4P92." /></Row>
+        <Row label="Empty"><EmptyState message="No students yet. Share the class key so students can join." /></Row>
         <Row label="Error"><ErrorState message="Couldn't load this class. Check your connection and try again." onRetry={noop} /></Row>
         <Row label="Getting Started (first-class, not empty)"><GettingStartedNotice sessionsCompleted={2} /></Row>
       </GallerySection>

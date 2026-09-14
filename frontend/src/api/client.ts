@@ -150,6 +150,12 @@ export interface ApiClient {
    * renders through the generic ErrorState instead. */
   createClass(name: string, grade: Grade): Promise<CreateClassResult>;
 
+  /** Delete a class, confirmed by its name typed exactly (2026-09-14). A soft
+   * delete owned by the student app: the class disappears and its learners are
+   * asked for a new class key, but none of their data is removed. Any failure
+   * is a plain Error. */
+  deleteClass(classId: string, confirmationName: string): Promise<void>;
+
   // PROVISIONAL — see the doc comment on PendingRequestDisplay in
   // lib/presentation.ts. The real join-request flow is owned by the student
   // app's existing endpoints (plan §4.7); these three exist only so the

@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, House } from "lucide-react";
 import { Link } from "react-router-dom";
 import { client } from "../../api/client";
-import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
@@ -90,7 +89,11 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
   return (
     <div className="mx-auto flex max-w-[480px] flex-col gap-4 p-4 pb-8 lg:max-w-[1200px] lg:flex-row lg:items-start lg:gap-6">
       <div className="flex flex-1 flex-col gap-4 lg:max-w-[420px]">
-        <header className="flex items-center gap-2">
+        {/* PINNED: the header, and with it the Home/Back button, stays at the
+            top while the watch list scrolls (explicit direction, 2026-09-14).
+            -mx-4 -mt-4 stretch its page-coloured background over the column
+            padding so cards disappear beneath it cleanly. */}
+        <header className="sticky top-0 z-20 -mx-4 -mt-4 flex items-center gap-2 bg-background px-4 pb-2 pt-4">
           {/* Back-navigation icon convention (going forward): the arrow
               means "back", so it should never point somewhere that isn't
               actually back — when the destination IS Home, show the Home
@@ -148,7 +151,9 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
               />
             )}
 
-            <DisclosureFooter disclosure={watchQuery.data!.disclosure} />
+            {/* The "Literature-informed synthetic data — not clinical evidence."
+                footer was removed from this page at explicit direction,
+                2026-09-14. It is still returned by the API on every response. */}
           </>
         )}
       </div>

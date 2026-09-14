@@ -17,6 +17,7 @@ function setSession(status: SessionStatus) {
     isAuthed: status === "authenticated" || status === "mock",
     signIn: vi.fn(),
     signOut: vi.fn(),
+    signUp: vi.fn(),
   });
 }
 

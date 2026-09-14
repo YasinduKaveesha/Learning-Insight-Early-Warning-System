@@ -122,7 +122,7 @@ describe("ClassroomRequestsRoute — four states", () => {
     renderRequests();
     await waitFor(() =>
       expect(
-        screen.getByText(/Share the key 7K4P92 so students can join\./),
+        screen.getByText("No requests pending right now. Share the class key so students can join."),
       ).toBeInTheDocument(),
     );
   });
@@ -140,16 +140,15 @@ describe("ClassroomRequestsRoute — four states", () => {
 });
 
 describe("ClassroomRequestsRoute — framing, disclosure, forbidden vocabulary", () => {
-  it("renders the framing line and the API-sourced disclosure", async () => {
+  it("shows neither the framing line nor the disclosure footer (removed at explicit direction, 2026-09-14)", async () => {
     vi.mocked(client.getCohort).mockResolvedValue(COHORT);
     vi.mocked(client.getJoinRequests).mockResolvedValue(REQUESTS);
     renderRequests();
-    expect(screen.getByText("The system flags learners for teacher review.")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        screen.getByText("Literature-informed synthetic data — not clinical evidence."),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /approve/i }).length).toBeGreaterThan(0));
+    expect(screen.queryByText("The system flags learners for teacher review.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Literature-informed synthetic data — not clinical evidence."),
+    ).not.toBeInTheDocument();
   });
 
   const FORBIDDEN = [
@@ -179,7 +178,7 @@ describe("ClassroomRequestsRoute — framing, disclosure, forbidden vocabulary",
     vi.mocked(client.getCohort).mockResolvedValue({ ...COHORT, pendingRequestCount: 0 });
     vi.mocked(client.getJoinRequests).mockResolvedValue([]);
     const { container } = renderRequests();
-    await waitFor(() => expect(screen.getByText(/Share the key/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Share the class key/)).toBeInTheDocument());
     const text = container.textContent!.toLowerCase();
     for (const term of FORBIDDEN) expect(text).not.toContain(term);
   });

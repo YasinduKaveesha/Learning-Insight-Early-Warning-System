@@ -1,3 +1,4 @@
+import { ArrowLeft, House } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
@@ -34,17 +35,32 @@ export default function ClassroomReportsRoute() {
 
   return (
     <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
-      <header className="flex items-center gap-2">
-        <Link
-          to={classId ? `/classes/${classId}` : "/classes"}
-          aria-label="Back to class"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
-        >
-          ←
-        </Link>
-        <h1 className="text-base font-semibold text-ink-primary">
+      {/* Same header as every other screen: a round Back button to the class on
+          the left, the title, a round Home button on the right. This page used
+          to show a bare "←" character and fell back to /classes, a page that
+          no longer exists. */}
+      <header className="flex items-center justify-between gap-2">
+        {classId ? (
+          <Link
+            to={`/classes/${classId}`}
+            aria-label="Back to class"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+          >
+            <ArrowLeft aria-hidden="true" size={22} />
+          </Link>
+        ) : (
+          <span className="h-11 w-11 shrink-0" aria-hidden="true" />
+        )}
+        <h1 className="flex-1 truncate text-center text-base font-semibold text-ink-primary">
           {data ? `${data.className} · Reports` : "Reports"}
         </h1>
+        <Link
+          to="/"
+          aria-label="Home"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+        >
+          <House aria-hidden="true" size={22} />
+        </Link>
       </header>
       <FramingLine />
 

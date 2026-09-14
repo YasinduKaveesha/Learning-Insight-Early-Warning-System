@@ -1,10 +1,9 @@
+import { ArrowLeft, House } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
-import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { formatDate } from "../../lib/format";
 import type { PendingRequestDisplay } from "../../lib/presentation";
@@ -52,17 +51,33 @@ export default function ClassroomRequestsRoute() {
 
   return (
     <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
-      <header className="flex items-center gap-2">
+      {/* Same header as every other screen: a round Back button to the class on
+          the left, the title, a round Home button on the right. This page used
+          to show a bare "←" character and fell back to /classes, a page that
+          no longer exists. */}
+      <header className="flex items-center justify-between gap-2">
+        {classId ? (
+          <Link
+            to={`/classes/${classId}`}
+            aria-label="Back to class"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong text-ink-primary"
+          >
+            <ArrowLeft aria-hidden="true" size={22} />
+          </Link>
+        ) : (
+          <span className="h-11 w-11 shrink-0" aria-hidden="true" />
+        )}
+        <h1 className="flex-1 truncate text-center text-base font-semibold text-ink-primary">
+          Join Requests
+        </h1>
         <Link
-          to={classId ? `/classes/${classId}` : "/classes"}
-          aria-label="Back to class"
-          className="flex h-11 min-w-[44px] items-center text-sm font-medium text-ink-primary"
+          to="/"
+          aria-label="Home"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-strong text-ink-primary"
         >
-          ←
+          <House aria-hidden="true" size={22} />
         </Link>
-        <h1 className="text-base font-semibold text-ink-primary">Join Requests</h1>
       </header>
-      <FramingLine />
 
       {isPending ? (
         <LoadingSkeleton rows={2} rowHeight={96} />
@@ -78,7 +93,7 @@ export default function ClassroomRequestsRoute() {
         <>
           {requestsQuery.data!.length === 0 ? (
             <EmptyState
-              message={`No requests pending right now. Share the key ${cohortQuery.data!.classKey} so students can join.`}
+              message="No requests pending right now. Share the class key so students can join."
             />
           ) : (
             <div className="flex flex-col gap-3">
@@ -87,8 +102,6 @@ export default function ClassroomRequestsRoute() {
               ))}
             </div>
           )}
-
-          <DisclosureFooter disclosure={cohortQuery.data!.disclosure} />
         </>
       )}
     </div>
@@ -113,26 +126,23 @@ function RequestCard({
 
       {/* Approve / Reject: ≥44px, NEVER ADJACENT, distinguished by label —
           same visual-separation ruling as RecommendationCard's Accept /
-          Modify / Dismiss (Step 5 review ruling A): a solid full-width
-          Approve, then real vertical distance and a rule before an
-          understated Reject, not a spacer between two identical buttons. */}
+          Modify (Step 5 review ruling A): a solid full-width Approve, then
+          real vertical distance and a rule before an outline Reject, not a
+          spacer between two identical buttons. Colours follow the app's own
+          buttons (the navy "View watch list" pill), 2026-09-14. */}
       <div className="flex flex-col gap-3 pt-1">
         <button
           type="button"
           onClick={() => onApprove(request.requestId)}
-          className="min-h-[44px] w-full rounded-lg bg-primary px-3 text-sm font-bold text-foreground"
+          className="min-h-[44px] w-full rounded-full bg-watch-watching-fg px-3 text-sm font-bold text-white"
         >
           Approve
         </button>
         <div className="border-t border-border pt-3">
-          {/* danger.soft + foreground text — reserved for genuinely
-              destructive actions (docs/12 §7); dangerForeground/danger
-              measures only 3.52:1 (fails AA), so text stays on the safe
-              dark foreground token, never white-on-red. */}
           <button
             type="button"
             onClick={() => onReject(request.requestId)}
-            className="min-h-[44px] w-full rounded-lg bg-danger-soft px-3 text-sm font-medium text-foreground underline underline-offset-2"
+            className="min-h-[44px] w-full rounded-full border-2 border-border-strong bg-surface1 px-3 text-sm font-semibold text-ink-primary"
           >
             Reject
           </button>

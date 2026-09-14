@@ -1,4 +1,4 @@
-import { Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { RedirectIfAuthed, RequireAuth } from "./auth/RouteGuard";
 import { SessionProvider } from "./auth/SessionProvider";
 import LoginRoute from "./routes/login/LoginRoute";
@@ -6,7 +6,6 @@ import ClassroomReportsRoute from "./routes/classroom-reports/ClassroomReportsRo
 import ClassroomRequestsRoute from "./routes/classroom-requests/ClassroomRequestsRoute";
 import ClassroomRoute from "./routes/classroom/ClassroomRoute";
 import ClassroomWatchRoute from "./routes/classroom-watch/ClassroomWatchRoute";
-import ClassesRoute from "./routes/classes/ClassesRoute";
 import GalleryRoute from "./routes/gallery/GalleryRoute";
 import HomeRoute from "./routes/home/HomeRoute";
 import ProfileRoute from "./routes/profile/ProfileRoute";
@@ -38,7 +37,11 @@ function App() {
               }
             >
           <Route path="/" element={<HomeRoute />} />
-          <Route path="/classes" element={<ClassesRoute />} />
+          {/* The All Classes page was removed (2026-09-14): Home already lists
+              every class. Kept as a redirect, not deleted outright, because a
+              teacher's browser history may still hold /classes -- pressing
+              Back must land somewhere real, not on a blank page. */}
+          <Route path="/classes" element={<Navigate to="/" replace />} />
           <Route path="/watch/:studentId?" element={<WatchRoute />} />
           <Route path="/profile" element={<ProfileRoute />} />
 

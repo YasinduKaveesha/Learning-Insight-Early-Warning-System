@@ -31,11 +31,16 @@ export default {
     },
     extend: {
       colors: {
-        // UI-refinement pass: was a light grey, changed to white at
-        // explicit direction — this is the same value as surface1 now, so
-        // the app background and card surfaces are visually flush. See
-        // tokens.ts header for the note this supersedes.
-        background: "#ffffff",
+        // The page behind the cards. Light grey, so a white `surface1` card
+        // reads as a card rather than as the page itself.
+        //
+        // History, because this value has moved twice: it was a light grey,
+        // then white at explicit direction (the UI-refinement pass, when it
+        // became flush with surface1), and is grey again at explicit direction
+        // on 2026-09-14. `foreground` (#2f3136) on it measures 11.4:1, and
+        // `ink-secondary` clears AA, so nothing that reads well on white stops
+        // reading well here.
+        background: "#f2f3f5",
         foreground: "#2f3136",
         surface1: "#ffffff",
         surface2: "#eaebee",
