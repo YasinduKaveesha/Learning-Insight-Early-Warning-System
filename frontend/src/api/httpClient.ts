@@ -45,6 +45,7 @@ import {
   recommendationSourceLabel,
   skillDisplayName,
 } from "../lib/presentation";
+import * as studentApp from "./studentAppClient";
 import { supabase } from "./supabaseClient";
 
 const API_BASE: string = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8100").replace(
@@ -211,7 +212,7 @@ interface WireReport {
  * server's named reason ("already_decided" | "expired"), so the screen can say
  * which; every other failure is a plain Error.
  */
-async function postDecision<T>(path: string, body?: unknown): Promise<T> {
+async function postJson(path: string, body?: unknown): Promise<Response> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (supabase) {
@@ -219,11 +220,26 @@ async function postDecision<T>(path: string, body?: unknown): Promise<T> {
     const token = data.session?.access_token;
     if (token) headers.Authorization = `Bearer ${token}`;
   }
-  const response = await fetch(`${API_BASE}${PREFIX}${path}`, {
+  return fetch(`${API_BASE}${PREFIX}${path}`, {
     method: "POST",
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+/** A plain POST: any non-2xx is a plain Error. Used for writes with no
+ * meaning attached to 409 -- minting a class key, for instance, which is
+ * idempotent and has no conflict state. */
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const response = await postJson(path, body);
+  if (!response.ok) {
+    throw new Error(`Request to ${path} failed with HTTP ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+async function postDecision<T>(path: string, body?: unknown): Promise<T> {
+  const response = await postJson(path, body);
   if (response.status === 409) {
     let reason = "already_decided";
     try {
@@ -495,22 +511,49 @@ export class HttpClient implements ApiClient {
     );
   }
 
-  createClass(_name: string, _grade: Grade): Promise<CreateClassResult> {
-    // B6.4. A class created in the mock would vanish on the next refetch and
-    // show a class key that exists nowhere.
-    return Promise.reject(new Error("Creating a class is not available yet."));
+  /**
+   * B6.4, two steps against two services, in this order:
+   *
+   * 1. the STUDENT APP creates the classroom -- it owns classrooms, and Component 3 never
+   *    writes that table (D3/D10);
+   * 2. Component 3 mints the classroom's PERMANENT key (D1) in its own table.
+   *
+   * If step 2 fails the class still exists, correctly, with no key yet; the cohort screen shows
+   * no key and the next attempt mints one. The reverse order is impossible -- there is nothing
+   * to attach a key to -- and a key is never rotated to "repair" anything.
+   */
+  async createClass(name: string, grade: Grade): Promise<CreateClassResult> {
+    const created = await studentApp.createClassroom(name, grade);
+    const key = await post<{ class_key: string }>(
+      `/classes/${encodeURIComponent(created.classroom_id)}/key`,
+    );
+    return {
+      classId: created.classroom_id,
+      className: created.name ?? name,
+      grade: created.grade ?? grade,
+      classKey: key.class_key,
+    };
   }
 
-  getJoinRequests(_classId: string): Promise<PendingRequestDisplay[]> {
-    return Promise.reject(new Error("Join requests are not available yet."));
+  async getJoinRequests(classId: string): Promise<PendingRequestDisplay[]> {
+    const requests = await studentApp.listMembershipRequests(classId);
+    return requests
+      // The endpoint returns decided requests too; the screen is a queue of what is waiting.
+      .filter((r) => r.state === "PENDING")
+      .map((r) => ({
+        requestId: r.classroom_membership_id,
+        studentDisplayName: r.learner_name ?? "",
+        requestedDate: r.requested_at_utc,
+      }));
   }
 
-  approveJoinRequest(_classId: string, _requestId: string): Promise<void> {
-    return Promise.reject(new Error("Join requests are not available yet."));
+  approveJoinRequest(_classId: string, requestId: string): Promise<void> {
+    // Addressed by MEMBERSHIP id, not by class: the student app's own route shape.
+    return studentApp.approveMembership(requestId);
   }
 
-  rejectJoinRequest(_classId: string, _requestId: string): Promise<void> {
-    return Promise.reject(new Error("Join requests are not available yet."));
+  rejectJoinRequest(_classId: string, requestId: string): Promise<void> {
+    return studentApp.rejectMembership(requestId);
   }
 
   async getClassReports(classId: string): Promise<ClassReportsResponse> {
