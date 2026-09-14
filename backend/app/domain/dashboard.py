@@ -107,6 +107,12 @@ class LearnerCard(_Base):
     engagement_sparkline: list[float | None] = Field(default_factory=list)
     model_version: str | None = None
     inference_timestamp: dt.datetime | None = None
+    #: Decision B, 2026-09-14. `accepted` / `modified` when a teacher has acted on this
+    #: learner's OPEN, unexpired suggestion; otherwise None. It changes WHERE a flagged learner
+    #: sits on the class page, never `watch_flag` and never the watch count -- the count keeps
+    #: meaning "the system flagged this many", so accepting a suggestion is not a way to clear
+    #: the list (the acceptance-rate distortion D36 and D44 warn about).
+    suggestion_status: Literal["accepted", "modified"] | None = None
 
 
 class ClassCard(_Base):
@@ -120,6 +126,9 @@ class ClassCard(_Base):
     watch_count: int
     getting_started_count: int
     pending_request_count: int = 0
+    #: Watch-flagged learners whose suggestion has been handled. A SUBSET of `watch_count`,
+    #: never subtracted from it (decision B).
+    handled_count: int = 0
 
 
 class HomeSummary(Disclosed):
@@ -136,12 +145,17 @@ class ClassKeyResponse(Disclosed):
     `CohortResponse.class_key` for every later read, so a client never needs to ask twice."""
 
     classroom_id: uuid.UUID
-    class_key: str = Field(min_length=6, max_length=6)
+    # Eight characters since D49: the key IS the student application's join code, and that is
+    # what it mints. It was six while Component 3 minted a code of its own -- one that matched
+    # no invite and that no learner could redeem.
+    class_key: str = Field(min_length=8, max_length=8)
 
 
 class CohortStats(_Base):
     learner_count: int
     watch_count: int
+    #: A subset of `watch_count` (decision B) -- see `LearnerCard.suggestion_status`.
+    handled_count: int = 0
     getting_started_count: int
     improving_count: int
     needs_attention_count: int

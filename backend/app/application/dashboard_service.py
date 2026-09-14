@@ -130,18 +130,39 @@ class _RunContext:
 
     latest: dict[uuid.UUID, Any] = field(default_factory=dict)
     panel: dict[uuid.UUID, _PanelSummary] = field(default_factory=dict)
+    #: student_id -> (teacher_status, expires_after_session), open suggestions only.
+    handled: dict[uuid.UUID, tuple[str, int]] = field(default_factory=dict)
 
 
 async def _run_context(session: AsyncSession, pipeline_run_id: uuid.UUID) -> _RunContext:
     predictions = await data_access.predictions_for_run(session, pipeline_run_id)
     panel_rows = await data_access.panel_rows_for_run(session, pipeline_run_id)
+    handled = await data_access.handled_suggestions_for_run(session, pipeline_run_id)
     return _RunContext(
-        latest=_latest_by_student(predictions), panel=_panel_summaries(panel_rows)
+        latest=_latest_by_student(predictions),
+        panel=_panel_summaries(panel_rows),
+        handled=handled,
     )
 
 
+def _suggestion_status(context: _RunContext, student_id: uuid.UUID, current_t: int) -> str | None:
+    """Decision B. Handled only while the suggestion is still live: past its
+    `expires_after_session` it no longer counts even before the generator writes the closure,
+    so a still-flagged child returns to the watch list on time (D47's "keep the guards")."""
+
+    entry = context.handled.get(student_id)
+    if entry is None:
+        return None
+    status, expires_after_session = entry
+    return None if current_t > expires_after_session else status
+
+
 def _learner_card(
-    row: Any, display_name: str, classroom_id: uuid.UUID, panel: _PanelSummary
+    row: Any,
+    display_name: str,
+    classroom_id: uuid.UUID,
+    panel: _PanelSummary,
+    suggestion_status: str | None = None,
 ) -> LearnerCard:
     return LearnerCard(
         student_id=row.student_id,
@@ -159,6 +180,7 @@ def _learner_card(
         engagement_sparkline=panel.engagement_sparkline,
         model_version=row.model_version,
         inference_timestamp=row.inference_timestamp,
+        suggestion_status=suggestion_status,
     )
 
 
@@ -229,6 +251,7 @@ async def _cards_for_classroom(
                 learner.name,
                 classroom_id,
                 context.panel.get(learner.learner_id, _EMPTY_PANEL),
+                _suggestion_status(context, learner.learner_id, row.t),
             )
         )
     return cards
@@ -241,6 +264,8 @@ def _stats_for(cards: Sequence[LearnerCard]) -> CohortStats:
     return CohortStats(
         learner_count=len(cards),
         watch_count=sum(1 for c in cards if c.watch_flag),
+        # A subset of watch_count, never subtracted from it (decision B).
+        handled_count=sum(1 for c in cards if c.watch_flag and c.suggestion_status),
         getting_started_count=sum(
             1 for c in cards if c.sessions_completed < WARMUP_FLOOR
         ),
@@ -290,6 +315,7 @@ async def home_summary(
                 watch_count=stats.watch_count,
                 getting_started_count=stats.getting_started_count,
                 pending_request_count=pending.get(classroom.classroom_id, 0),
+                handled_count=stats.handled_count,
             )
         )
 
@@ -418,10 +444,34 @@ async def student_detail(
     ).pipeline_run_id
     rows = await data_access.predictions_for_run(session, run, student_id=student_id)
     latest = _latest_by_student(rows).get(student_id)
-    if latest is None:
-        raise NoPredictionsError(str(student_id))
-
     roster_name = await _display_name_for(session, student_id)
+
+    if latest is None:
+        # On the teacher's roster, not in this run -- a child who just joined, or one the demo
+        # map does not reach. `_cards_for_classroom` ALREADY shows them, as getting-started, so
+        # 404 here made the same learner two different answers: present in the class list,
+        # "couldn't load this student" when opened. Found on the first real join, 2026-09-14.
+        #
+        # This is not the empty 200 the route's 404 exists to prevent. That warning is about a
+        # learner who looks *judged and fine*; this reply carries `insufficient_exposure`, so
+        # every screen renders Getting Started -- "we cannot tell yet", which is the truth.
+        classroom_row = await data_access.classroom_for_learner(
+            session, teacher_profile_id, student_id
+        )
+        return StudentDetail(
+            student_id=student_id,
+            display_name=roster_name,
+            classroom_id=None if classroom_row is None else classroom_row.classroom_id,
+            class_name=None if classroom_row is None else classroom_row.name,
+            t=0,
+            evidence_status="insufficient_exposure",
+            sessions_completed=0,
+            watch_flag=False,
+            rank_within_t=None,
+            practice_trajectory="unknown",
+            explanation=None,
+            signals=[],
+        )
 
     # `shap_top3` stores the raw feature key alongside the display name; only the display
     # name crosses the wire (filter 3). `SignalOut` forbids extras, so a future change that
@@ -626,7 +676,16 @@ async def skill_progress(
     ).pipeline_run_id
     rows = await data_access.session_history_for_student(session, run, student_id)
     if not rows:
-        raise NoPredictionsError(str(student_id))
+        # A child who has not practised yet has no skills to report -- that is an empty list,
+        # not a failure. 404 here took down the whole student screen (the client fetches the
+        # detail and the skills together), so a brand-new learner rendered as "couldn't load
+        # this student" instead of Getting Started. The sessions route already answers an empty
+        # history with 200; this now matches it.
+        return SkillProgressResponse(
+            student_id=student_id,
+            display_name=await _display_name_for(session, student_id),
+            skills=[],
+        )
 
     latest = rows[-1]
     slopes = latest.b_mastery_slope_w4 or {}

@@ -243,6 +243,11 @@ def client(monkeypatch):
 
     da = dashboard_service.data_access
     monkeypatch.setattr(da, "class_keys_for_classrooms", _class_keys)
+    async def _handled(_session, _run):
+        # No suggestion has been handled unless a test says otherwise (decision B).
+        return {}
+
+    monkeypatch.setattr(da, "handled_suggestions_for_run", _handled)
     monkeypatch.setattr(da, "panel_rows_for_run", _panel_rows)
     monkeypatch.setattr(da, "pending_request_counts", _pending_counts)
     monkeypatch.setattr(da, "teacher_display_name", _teacher_name)
@@ -537,6 +542,74 @@ def test_a_learner_with_no_prediction_gets_null_provenance(client, monkeypatch):
     assert card["classroom_id"] == str(CLASSROOM)
 
 
+def test_a_learner_with_no_prediction_opens_as_getting_started_not_an_error(client, monkeypatch):
+    """A child who just joined a class has no prediction in the active run.
+
+    The cohort ALREADY lists them (getting-started), so 404 here made the same learner two
+    different answers: present in the class list, "couldn't load this student" when opened.
+    That is what a teacher saw the first time a real child joined, 2026-09-14.
+
+    This is not the empty 200 the route's 404 guarded against -- that warning is about a
+    learner who reads as judged and fine. `insufficient_exposure` renders Getting Started,
+    which says "we cannot tell yet".
+    """
+
+    new_child = uuid.UUID("eeeeeeee-6666-4666-8666-eeeeeeeeeeee")
+
+    async def _roster(_session, _classroom_id):
+        return [_Learner(LEARNER, "Amara"), _Learner(new_child, "Newcomer")]
+
+    async def _visible(_session, teacher_profile_id, learner_id):
+        return teacher_profile_id == TEACHER and learner_id in {LEARNER, OTHER_LEARNER, new_child}
+
+    async def _real(_session, *, learner_ids=None):
+        return [_Learner(new_child, "Newcomer")]
+
+    da = dashboard_service.data_access
+    monkeypatch.setattr(da, "classroom_roster", _roster)
+    monkeypatch.setattr(da, "learner_visible_to_teacher", _visible)
+    monkeypatch.setattr(da, "real_learners", _real)
+
+    response = client.get(f"/api/v1/t3/students/{new_child}")
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["display_name"] == "Newcomer"
+    assert body["evidence_status"] == "insufficient_exposure"  # -> Getting Started on screen
+    assert body["sessions_completed"] == 0
+    assert body["t"] == 0
+    assert body["watch_flag"] is False
+    assert body["rank_within_t"] is None
+    assert body["practice_trajectory"] == "unknown"
+    assert body["explanation"] is None
+    assert body["signals"] == []
+    # The back link needs the class, and this is the case where it used to be missing.
+    assert body["classroom_id"] == str(CLASSROOM)
+    assert body["class_name"] == "Grade 3 Maths"
+    assert_no_forbidden_fields(body)
+
+
+def test_a_learner_with_no_prediction_is_never_shown_as_judged_and_fine(client, monkeypatch):
+    """The mirror of the test above, and the reason the 404 existed. Serving 200 is only
+    acceptable BECAUSE the reply says "not enough evidence" rather than "no concern"."""
+
+    new_child = uuid.UUID("eeeeeeee-7777-4777-8777-eeeeeeeeeeee")
+
+    async def _visible(_session, teacher_profile_id, learner_id):
+        return teacher_profile_id == TEACHER
+
+    async def _real(_session, *, learner_ids=None):
+        return [_Learner(new_child, "Newcomer")]
+
+    da = dashboard_service.data_access
+    monkeypatch.setattr(da, "learner_visible_to_teacher", _visible)
+    monkeypatch.setattr(da, "real_learners", _real)
+
+    body = client.get(f"/api/v1/t3/students/{new_child}").json()
+    assert body["evidence_status"] != "sufficient_evidence"
+    assert body["watch_flag"] is False
+
+
 def test_student_detail_serves_the_classroom_id_for_the_back_link(client):
     """`StudentDetail.tsx` links back to `/classes/{snapshot.classId}`.
 
@@ -547,3 +620,58 @@ def test_student_detail_serves_the_classroom_id_for_the_back_link(client):
     body = client.get(f"/api/v1/t3/students/{LEARNER}").json()
     assert body["classroom_id"] == str(CLASSROOM)
     assert body["class_name"] == "Grade 3 Maths"
+
+
+# --- decision B: a handled suggestion moves a learner, never the count --------------------
+
+
+def _handled(monkeypatch, entries):
+    async def _reader(_session, _run):
+        return entries
+
+    monkeypatch.setattr(dashboard_service.data_access, "handled_suggestions_for_run", _reader)
+
+
+def test_an_accepted_suggestion_marks_the_card_but_never_changes_the_watch_count(client, monkeypatch):
+    """Decision B, 2026-09-14. The class page moves a handled learner out of Students to Watch,
+    but the COUNT keeps meaning "the system flagged this many" -- otherwise accepting suggestions
+    becomes a way to clear the list, which is the acceptance-rate distortion D36/D44 warn about."""
+
+    _handled(monkeypatch, {LEARNER: ("accepted", 14)})  # LEARNER is flagged at t=9
+
+    cohort = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    card = next(c for c in cohort["learners"] if c["student_id"] == str(LEARNER))
+    assert card["suggestion_status"] == "accepted"
+    assert card["watch_flag"] is True  # the flag itself is untouched
+    assert cohort["stats"]["watch_count"] == 1  # NOT reduced
+    assert cohort["stats"]["handled_count"] == 1  # a subset of it
+
+    home = client.get("/api/v1/t3/home").json()
+    assert home["watch_count"] == 1
+    assert home["classes"][0]["watch_count"] == 1
+    assert home["classes"][0]["handled_count"] == 1
+
+
+def test_a_modified_suggestion_counts_as_handled_too(client, monkeypatch):
+    _handled(monkeypatch, {LEARNER: ("modified", 14)})
+    cohort = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    card = next(c for c in cohort["learners"] if c["student_id"] == str(LEARNER))
+    assert card["suggestion_status"] == "modified"
+
+
+def test_an_expired_suggestion_no_longer_counts_as_handled(client, monkeypatch):
+    """Past its expiry the child returns to the watch list, even before the generator has
+    written the closure (D47's "keep the existing guards")."""
+
+    _handled(monkeypatch, {LEARNER: ("accepted", 8)})  # expired: current t is 9
+    cohort = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    card = next(c for c in cohort["learners"] if c["student_id"] == str(LEARNER))
+    assert card["suggestion_status"] is None
+    assert cohort["stats"]["handled_count"] == 0
+    assert cohort["stats"]["watch_count"] == 1
+
+
+def test_no_handled_suggestion_means_no_status(client):
+    cohort = client.get(f"/api/v1/t3/classes/{CLASSROOM}/cohort").json()
+    assert all(c["suggestion_status"] is None for c in cohort["learners"])
+    assert cohort["stats"]["handled_count"] == 0

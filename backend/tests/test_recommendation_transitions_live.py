@@ -496,3 +496,57 @@ def test_a_closure_session_needs_its_timestamp():
             await conn.close()
 
     _run(go())
+
+
+def test_handled_suggestions_reader_returns_only_open_accepted_or_modified():
+    """Decision B's reader, against real rows. Accepted and modified count; dismissed does not
+    (the teacher disagreed, so the child stays on the watch list); pending does not; and a
+    CLOSED suggestion does not, so a still-flagged child returns to the list at expiry (D47)."""
+
+    async def go():
+        conn = await asyncpg.connect(_plain(_LIVE_URL))
+        engine = create_async_engine(normalise_async_url(_LIVE_URL))
+        learners = [r["learner_id"] for r in await conn.fetch("select learner_id from b_learners limit 5")]
+        if len(learners) < 5:
+            pytest.skip("need five b_learners rows")
+        run = uuid.uuid4()
+        prov = ("TEST", "b7_live_handled", "TEST_FIXTURE_ONLY")
+        try:
+            await conn.execute(
+                "insert into t3_pipeline_runs (pipeline_run_id, dataset_manifest, model_version, "
+                "source_class, source_system, parameter_source_status) values ($1,$2,$3,$4,$5,$6)",
+                run, json.dumps({"seed": "handled"}), "handled-live", *prov,
+            )
+            cases = [
+                (learners[0], "accepted", None, None),
+                (learners[1], "modified", None, {"kind": "review", "detail": {}}),
+                (learners[2], "dismissed", None, None),
+                (learners[3], "pending", None, None),
+                (learners[4], "accepted", 9, None),  # closed
+            ]
+            for learner, status, closed_at, modified in cases:
+                await conn.execute(
+                    "insert into t3_recommendations (recommendation_id, student_id, "
+                    "issued_at_intervention_session, expires_after_session, target_component, "
+                    "trigger, proposed_action, evidence_summary, teacher_status, "
+                    "teacher_modified_action, closed_at_session, closed_at_utc, pipeline_run_id, "
+                    "source_class, source_system, parameter_source_status) "
+                    "values ($1,$2,3,8,'C',$3,$4,'s',$5,$6,$7,$8,$9,$10,$11,$12)",
+                    uuid.uuid4(), learner, json.dumps({"type": "watch_flag", "evidence": {}}),
+                    json.dumps({"kind": "monitor_progress", "detail": {}}), status,
+                    None if modified is None else json.dumps(modified),
+                    closed_at, None if closed_at is None else __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+                    run, *prov,
+                )
+
+            async with async_sessionmaker(engine)() as session:
+                handled = await data_access.handled_suggestions_for_run(session, run)
+
+            assert handled == {learners[0]: ("accepted", 8), learners[1]: ("modified", 8)}
+        finally:
+            await conn.execute("delete from t3_recommendations where pipeline_run_id=$1", run)
+            await conn.execute("delete from t3_pipeline_runs where pipeline_run_id=$1", run)
+            await conn.close()
+            await engine.dispose()
+
+    _run(go())

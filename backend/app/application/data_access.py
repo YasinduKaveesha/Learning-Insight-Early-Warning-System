@@ -37,6 +37,7 @@ way of a row that happened to carry everything. Nothing in this module logs `pop
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from types import SimpleNamespace
 from collections.abc import Sequence
@@ -51,9 +52,11 @@ from app.infrastructure.db.models import (
     Panel,
     PipelineRun,
     Prediction,
+    Recommendation,
 )
 from app.infrastructure.db.models import (
     b_learners,
+    classroom_invites,
     classroom_memberships,
     classrooms,
     teacher_profiles,
@@ -292,6 +295,40 @@ async def pending_request_counts(
 # ==========================================================================================
 
 
+async def handled_suggestions_for_run(
+    session: AsyncSession, pipeline_run_id: uuid.UUID
+) -> dict[uuid.UUID, tuple[str, int]]:
+    """Learners whose OPEN suggestion a teacher has accepted or modified, in this run.
+
+    Returns ``student_id -> (teacher_status, expires_after_session)``. The caller compares the
+    expiry against the learner's current session, because expiry is measured against a value
+    this table does not hold (see D47).
+
+    "Handled" is decision B, 2026-09-14: a handled watch-flagged learner moves out of the class
+    page's Students to Watch section but STAYS in the watch count. Only `accepted` and
+    `modified` qualify -- a `dismissed` suggestion means the teacher disagreed with it, so the
+    child stays on the watch list. A CLOSED suggestion (D47) no longer counts: once its active
+    period ends, a still-flagged child returns to the list.
+
+    Scoped by `pipeline_run_id`, never by `source_class`, like every t3_ reader. Reads status and
+    expiry only -- never evidence, never the proposed action.
+    """
+
+    stmt = select(
+        Recommendation.student_id,
+        Recommendation.teacher_status,
+        Recommendation.expires_after_session,
+    ).where(
+        Recommendation.pipeline_run_id == pipeline_run_id,
+        Recommendation.teacher_status.in_(("accepted", "modified")),
+        Recommendation.closed_at_session.is_(None),
+    )
+    return {
+        row.student_id: (row.teacher_status, row.expires_after_session)
+        for row in (await session.execute(stmt)).all()
+    }
+
+
 async def class_keys_for_classrooms(
     session: AsyncSession, classroom_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, str]:
@@ -496,6 +533,31 @@ async def teacher_owns_classroom(
         classrooms.c.classroom_id == classroom_id,
         classrooms.c.teacher_profile_id == teacher_profile_id,
         classrooms.c.source_class == REAL_SOURCE_CLASS,
+    )
+    return (await session.execute(stmt)).first() is not None
+
+
+async def token_matches_live_invite(
+    session: AsyncSession, classroom_id: uuid.UUID, canonical_token: str
+) -> bool:
+    """True only if `canonical_token` is this classroom's live join code (D49).
+
+    Component 3 stores the plaintext so a teacher can re-read it, but it must never store a
+    string a browser simply asserted is the code. The student app keeps
+    `sha256(normalised code)`, and both applications share one database, so the claim is
+    checkable here without calling the student app at all: hash what we were given and look
+    for a non-revoked invite on this classroom with that hash.
+
+    `canonical_token` must already be normalised the way the student app normalises before
+    hashing -- separators stripped, upper-cased -- or a code a child could redeem would be
+    rejected here purely for carrying the dashes a teacher reads it with.
+    """
+
+    token_hash = hashlib.sha256(canonical_token.encode()).hexdigest()
+    stmt = select(classroom_invites.c.classroom_invite_id).where(
+        classroom_invites.c.classroom_id == classroom_id,
+        classroom_invites.c.token_hash == token_hash,
+        classroom_invites.c.revoked_at_utc.is_(None),
     )
     return (await session.execute(stmt)).first() is not None
 

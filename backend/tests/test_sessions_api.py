@@ -139,6 +139,11 @@ def client(monkeypatch):
         return _ClassroomRow(CLASSROOM, "Grade 3 Maths")
 
     da = dashboard_service.data_access
+    async def _handled(_session, _run):
+        # No suggestion has been handled unless a test says otherwise (decision B).
+        return {}
+
+    monkeypatch.setattr(da, "handled_suggestions_for_run", _handled)
     monkeypatch.setattr(da, "classrooms_for_teacher", _classrooms)
     monkeypatch.setattr(da, "classroom_for_learner", _classroom_for_learner)
     monkeypatch.setattr(da, "active_pipeline_run", _active_run)
@@ -319,6 +324,24 @@ def test_the_skills_route_serves_mastery_only_as_mastery_level(client):
 )
 def test_mastery_level_is_rounded_and_never_clamped(raw, served):
     assert dashboard_service._mastery_level(raw) == served
+
+
+def test_a_learner_with_no_sessions_gets_an_empty_skill_list_not_an_error(client, monkeypatch):
+    """A child who has not practised yet has no skills to report -- an empty list, not a
+    failure. This used to 404, and because the student screen fetches the detail and the skills
+    together, one 404 took the whole screen down to "couldn't load this student"."""
+
+    async def _no_history(_session, _run, _student):
+        return []
+
+    monkeypatch.setattr(dashboard_service.data_access, "session_history_for_student", _no_history)
+    response = client.get(SKILLS)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["skills"] == []
+    assert body["disclosure"] == DISCLOSURE
+    # And the sessions route answers the same shape of nothing.
+    assert client.get(SESSIONS).json()["sessions"] == []
 
 
 def test_skill_direction_is_withheld_for_every_skill(client):
