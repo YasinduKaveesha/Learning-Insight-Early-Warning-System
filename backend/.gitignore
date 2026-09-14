@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.venv/
+venv/
+*.egg-info/
+
+# Versioned serving artefact store — committed so the golden vector runs from a clean
+# clone (D18). Root .gitignore's *.joblib still covers notebooks/outputs/.
+!artefacts/**/*.joblib
+
+# Test fixtures only — a deliberate, owner-approved exception to root .gitignore's *.csv
+# data rule, so the D18 golden vector runs in CI. 10 learners, base features only:
+# no population, no dd_subtype, no split, no future_* columns.
+!tests/fixtures/*.csv
+
+# Seeder receipt: carries plaintext classroom invite tokens and the demo teacher
+# subject. Regenerate with scripts/seed_demo_tenancy.py; never commit it.
+scripts/demo_tenancy_receipt.json

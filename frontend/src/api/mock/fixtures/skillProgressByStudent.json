@@ -1,0 +1,1226 @@
+{
+  "STU-0103": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": -0.002685322091194847,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.29030548093426634,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "improving",
+      "relativeLevel": -0.002685322091194847,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.07123370918796906,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.07123370918796906,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.07123370918796906,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.07123370918796906,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0001": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.18422004969309694,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.12856260261888677,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.06255653046239668,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.06255653046239668,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.06255653046239668,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.06255653046239668,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.06255653046239668,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0004": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.052043792631754016,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.13799866413242617,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.03800849135283599,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.03800849135283599,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.03800849135283599,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.03800849135283599,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.03800849135283599,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0008": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.11192229181948646,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": 0.1653144751814943,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.05544735340019613,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.05544735340019613,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.05544735340019613,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.05544735340019613,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.05544735340019613,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0010": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.09701022666119069,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.22124569213749828,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "improving",
+      "relativeLevel": -0.008812474082318333,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.07736086117909255,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.07736086117909255,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.07736086117909255,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.07736086117909255,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0012": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.20185214653213104,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.16942712230822624,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.07425585376807142,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.07425585376807142,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.07425585376807142,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.07425585376807142,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.07425585376807142,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0015": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.16749587583201234,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": 0.047127590681822956,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.04292469330276705,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.04292469330276705,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.04292469330276705,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.04292469330276705,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.04292469330276705,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0016": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": -0.08216663486046241,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": -0.08216663486046241,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.03347806084780036,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "improving",
+      "relativeLevel": 0.1697143791784234,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": 0.14374164709856457,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.08216663486046241,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.03347806084780036,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0030": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.10408430015277104,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": 0.08552239939101369,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.03792133990875693,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.03792133990875693,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.03792133990875693,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.03792133990875693,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.03792133990875693,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0005": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.16776140441353368,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.2001220109851273,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.01873797340231273,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.08728636049908695,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.08728636049908695,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.08728636049908695,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.08728636049908695,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0014": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.2166954776156962,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": 0.15337560767947286,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.07401421705903377,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.07401421705903377,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.07401421705903377,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.07401421705903377,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.07401421705903377,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0023": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.058716929680579566,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.1859273873521593,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.04892886340654776,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.04892886340654776,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.04892886340654776,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.04892886340654776,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.04892886340654776,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0040": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": -0.030511810855148147,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": -0.030511810855148147,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.030511810855148147,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": 0.018176763157513903,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "improving",
+      "relativeLevel": 0.13438229111822672,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.030511810855148147,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.030511810855148147,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0049": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.2222446433813779,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.2525293903131432,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "improving",
+      "relativeLevel": -0.07613701065532086,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "improving",
+      "relativeLevel": -0.05463311376750507,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "improving",
+      "relativeLevel": -0.05463311376750507,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.14468539775209507,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.14468539775209507,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0057": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.1724726733503884,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": 0.278434395803289,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "improving",
+      "relativeLevel": 0.04150792775013229,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.12310374922595238,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.12310374922595238,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.12310374922595238,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.12310374922595238,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0058": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.24313386862580663,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": 0.15805631550444052,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.08023803682604935,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.08023803682604935,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.08023803682604935,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.08023803682604935,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.08023803682604935,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0064": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.2923548657619754,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": -0.0009512609354479507,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.06949964803222217,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.03326482578175094,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.04963983494811,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.06949964803222217,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.06949964803222217,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0076": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "improving",
+      "relativeLevel": 0.22506657857213316,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.15350712199616698,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.07571474011365997,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.07571474011365997,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.07571474011365997,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.07571474011365997,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.07571474011365997,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0081": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.02085729510658879,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.25656926218664355,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "improving",
+      "relativeLevel": -0.0006466017812269964,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.06919498887800121,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.06919498887800121,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.06919498887800121,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.06919498887800121,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0091": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.01678247980947767,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.24204705662700526,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.05176590728729655,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.05176590728729655,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.05176590728729655,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.05176590728729655,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.05176590728729655,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0092": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": -0.12422485580972961,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": -0.07553628179706756,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "improving",
+      "relativeLevel": 0.122378997597201,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "improving",
+      "relativeLevel": 0.1688071093085613,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "improving",
+      "relativeLevel": 0.10833616830783172,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.12422485580972961,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.07553628179706756,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0109": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.2482878297806162,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": 0.18686886270821623,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.09911965985200746,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "improving",
+      "relativeLevel": -0.06915089781305606,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "improving",
+      "relativeLevel": -0.028927188951529625,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.11897947293611963,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.11897947293611963,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0115": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": -0.06189501601389427,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "not_moving",
+      "relativeLevel": -0.06189501601389427,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.013206442001232221,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "improving",
+      "relativeLevel": 0.18370352386382627,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": 0.07708298219298287,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.06189501601389427,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.06189501601389427,
+      "practiceCount": 8
+    }
+  ],
+  "STU-0120": [
+    {
+      "skillId": "counting",
+      "displayName": "Counting",
+      "direction": "not_moving",
+      "relativeLevel": 0.03013415634830599,
+      "practiceCount": 4
+    },
+    {
+      "skillId": "number_sense",
+      "displayName": "Number sense",
+      "direction": "improving",
+      "relativeLevel": 0.16193699739403541,
+      "practiceCount": 5
+    },
+    {
+      "skillId": "place_value",
+      "displayName": "Place value",
+      "direction": "not_moving",
+      "relativeLevel": -0.038414230748468225,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "addition",
+      "displayName": "Addition",
+      "direction": "not_moving",
+      "relativeLevel": -0.038414230748468225,
+      "practiceCount": 6
+    },
+    {
+      "skillId": "subtraction",
+      "displayName": "Subtraction",
+      "direction": "not_moving",
+      "relativeLevel": -0.038414230748468225,
+      "practiceCount": 7
+    },
+    {
+      "skillId": "multiplication",
+      "displayName": "Multiplication",
+      "direction": "not_moving",
+      "relativeLevel": -0.038414230748468225,
+      "practiceCount": 8
+    },
+    {
+      "skillId": "division",
+      "displayName": "Division",
+      "direction": "not_moving",
+      "relativeLevel": -0.038414230748468225,
+      "practiceCount": 8
+    }
+  ]
+}

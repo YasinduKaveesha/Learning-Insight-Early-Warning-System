@@ -75,3 +75,13 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# ---------------------------------------------------------------------------
+# Node / frontend (Component 3 teacher dashboard)
+# ---------------------------------------------------------------------------
+node_modules/
+frontend/dist/
+.vite/
+coverage/
+*.local
+npm-debug.log*

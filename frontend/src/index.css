@@ -1,0 +1,42 @@
+/* Self-hosted Nunito (Step 8) — @fontsource, not a Google Fonts runtime
+   request. Weights: 600 (body, this brand's default — deliberately not
+   400), 700 (bold), 800 (display), 900 (heavy). */
+@import "@fontsource/nunito/600.css";
+@import "@fontsource/nunito/700.css";
+@import "@fontsource/nunito/800.css";
+@import "@fontsource/nunito/900.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  /* The brand's body weight is 600, not the browser default 400 — see
+     tailwind.config.js's fontFamily/fontSize comments and the Step 8
+     report. Utility classes (font-bold, font-extrabold, ...) still apply
+     normally on top of this for headings and emphasis. Colour comes
+     through the Tailwind theme layer (@apply), never a raw hex — same
+     rule as every component. */
+  font-weight: 600;
+  @apply bg-background font-sans text-ink-primary;
+}
+
+/* focusRing token, applied in ONE place rather than per-component.
+   Hardening-pass fix (defect A, see src/theme/tokens.ts): darkened from the
+   MathMingo source's #3ca6f8 (which measured ~2.4-2.6:1 against
+   background/surface1 — below WCAG 1.4.11's 3:1 non-text threshold) to
+   #2589dc, which measures 3.36:1 / 3.69:1 against the same two
+   backgrounds. A dashboard-local override, recognisably the same blue. */
+@layer base {
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-focus-ring;
+  }
+}

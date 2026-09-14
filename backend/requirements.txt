@@ -1,0 +1,27 @@
+# Pinned per requirements.in. Regenerate with `pip-compile requirements.in` once the c3-ews
+# environment (Python 3.11) is available -- these versions have not been resolved in this
+# environment due to a disk-space blocker; see backend/README.md.
+scikit-learn==1.9.0
+numpy==2.4.6
+scipy==1.17.1
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+joblib==1.4.2
+pandas==2.2.3
+pytest==8.3.4
+httpx==0.28.1
+
+# Migrations (work order B3.1).
+alembic==1.16.4
+SQLAlchemy==2.0.43
+asyncpg==0.30.0
+
+# Supabase JWT verification against JWKS (work order B2.3).
+PyJWT[crypto]==2.10.1
+
+# Test-only: in-memory async SQLite for a self-contained unit test that must not touch the
+# shared upadya_test database (work order B2.3, gate 7).
+aiosqlite==0.20.0

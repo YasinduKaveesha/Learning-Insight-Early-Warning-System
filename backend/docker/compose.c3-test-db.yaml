@@ -1,0 +1,30 @@
+# Component 3 -- opt-in test-database port override.
+#
+# WHY THIS FILE EXISTS
+# `Upadya/Dev/backend/compose.yaml` deliberately publishes NO host port for the `db`
+# service. That file belongs to another team and Component 3 must not modify it. But every
+# DB-level gate this component has -- test_t3_live_schema, test_t3_loader,
+# test_t3_predictions_live, test_t3_recommendations_live -- needs to reach Postgres from the
+# host, because the pinned `c3-ews` conda env runs on the host, not inside a container.
+#
+# So this override adds ONE thing and nothing else: a published port on the existing `db`
+# service. No image change, no environment change, no new service, no volume change.
+#
+# OPT-IN BY CONSTRUCTION
+# Compose only reads this file when it is passed with an explicit second `-f`. A plain
+# `docker compose up` in Upadya/Dev/backend never sees it, so `db` stays unpublished by
+# default and this file cannot widen the dev stack's exposure by accident.
+#
+# BOUND TO LOOPBACK, NEVER 0.0.0.0
+# "127.0.0.1:55432:5432" binds the host side to loopback only. A bare "55432:5432" would
+# bind 0.0.0.0 and expose the student app's dev database to the local network. Do not
+# shorten it. Port 55432 is chosen to avoid colliding with a host Postgres on 5432.
+#
+# THE TARGET DATABASE IS `upadya_test`, NEVER `upadya`.
+# See backend/README.md, "Live database gates", for the full invocation and the reason.
+name: upadya-be1
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:55432:5432"
