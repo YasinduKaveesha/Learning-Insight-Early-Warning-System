@@ -92,8 +92,8 @@ def test_gate1_table_exists_and_student_app_untouched() -> None:
                 "and table_type='BASE TABLE' and table_name not like 't3_%'"
             )
             assert non_t3 == 36, non_t3
-            # Updated for each new migration -- D47 added 0010_reco_expiry_closure.
-            assert await conn.fetchval("select version_num from t3_alembic_version") == "0010_reco_expiry_closure"
+            # Updated for each new migration -- D49 added 0011_class_key_is_invite_token.
+            assert await conn.fetchval("select version_num from t3_alembic_version") == "0011_class_key_is_invite_token"
         finally:
             await conn.close()
 

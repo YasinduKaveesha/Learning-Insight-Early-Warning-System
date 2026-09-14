@@ -42,21 +42,23 @@ def client(monkeypatch):
 
 
 def test_the_endpoint_returns_the_key_and_the_disclosure(client, monkeypatch):
-    async def _ensure(_session, teacher, classroom):
+    async def _ensure(_session, teacher, classroom, invite_token=None):
         assert (teacher, classroom) == (TEACHER, CLASSROOM)
-        return "7K4P92"
+        # Reading a key back sends no body, so the route passes no token.
+        assert invite_token is None
+        return "M7KP4X9D"
 
     monkeypatch.setattr(class_key_service, "ensure_class_key", _ensure)
     response = client.post(KEY_ROUTE)
     assert response.status_code == 200
     body = response.json()
-    assert body["class_key"] == "7K4P92"
+    assert body["class_key"] == "M7KP4X9D"
     assert body["classroom_id"] == str(CLASSROOM)
     assert body["disclosure"] == DISCLOSURE
 
 
 def test_a_classroom_the_teacher_does_not_own_is_403(client, monkeypatch):
-    async def _ensure(*_args):
+    async def _ensure(*_args, **_kwargs):
         raise class_key_service.ClassroomNotVisibleError("x")
 
     monkeypatch.setattr(class_key_service, "ensure_class_key", _ensure)
@@ -99,8 +101,8 @@ def test_the_service_never_rotates_an_existing_key():
         def __init__(self, _session):
             calls.append("constructed")
 
-        async def create_key(self, *_args, **_kwargs):  # pragma: no cover - must not run
-            raise AssertionError("a second mint would rotate a permanent key")
+        async def store_key(self, *_args, **_kwargs):  # pragma: no cover - must not run
+            raise AssertionError("a second store would rotate a permanent key")
 
     from app.application import data_access
 
@@ -147,7 +149,7 @@ def test_the_ownership_guard_runs_before_any_write():
 
 
 def test_the_service_has_no_update_or_delete_path():
-    """Source-level guard: the only write in this module is `create_key`."""
+    """Source-level guard: the only write in this module is `store_key`."""
 
     import re
     from pathlib import Path

@@ -181,6 +181,51 @@ def test_gate5_nonexistent_classroom_is_false() -> None:
     assert _run(go()) is False
 
 
+def test_a_deleted_classroom_disappears_from_every_classroom_reader_and_guard() -> None:
+    """Student-app migration 20260914_0009: a teacher's soft delete sets `deleted_at_utc` and
+    keeps the row. Each classroom reader and guard must treat it as gone.
+
+    The delete is made inside a transaction that is ROLLED BACK -- this suite never commits a
+    write to a student-app table. The membership is left APPROVED on purpose (the real delete
+    would make it REMOVED), so the guards are shown to filter on the deletion itself rather than
+    relying on the membership state alone."""
+
+    from app.application import data_access
+
+    async def go():
+        engine, maker = _session_factory()
+        try:
+            async with maker() as session:
+                before = (
+                    await data_access.teacher_owns_classroom(session, _APPROVED_CLASSROOM_TEACHER, _APPROVED_CLASSROOM),
+                    _APPROVED_CLASSROOM in {r.classroom_id for r in await data_access.classrooms_for_teacher(session, _APPROVED_CLASSROOM_TEACHER)},
+                    await data_access.learner_visible_to_teacher(session, _APPROVED_CLASSROOM_TEACHER, _APPROVED_LEARNER),
+                    await data_access.classroom_for_learner(session, _APPROVED_CLASSROOM_TEACHER, _APPROVED_LEARNER) is not None,
+                )
+                await session.execute(
+                    text(
+                        "UPDATE classrooms SET deleted_at_utc = now(), deleted_by_user_id = "
+                        "(SELECT user_id FROM teacher_profiles WHERE teacher_profile_id = :t) "
+                        "WHERE classroom_id = :c"
+                    ),
+                    {"t": _APPROVED_CLASSROOM_TEACHER, "c": _APPROVED_CLASSROOM},
+                )
+                after = (
+                    await data_access.teacher_owns_classroom(session, _APPROVED_CLASSROOM_TEACHER, _APPROVED_CLASSROOM),
+                    _APPROVED_CLASSROOM in {r.classroom_id for r in await data_access.classrooms_for_teacher(session, _APPROVED_CLASSROOM_TEACHER)},
+                    await data_access.learner_visible_to_teacher(session, _APPROVED_CLASSROOM_TEACHER, _APPROVED_LEARNER),
+                    await data_access.classroom_for_learner(session, _APPROVED_CLASSROOM_TEACHER, _APPROVED_LEARNER) is not None,
+                )
+                await session.rollback()
+        finally:
+            await engine.dispose()
+        return before, after
+
+    before, after = _run(go())
+    assert before == (True, True, True, True)
+    assert after == (False, False, False, False)
+
+
 # ==========================================================================================
 # Gate 6 -- learner_visible_to_teacher, the cross-tenant case.
 # ==========================================================================================

@@ -199,6 +199,10 @@ async def classrooms_for_teacher(
     Carries the student-app provenance rule (`source_class = 'REAL'`) like every other
     reader in this section -- a TEST classroom must never appear on a teacher's home screen
     even though it is genuinely owned by them.
+
+    A classroom the teacher DELETED (student-app migration 20260914_0009, a soft delete) is
+    excluded the same way on every classroom reader and guard here: it keeps its row, but it
+    is gone from every teacher screen.
     """
 
     stmt = select(
@@ -208,6 +212,7 @@ async def classrooms_for_teacher(
     ).where(
         classrooms.c.teacher_profile_id == teacher_profile_id,
         classrooms.c.source_class == REAL_SOURCE_CLASS,
+        classrooms.c.deleted_at_utc.is_(None),
     )
     return (await session.execute(stmt)).all()
 
@@ -258,6 +263,7 @@ async def classroom_for_learner(
             classroom_memberships.c.state == APPROVED_STATE,
             classrooms.c.teacher_profile_id == teacher_profile_id,
             classrooms.c.source_class == REAL_SOURCE_CLASS,
+            classrooms.c.deleted_at_utc.is_(None),
         )
     )
     return (await session.execute(stmt)).first()
@@ -533,6 +539,7 @@ async def teacher_owns_classroom(
         classrooms.c.classroom_id == classroom_id,
         classrooms.c.teacher_profile_id == teacher_profile_id,
         classrooms.c.source_class == REAL_SOURCE_CLASS,
+        classrooms.c.deleted_at_utc.is_(None),
     )
     return (await session.execute(stmt)).first() is not None
 
@@ -587,6 +594,7 @@ async def learner_visible_to_teacher(
             classroom_memberships.c.learner_id == learner_id,
             classroom_memberships.c.state == APPROVED_STATE,
             classrooms.c.teacher_profile_id == teacher_profile_id,
+            classrooms.c.deleted_at_utc.is_(None),
             b_learners.c.source_class == REAL_SOURCE_CLASS,
         )
     )

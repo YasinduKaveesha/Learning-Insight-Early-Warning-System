@@ -67,6 +67,9 @@ classrooms = Table(
     Column("name", String(255)),
     Column("grade", String(16)),
     Column("source_class", String(16)),
+    # Student-app migration 20260914_0009: a teacher's soft delete. Every reader of this
+    # table filters it out, the same way it filters source_class.
+    Column("deleted_at_utc", DateTime(timezone=True)),
     info={"component3_shadow": True},
 )
 
@@ -78,6 +81,20 @@ b_learners = Table(
     Column("grade", String(16)),
     Column("status", String(64)),
     Column("source_class", String(16)),
+    info={"component3_shadow": True},
+)
+
+# Added by D49. Component 3 stores the plaintext classroom join code so a teacher can re-read
+# it; the student app keeps only its hash. Before storing one, `class_key_service` proves the
+# code is the real live invite by comparing `sha256(upper(code))` against this column -- so a
+# token arriving from a browser is verified against the database rather than trusted.
+classroom_invites = Table(
+    "classroom_invites",
+    Base.metadata,
+    Column("classroom_invite_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("classroom_id", PgUUID(as_uuid=True)),
+    Column("token_hash", String(64)),
+    Column("revoked_at_utc", DateTime(timezone=True)),
     info={"component3_shadow": True},
 )
 

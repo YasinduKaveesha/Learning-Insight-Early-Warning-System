@@ -20,7 +20,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_APP = Path(__file__).resolve().parents[1] / "app"
+_BACKEND = Path(__file__).resolve().parents[1]
+#: `app/` AND `scripts/`. The scripts directory was outside this guard until 2026-09-14, and a
+#: one-off repair script used it to run `UPDATE classroom_invites` -- a direct write to a table
+#: the student application owns. The rule is about what Component 3 may do to their data, not
+#: about which directory the code sits in.
+_ROOTS = (_BACKEND / "app", _BACKEND / "scripts")
 
 # Table-name alternation shared by both regexes below: every b_*/c_* prefixed name, plus the
 # three student-app identity tables B2.3's gate 10 names explicitly by name (none of them
@@ -47,10 +52,11 @@ _CORE_WRITE = re.compile(
 
 def _offending_lines() -> list[str]:
     hits: list[str] = []
-    for path in sorted(_APP.rglob("*.py")):
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if _SQL_WRITE.search(line) or _CORE_WRITE.search(line):
-                hits.append(f"{path.relative_to(_APP.parent)}:{lineno}: {line.strip()}")
+    for root in _ROOTS:
+        for path in sorted(root.rglob("*.py")):
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if _SQL_WRITE.search(line) or _CORE_WRITE.search(line):
+                    hits.append(f"{path.relative_to(_BACKEND)}:{lineno}: {line.strip()}")
     return hits
 
 
