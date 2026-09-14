@@ -61,6 +61,10 @@ export interface LearnerSnapshot {
   engagementSparkline: number[];
   modelVersion: string;
   inferenceTimestamp: string;
+  // Decision B, 2026-09-14: the teacher has accepted or modified this learner's
+  // open suggestion. Moves a flagged learner out of "Students to Watch" on the
+  // class page -- it never changes watchFlag or the watch count.
+  suggestionStatus?: "accepted" | "modified" | null;
 }
 
 export interface SkillProgress {
@@ -115,6 +119,8 @@ export interface HomeSummary {
     // UI-refinement pass: added so Home's class cards can show a
     // pending-join-request indicator without a second round trip.
     pendingRequestCount: number;
+    // Decision B: a SUBSET of toWatchCount, never subtracted from it.
+    handledCount?: number;
   }[];
   disclosure: string; // rendered as-is, never hard-coded
 }

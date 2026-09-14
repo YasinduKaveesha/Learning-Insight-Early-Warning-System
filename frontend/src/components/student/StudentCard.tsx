@@ -1,5 +1,12 @@
-import { formatRelativeDate } from "../../lib/format";
-import { toWatchStatus, trajectoryStateWord, type LearnerSnapshot, type WatchStatus } from "../../lib/presentation";
+import { lastActiveLabel } from "../../lib/format";
+import {
+  gettingStartedProgress,
+  handledNote,
+  toWatchStatus,
+  trajectoryStateWord,
+  type LearnerSnapshot,
+  type WatchStatus,
+} from "../../lib/presentation";
 import { GettingStartedNotice } from "../status/GettingStartedNotice";
 
 export interface StudentCardProps {
@@ -47,7 +54,7 @@ export function StudentCard({ snapshot, onClick }: StudentCardProps) {
           of the name/last-active flow above and below it. */}
       {status.kind === "getting_started" ? (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-ink-secondary">
-          {status.sessionsCompleted} of {status.sessionsRequired} sessions
+          {gettingStartedProgress(status.sessionsCompleted, status.sessionsRequired)}
         </span>
       ) : (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-ink-secondary">
@@ -56,8 +63,12 @@ export function StudentCard({ snapshot, onClick }: StudentCardProps) {
       )}
 
       <p className="text-sm text-ink-secondary">
-        Last active {formatRelativeDate(snapshot.lastActiveDate)}
+        {lastActiveLabel(snapshot.lastActiveDate)}
       </p>
+      {/* Decision B: says why a blue card is outside the watch section. */}
+      {handledNote(snapshot) ? (
+        <p className="text-sm font-semibold text-watch-watching-fg">{handledNote(snapshot)}</p>
+      ) : null}
     </Wrapper>
   );
 }

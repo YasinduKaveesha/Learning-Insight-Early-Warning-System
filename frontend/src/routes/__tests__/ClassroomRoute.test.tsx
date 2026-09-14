@@ -206,6 +206,39 @@ describe("ClassroomRoute — empty cohort shows the class key", () => {
       expect(screen.getByText("No students yet. Share the key 4T7N26.")).toBeInTheDocument(),
     );
   });
+
+  it("an empty class still shows the three tiles, at zero, and prompts to add students", async () => {
+    mockCohort([], { studentCount: 0, toWatchCount: 0, gettingStartedCount: 0, classKey: "4T7N26" });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Students")).toBeInTheDocument());
+    expect(screen.getByText("To Watch")).toBeInTheDocument();
+    expect(screen.getByText("Getting Started")).toBeInTheDocument();
+    expect(screen.getAllByText("0")).toHaveLength(3);
+    expect(screen.getByText("Add students")).toBeInTheDocument();
+  });
+
+  it("an empty class STILL shows the pending-requests banner", async () => {
+    // The bug this pins: the banner used to live inside the "has students"
+    // branch, so a brand-new class with its first join request showed a red
+    // dot on Home and no way to reach the approve screen. Found for real on
+    // 2026-09-14, the first time a child joined a class made in the dashboard.
+    mockCohort([], { studentCount: 0, classKey: "4T7N26", pendingRequestCount: 1 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText(/1 join request pending/)).toBeInTheDocument());
+    expect(screen.getByText(/1 join request pending/).closest("a")).toHaveAttribute(
+      "href",
+      "/classes/class-1/requests",
+    );
+  });
+
+  it("an empty class does not show roster sections that could only be empty", async () => {
+    mockCohort([], { studentCount: 0, classKey: "4T7N26" });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Students")).toBeInTheDocument());
+    expect(screen.queryByText("Students to Watch")).not.toBeInTheDocument();
+    expect(screen.queryByText("All Students")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Search students")).not.toBeInTheDocument();
+  });
 });
 
 describe("ClassroomRoute — hardening pass: heading hierarchy", () => {
@@ -329,5 +362,65 @@ describe("ClassroomRoute — framing, disclosure, and forbidden vocabulary", () 
     await waitFor(() => expect(screen.getByText(/Couldn't load this class/)).toBeInTheDocument());
     const text = container.textContent!.toLowerCase();
     for (const term of FORBIDDEN) expect(text).not.toContain(term);
+  });
+});
+
+describe("ClassroomRoute — decision B: a handled suggestion moves the card, not the count", () => {
+  const HANDLED = makeSnapshot({
+    studentId: "s-handled",
+    displayName: "Dilshan",
+    watchFlag: true,
+    suggestionStatus: "accepted",
+  });
+
+  function sectionOf(name: string) {
+    // The card's nearest <section> tells us which list it is in.
+    return screen.getByText(name).closest("section")!.querySelector("h2, h3")?.textContent ?? "";
+  }
+
+  it("moves a handled learner from Students to Watch to All Students", async () => {
+    mockCohort([WATCHED_1, HANDLED, NO_CONCERN], { handledCount: 1 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Dilshan")).toBeInTheDocument());
+
+    expect(sectionOf("Amara")).toMatch(/Students to Watch/);
+    expect(sectionOf("Dilshan")).toMatch(/All Students/);
+  });
+
+  it("keeps the blue watching tint and says why it is there", async () => {
+    mockCohort([WATCHED_1, HANDLED], { handledCount: 1 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Dilshan")).toBeInTheDocument());
+
+    expect(screen.getByText("Suggestion accepted")).toBeInTheDocument();
+    const card = screen.getByText("Dilshan").closest("a")!.firstElementChild as HTMLElement;
+    expect(card.className).toMatch(/watch-watching/);
+  });
+
+  it("leads All Students, ahead of learners with no concern", async () => {
+    mockCohort([NO_CONCERN, HANDLED], { handledCount: 1 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Dilshan")).toBeInTheDocument());
+
+    const names = Array.from(
+      screen.getByText("Dilshan").closest("section")!.querySelectorAll("a"),
+    ).map((a) => a.textContent ?? "");
+    expect(names[0]).toContain("Dilshan");
+    expect(names[1]).toContain("Kavya");
+  });
+
+  it("the To Watch COUNT does not drop — it gains a 'handled' caption instead", async () => {
+    // Accepting a suggestion must not be a way to clear the watch list (D36/D44).
+    mockCohort([WATCHED_1, HANDLED], { toWatchCount: 2, handledCount: 1 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("1 handled")).toBeInTheDocument());
+    const tile = screen.getByText("To Watch").closest("div")!.parentElement!;
+    expect(tile.textContent).toContain("2");
+  });
+
+  it("a modified suggestion reads differently from an accepted one", async () => {
+    mockCohort([{ ...HANDLED, suggestionStatus: "modified" }], { handledCount: 1 });
+    renderClassroom();
+    await waitFor(() => expect(screen.getByText("Suggestion changed")).toBeInTheDocument());
   });
 });

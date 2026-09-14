@@ -25,6 +25,9 @@ export interface CohortResponse {
   className: string;
   studentCount: number;
   toWatchCount: number;
+  /** Decision B: flagged learners whose suggestion is handled. A SUBSET of
+   * toWatchCount, never subtracted from it. */
+  handledCount?: number;
   gettingStartedCount: number;
   pendingRequestCount: number;
   students: LearnerSnapshot[];

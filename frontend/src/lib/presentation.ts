@@ -120,6 +120,39 @@ export function sortCohortOrder(students: LearnerSnapshot[]): LearnerSnapshot[] 
   });
 }
 
+/**
+ * How far a Getting Started learner has got, in words.
+ *
+ * Zero reads differently from partial progress: "0 of 3 sessions" looks like a
+ * stalled progress bar, and for a child who joined an hour ago the truth is
+ * simply that they have not started. Any other count keeps the denominator,
+ * because there the teacher IS watching progress toward the point where the
+ * dashboard can say something (D6's warm-up floor of three sessions).
+ */
+export function gettingStartedProgress(sessionsCompleted: number, sessionsRequired: number): string {
+  if (sessionsCompleted <= 0) return "No sessions yet";
+  return `${sessionsCompleted} of ${sessionsRequired} sessions`;
+}
+
+/**
+ * Decision B, 2026-09-14: a watch-flagged learner whose open suggestion the
+ * teacher has accepted or modified. On the class page they move out of
+ * "Students to Watch" into "All Students", keeping the blue watching tint so
+ * they still stand out -- and they STAY in the watch count. The count keeps
+ * meaning "the system flagged this many"; clicking Accept is not a way to
+ * clear the list.
+ */
+export function isHandledWatch(s: LearnerSnapshot): boolean {
+  return toWatchStatus(s).kind === "watching" && Boolean(s.suggestionStatus);
+}
+
+/** The line a handled learner's card shows, so the teacher knows why a blue
+ * card is sitting outside the watch section. */
+export function handledNote(s: LearnerSnapshot): string | null {
+  if (!isHandledWatch(s)) return null;
+  return s.suggestionStatus === "modified" ? "Suggestion changed" : "Suggestion accepted";
+}
+
 /** Exhaustive icon/text pairing so colour can never be the only cue (plan §9). */
 export function watchStatusIcon(status: WatchStatus): string {
   switch (status.kind) {

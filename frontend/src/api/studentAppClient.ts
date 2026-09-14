@@ -12,7 +12,11 @@
 // without one), so a retry replays instead of creating a second classroom or
 // approving a child twice.
 
-import { DuplicateClassNameError, type Grade } from "../lib/presentation";
+import {
+  DuplicateClassNameError,
+  isDuplicateClassNameError,
+  type Grade,
+} from "../lib/presentation";
 import { supabase } from "./supabaseClient";
 
 const BASE: string = (
@@ -24,6 +28,15 @@ export interface ClassroomCreated {
   classroom_id: string;
   name: string | null;
   grade: Grade;
+}
+
+export interface InviteCreated {
+  classroom_invite_id: string;
+  /** Plaintext, shown once. Null when this replayed an already-issued invite. */
+  invite_token: string | null;
+  token_already_issued: boolean;
+  /** Null: a classroom join code does not expire (D49). */
+  expires_at_utc: string | null;
 }
 
 export interface MembershipRequest {
@@ -82,6 +95,30 @@ export async function createClassroom(name: string, grade: Grade): Promise<Class
   return request<ClassroomCreated>("/classrooms", { method: "POST", body: { name, grade } });
 }
 
+/** Mint the classroom's join code (D49).
+ *
+ * `invite_token` is the plaintext code, and the student app shows it EXACTLY
+ * ONCE -- it keeps only a SHA-256. If it is not handed to Component 3 and
+ * stored, no one can ever read it again and the classroom needs a new one.
+ * `token_already_issued` comes back true when the classroom already had a live
+ * code, and then `invite_token` is null for that same reason.
+ */
+export async function createInvite(classroomId: string): Promise<InviteCreated> {
+  return request<InviteCreated>(
+    `/classrooms/${encodeURIComponent(classroomId)}/invites`,
+    { method: "POST", body: {} },
+  );
+}
+
+/** Kill a code. Used when a mint succeeded but storing the plaintext failed:
+ * a live code nobody can read is worse than no code at all. */
+export async function revokeInvite(classroomInviteId: string): Promise<void> {
+  await request(`/classroom-invites/${encodeURIComponent(classroomInviteId)}/revoke`, {
+    method: "POST",
+    body: {},
+  });
+}
+
 export async function listMembershipRequests(classroomId: string): Promise<MembershipRequest[]> {
   const body = await request<{ requests: MembershipRequest[] }>(
     `/classrooms/${encodeURIComponent(classroomId)}/membership-requests`,
@@ -101,4 +138,26 @@ export async function rejectMembership(membershipId: string): Promise<void> {
     method: "POST",
     body: {},
   });
+}
+
+/** Create this account's TEACHER profile in the student app (B6.4).
+ *
+ * Signing up with Supabase only creates an identity. A teacher also needs a
+ * `teacher_profiles` row, and only the student app may write one (D3) -- without
+ * it the dashboard answers 403 for every request, which reads as "your login is
+ * broken" rather than "your account is not a teacher yet".
+ *
+ * `profile_type` is set ONCE and irreversibly by this call, so a 409 means the
+ * profile already exists and is treated as success -- never as a reason to retry
+ * with different data.
+ */
+export async function createTeacherProfile(name: string): Promise<void> {
+  try {
+    await request("/teacher/profile", { method: "POST", body: { name } });
+  } catch (e) {
+    // `request` maps 409 to DuplicateClassNameError (its only 409 caller until
+    // now). Here a 409 means "already a teacher", which is the desired end state.
+    if (isDuplicateClassNameError(e)) return;
+    throw e;
+  }
 }

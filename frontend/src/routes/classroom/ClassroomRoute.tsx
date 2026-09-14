@@ -11,7 +11,13 @@ import { SearchField } from "../../components/shared/SearchField";
 import { SectionHeader } from "../../components/shared/SectionHeader";
 import { StatTile } from "../../components/shared/StatTile";
 import { StudentCard } from "../../components/student/StudentCard";
-import { sortCohortOrder, type Grade, type LearnerSnapshot, toWatchStatus } from "../../lib/presentation";
+import {
+  isHandledWatch,
+  sortCohortOrder,
+  type Grade,
+  type LearnerSnapshot,
+  toWatchStatus,
+} from "../../lib/presentation";
 
 // Same grade -> pill colour as the /watch page's class-name pill
 // (WatchListScreen.tsx's GRADE_PILL_CLASSES), so the two screens agree.
@@ -55,10 +61,19 @@ export default function ClassroomRoute() {
     return ordered.filter((s) => s.displayName.toLowerCase().includes(query));
   }, [ordered, search]);
 
-  const watching = filtered.filter((s) => toWatchStatus(s).kind === "watching");
-  // Preserves the order sortCohortOrder produced — no-concern students
-  // first, Getting Started last, never interleaved (see doc comment above).
-  const allOthers = filtered.filter((s) => toWatchStatus(s).kind !== "watching");
+  // Decision B, 2026-09-14: a flagged learner whose suggestion the teacher has
+  // accepted or modified leaves "Students to Watch" and leads "All Students",
+  // still in the blue watching tint. The To Watch COUNT does not change.
+  const watching = filtered.filter(
+    (s) => toWatchStatus(s).kind === "watching" && !isHandledWatch(s),
+  );
+  const handled = filtered.filter(isHandledWatch);
+  // Handled first, then the rest in the order sortCohortOrder produced —
+  // no-concern students, then Getting Started last, never interleaved.
+  const allOthers = [
+    ...handled,
+    ...filtered.filter((s) => toWatchStatus(s).kind !== "watching"),
+  ];
 
   return (
     <div className="mx-auto flex max-w-[480px] lg:max-w-[1200px] flex-col gap-4 p-4 pb-8">
@@ -126,65 +141,74 @@ export default function ClassroomRoute() {
           message="Couldn't load this class. Check your connection and try again."
           onRetry={() => refetch()}
         />
-      ) : data.studentCount === 0 ? (
-        // The useful empty state is the class key, not "no students" —
-        // it's the thing the teacher needs to actually fix this (docs/11
-        // §7's own example: "No learners yet. Share the class key ...").
-        <EmptyState message={`No students yet. Share the key ${data.classKey}.`} />
       ) : (
         <>
-          <SearchField
-            label="Search students"
-            value={search}
-            onChange={setSearch}
-            placeholder="Search students..."
-            resultCount={filtered.length}
-          />
+          {/* An empty class is the SAME screen with zeros, not a different
+              one. It used to replace everything with a single line, which hid
+              the three tiles, hid the class key behind that sentence, and --
+              worst -- hid the pending-requests banner, the only route to the
+              approve screen. A brand-new class is exactly when the first child
+              asks to join: the teacher saw the red dot on Home and had nowhere
+              to go. Found on the first real join request, 2026-09-14. */}
+          {data.studentCount > 0 ? (
+            <SearchField
+              label="Search students"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search students..."
+              resultCount={filtered.length}
+            />
+          ) : null}
 
           {/* UI-refinement pass: same coloured/bold/bottom-right-value style
               as Home's stat tiles (StatTile's `tone` prop). */}
           <div className="grid grid-cols-3 gap-2">
-            <StatTile label="Students" value={data.studentCount} tone="blue" />
-            <StatTile label="To Watch" value={data.toWatchCount} tone="green" />
+            <StatTile
+              label="Students"
+              value={data.studentCount}
+              tone="blue"
+              caption={data.studentCount === 0 ? "Add students" : undefined}
+            />
+            <StatTile
+              label="To Watch"
+              // Still the number the system flagged -- handled learners stay in it.
+              value={data.toWatchCount}
+              tone="green"
+              caption={data.handledCount ? `${data.handledCount} handled` : undefined}
+            />
             <StatTile label="Getting Started" value={data.gettingStartedCount} tone="amber" />
           </div>
 
-          {data.pendingRequestCount > 0 ? (
-            // UI-refinement pass: soft-red tint (danger.soft) instead of
-            // neutral grey — same "soft tint" lightness/pattern as
-            // secondarySoft elsewhere in the app, just red. This is an
-            // administrative action-needed banner, not a student watch
-            // status, so docs/12 §7's "never red for a watch status" rule
-            // doesn't apply here.
-            <Link
-              to={`/classes/${classId}/requests`}
-              className="flex min-h-[44px] items-center justify-between rounded-lg border border-danger bg-danger-soft px-3 text-sm text-danger-text"
-            >
-              <span>
-                ⚑ {data.pendingRequestCount} join request
-                {data.pendingRequestCount === 1 ? "" : "s"} pending
-              </span>
-              <ArrowRight aria-hidden="true" size={18} />
-            </Link>
+          <PendingRequestsBanner classId={classId!} count={data.pendingRequestCount} />
+
+          {data.studentCount === 0 ? (
+            // The useful empty state is the class key, not "no students" --
+            // it is the thing the teacher needs to actually fix this (docs/11
+            // section 7's own example: "No learners yet. Share the class key").
+            <EmptyState message={`No students yet. Share the key ${data.classKey}.`} />
           ) : null}
 
-          <section>
-            <SectionHeader title="Students to Watch" />
-            {watching.length === 0 ? (
-              <EmptyState message="No students in this class are currently flagged for review." tone="blue" />
-            ) : (
-              <StudentCardList students={watching} />
-            )}
-          </section>
+          {data.studentCount > 0 ? (
+            <>
+              <section>
+                <SectionHeader title="Students to Watch" />
+                {watching.length === 0 ? (
+                  <EmptyState message="No students in this class are currently flagged for review." tone="blue" />
+                ) : (
+                  <StudentCardList students={watching} />
+                )}
+              </section>
 
-          <section>
-            <SectionHeader title="All Students" />
-            {allOthers.length === 0 ? (
-              <EmptyState message="No other students to show here." />
-            ) : (
-              <StudentCardList students={allOthers} />
-            )}
-          </section>
+              <section>
+                <SectionHeader title="All Students" />
+                {allOthers.length === 0 ? (
+                  <EmptyState message="No other students to show here." />
+                ) : (
+                  <StudentCardList students={allOthers} />
+                )}
+              </section>
+            </>
+          ) : null}
         </>
       )}
     </div>
@@ -200,5 +224,25 @@ function StudentCardList({ students }: { students: LearnerSnapshot[] }) {
         </Link>
       ))}
     </div>
+  );
+}
+
+/** The teacher's route to the approve/reject screen. Rendered whether or not the
+ * class has any students yet — see the empty-state comment above. */
+function PendingRequestsBanner({ classId, count }: { classId: string; count: number }) {
+  if (count <= 0) return null;
+  return (
+    // Soft-red tint: an administrative action-needed banner, not a student
+    // watch status, so docs/12 §7's "never red for a watch status" does not
+    // apply here.
+    <Link
+      to={`/classes/${classId}/requests`}
+      className="flex min-h-[44px] items-center justify-between rounded-lg border border-danger bg-danger-soft px-3 text-sm text-danger-text"
+    >
+      <span>
+        ⚑ {count} join request{count === 1 ? "" : "s"} pending
+      </span>
+      <ArrowRight aria-hidden="true" size={18} />
+    </Link>
   );
 }

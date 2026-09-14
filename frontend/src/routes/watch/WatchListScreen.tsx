@@ -8,7 +8,8 @@ import { ErrorState } from "../../components/shared/ErrorState";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { StudentDetail } from "../../components/student/StudentDetail";
 import { ExplanationBlock } from "../../components/student/ExplanationBlock";
-import { formatRelativeDate } from "../../lib/format";
+import { lastActiveLabel } from "../../lib/format";
+import { handledNote } from "../../lib/presentation";
 import { IS_DESKTOP_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { type Grade, type LearnerSnapshot } from "../../lib/presentation";
 
@@ -263,8 +264,13 @@ function WatchCard({
         <ExplanationBlock explanation={snapshot.explanation} showHeading={false} clampLines={3} />
       </div>
       <p className="mt-2 text-sm text-ink-secondary">
-        Last active {formatRelativeDate(snapshot.lastActiveDate)}
+        {lastActiveLabel(snapshot.lastActiveDate)}
       </p>
+      {/* Decision B: the watch list still lists every flagged learner (the count
+          is unchanged), and says which ones the teacher has already acted on. */}
+      {handledNote(snapshot) ? (
+        <p className="mt-1 text-sm font-semibold text-watch-watching-fg">{handledNote(snapshot)}</p>
+      ) : null}
     </Link>
   );
 }

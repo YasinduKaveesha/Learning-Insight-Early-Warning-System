@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, House } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -55,6 +55,7 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
   // is a research output). Saving never changes what Component B or C does
   // (D10). The returned suggestion replaces the one on screen, so what the
   // teacher sees is what the server stored, not what the click assumed.
+  const queryClient = useQueryClient();
   const [savedRecommendations, setSavedRecommendations] = useState<
     Record<string, RecommendationDisplay>
   >({});
@@ -70,6 +71,13 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
     try {
       const saved = await save();
       setSavedRecommendations((prev) => ({ ...prev, [id]: saved }));
+      // Decision B: an accepted or modified suggestion moves this learner on
+      // the class page and adds to its "handled" caption. Refresh those lists
+      // now, so going back shows the move without a manual reload.
+      void queryClient.invalidateQueries({ queryKey: ["cohort"] });
+      void queryClient.invalidateQueries({ queryKey: ["home"] });
+      void queryClient.invalidateQueries({ queryKey: ["watch"] });
+      void queryClient.invalidateQueries({ queryKey: ["classWatch"] });
     } catch (e) {
       setErrors((prev) => ({ ...prev, [id]: recommendationDecisionError(e) }));
       // Already decided or expired elsewhere (another tab, another device):

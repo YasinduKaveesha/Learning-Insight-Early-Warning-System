@@ -72,6 +72,7 @@ interface WireCard {
   engagement_sparkline: (number | null)[];
   model_version: string | null;
   inference_timestamp: string | null;
+  suggestion_status: "accepted" | "modified" | null;
 }
 
 interface WireHome {
@@ -89,6 +90,7 @@ interface WireHome {
     watch_count: number;
     getting_started_count: number;
     pending_request_count: number;
+    handled_count: number;
   }[];
 }
 
@@ -99,7 +101,12 @@ interface WireCohort {
   grade: Grade | null;
   class_key: string | null;
   pending_request_count: number;
-  stats: { learner_count: number; watch_count: number; getting_started_count: number };
+  stats: {
+    learner_count: number;
+    watch_count: number;
+    getting_started_count: number;
+    handled_count: number;
+  };
   learners: WireCard[];
 }
 
@@ -298,6 +305,7 @@ function toSnapshot(card: WireCard): LearnerSnapshot {
     engagementSparkline: presentValues(card.engagement_sparkline),
     modelVersion: card.model_version ?? "",
     inferenceTimestamp: card.inference_timestamp ?? "",
+    suggestionStatus: card.suggestion_status ?? null,
   };
 }
 
@@ -362,6 +370,7 @@ export class HttpClient implements ApiClient {
         studentCount: c.learner_count,
         toWatchCount: c.watch_count,
         pendingRequestCount: c.pending_request_count,
+        handledCount: c.handled_count ?? 0,
       })),
       disclosure: w.disclosure,
     };
@@ -374,6 +383,7 @@ export class HttpClient implements ApiClient {
       className: w.class_name ?? "",
       studentCount: w.stats.learner_count,
       toWatchCount: w.stats.watch_count,
+      handledCount: w.stats.handled_count ?? 0,
       gettingStartedCount: w.stats.getting_started_count,
       pendingRequestCount: w.pending_request_count,
       students: withoutPriority(w.learners.map(toSnapshot)),
@@ -524,9 +534,40 @@ export class HttpClient implements ApiClient {
    */
   async createClass(name: string, grade: Grade): Promise<CreateClassResult> {
     const created = await studentApp.createClassroom(name, grade);
-    const key = await post<{ class_key: string }>(
-      `/classes/${encodeURIComponent(created.classroom_id)}/key`,
-    );
+
+    // The join code is the STUDENT APP's invite token (D49). It used to be a code
+    // Component 3 minted itself, which matched no invite and which no child could
+    // ever redeem. The student app shows the plaintext once and keeps only its
+    // hash, so it has to be handed straight to Component 3 to be stored.
+    const invite = await studentApp.createInvite(created.classroom_id);
+    if (invite.invite_token === null) {
+      // The classroom already had a live code whose plaintext we cannot re-read.
+      // Never invent one: ask Component 3 for the copy it stored.
+      const existing = await post<{ class_key: string }>(
+        `/classes/${encodeURIComponent(created.classroom_id)}/key`,
+      );
+      return {
+        classId: created.classroom_id,
+        className: created.name ?? name,
+        grade: created.grade ?? grade,
+        classKey: existing.class_key,
+      };
+    }
+
+    let key: { class_key: string };
+    try {
+      key = await post<{ class_key: string }>(
+        `/classes/${encodeURIComponent(created.classroom_id)}/key`,
+        { invite_token: invite.invite_token },
+      );
+    } catch (error) {
+      // A live code nobody holds the plaintext of is worse than no code: the
+      // teacher cannot read it out and it cannot be replaced while it is live.
+      // Kill it, so a retry can mint a fresh one.
+      await studentApp.revokeInvite(invite.classroom_invite_id).catch(() => undefined);
+      throw error;
+    }
+
     return {
       classId: created.classroom_id,
       className: created.name ?? name,
