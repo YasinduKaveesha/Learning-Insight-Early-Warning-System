@@ -64,14 +64,23 @@ export default function ClassroomReportsRoute() {
         <>
           <section>
             <SectionHeader title="Class learning progress" />
-            <Chart
-              title="Practice accuracy, class average"
-              values={data.classLearningProgress.values}
-              trendSentence={describeTrend(
-                "Class average practice accuracy",
-                data.classLearningProgress.values,
-              )}
-            />
+            {data.classLearningProgress.values.length >= 2 ? (
+              <Chart
+                title="Practice accuracy, class average"
+                values={data.classLearningProgress.values}
+                trendSentence={describeTrend(
+                  "Class average practice accuracy",
+                  data.classLearningProgress.values,
+                )}
+              />
+            ) : (
+              // The real backend serves no series here: a class-mean accuracy line is
+              // QUESTIONS_FOR_ML_TEAM_3 Q4 and has not been ruled on. An empty chart frame
+              // reads as "no progress"; this says which it is.
+              <NeutralNotice title="Not available yet">
+                A class-average progress line is not published yet.
+              </NeutralNotice>
+            )}
           </section>
 
           <section>
@@ -90,13 +99,22 @@ export default function ClassroomReportsRoute() {
 
           <section>
             <SectionHeader title="Early-warning trend" />
-            <p className="text-sm text-ink-secondary">{data.earlyWarningTrend.explanation}</p>
+            {/* The curve the real backend serves is THIS CLASS, session by session — not the
+                study-wide curve the mock supplied. The old title said "across the study",
+                which was simply false for the served data. The sentence beneath states the
+                scope and nothing about model behaviour: teacher-facing copy about what the
+                curve means is QUESTIONS_FOR_ML_TEAM_3 Q6, still unanswered, and we do not
+                write that ourselves. */}
+            <p className="text-sm text-ink-secondary">
+              This class only. Each point counts the learners in it who had a snapshot at that
+              session number, so later points may rest on very few learners.
+            </p>
             <div className="mt-2">
               <Chart
-                title="Share of students flagged, across the study"
+                title="Share of this class flagged for review, by session"
                 values={data.earlyWarningTrend.flagRates}
                 trendSentence={describeTrend(
-                  "The share of students flagged",
+                  "The share of this class flagged",
                   data.earlyWarningTrend.flagRates,
                 )}
               />

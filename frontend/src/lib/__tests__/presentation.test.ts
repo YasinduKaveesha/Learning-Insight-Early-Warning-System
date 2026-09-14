@@ -5,6 +5,7 @@ import {
   recommendationLabel,
   skillBarPositionFromBounds,
   skillDirectionLabel,
+  snapshotFraming,
   sortCohortOrder,
   toWatchStatus,
   trajectoryLabel,
@@ -216,5 +217,28 @@ describe("sortCohortOrder with no priority numbers (D39)", () => {
       "Zara",
       "Aaron", // no-concern still comes after every watched learner
     ]);
+  });
+});
+
+describe("snapshotFraming", () => {
+  it("says what the judgement is based on, in this learner's own numbers", () => {
+    expect(snapshotFraming(15, "2C")).toBe("Based on 15 sessions in 2C");
+    expect(snapshotFraming(1, "2C")).toBe("Based on 1 session in 2C");
+  });
+
+  it("falls back to the fixed phrase when there is nothing specific to say", () => {
+    // "Based on 0 sessions in 2C" states a scope that explains nothing, and a
+    // missing class name leaves the sentence dangling.
+    expect(snapshotFraming(0, "2C")).toBe("Based on recent learning activity");
+    expect(snapshotFraming(15, "")).toBe("Based on recent learning activity");
+    expect(snapshotFraming(Number.NaN, "2C")).toBe("Based on recent learning activity");
+  });
+
+  it("never states a quantity the learner does not have", () => {
+    // Guards the failure this replaced a generic line to avoid: a plausible
+    // number that is not this child's.
+    for (const n of [3, 7, 19]) {
+      expect(snapshotFraming(n, "3A")).toContain(`${n} sessions`);
+    }
   });
 });

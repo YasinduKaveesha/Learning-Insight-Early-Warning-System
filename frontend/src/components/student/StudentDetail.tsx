@@ -12,9 +12,9 @@ import { SkillProgressList } from "./SkillProgress";
 import { GettingStartedNotice } from "../status/GettingStartedNotice";
 import { PriorityBadge } from "../status/PriorityBadge";
 import {
-  SNAPSHOT_FRAMING,
   isRecommendationConflictError,
   recommendationDecisionError,
+  snapshotFraming,
   type RecommendationDisplay,
   toWatchStatus,
 } from "../../lib/presentation";
@@ -216,7 +216,12 @@ function StatusAndWhy({
       {status.kind === "watching" && status.priority !== null ? (
         <PriorityBadge priority={status.priority} context={`in ${className}`} />
       ) : (
-        <p className="text-sm text-ink-secondary">{SNAPSHOT_FRAMING}</p>
+        // Personalised from this learner's own figures (see snapshotFraming).
+        // With D39's priority withdrawn, the generic line was the only thing
+        // left in this slot and said nothing specific to the child.
+        <p className="text-sm text-ink-secondary">
+          {snapshotFraming(snapshot.sessionsCompleted, className)}
+        </p>
       )}
       <ExplanationBlock explanation={snapshot.explanation} showHeading={false} />
     </div>

@@ -65,12 +65,27 @@ describe("ClassroomReportsRoute — four sections", () => {
     expect(screen.getByText("Participation")).toBeInTheDocument();
   });
 
-  it("the early-warning trend carries its plain-language explanation", async () => {
+  it("the early-warning trend states its scope, and never claims to be study-wide", async () => {
+    // The served curve is THIS CLASS, session by session. The old copy said "across the
+    // study", which was false for it. Teacher-facing copy about what the curve MEANS is
+    // QUESTIONS_FOR_ML_TEAM_3 Q6 and is not written here.
     vi.mocked(client.getClassReports).mockResolvedValue(REPORTS);
-    renderReports();
-    await waitFor(() =>
-      expect(screen.getByText(REPORTS.earlyWarningTrend.explanation)).toBeInTheDocument(),
-    );
+    const { container } = renderReports();
+    await waitFor(() => expect(screen.getByText(/This class only/)).toBeInTheDocument());
+    expect(container.textContent).toMatch(/Share of this class flagged for review, by session/);
+    expect(container.textContent).not.toMatch(/across the study/);
+    // And it warns that the late points can rest on very few learners.
+    expect(container.textContent).toMatch(/very few learners/);
+  });
+
+  it("class learning progress says it is unavailable rather than drawing an empty frame", async () => {
+    vi.mocked(client.getClassReports).mockResolvedValue({
+      ...REPORTS,
+      classLearningProgress: { sessionNumbers: [], values: [] },
+    });
+    const { container } = renderReports();
+    await waitFor(() => expect(screen.getByText("Not available yet")).toBeInTheDocument());
+    expect(container.textContent).toMatch(/not published yet/);
   });
 
   it("every chart has an accompanying trend sentence", async () => {
@@ -79,7 +94,7 @@ describe("ClassroomReportsRoute — four sections", () => {
     await waitFor(() => expect(screen.getByText("Class learning progress")).toBeInTheDocument());
     // Two Chart components render (progress, early-warning) — "students to
     // watch over time" is a NeutralNotice, not a chart (Step 8 fix below).
-    const sentences = [/Class average practice accuracy/, /share of students flagged/];
+    const sentences = [/Class average practice accuracy/, /share of this class flagged/];
     for (const pattern of sentences) {
       expect(container.textContent).toMatch(pattern);
     }

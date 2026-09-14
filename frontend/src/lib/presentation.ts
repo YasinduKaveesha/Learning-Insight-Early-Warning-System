@@ -465,6 +465,26 @@ export interface PendingRequestDisplay {
 
 export const SNAPSHOT_FRAMING = "Based on recent learning activity";
 
+/**
+ * The same framing, said with THIS learner's own numbers: "Based on 15 sessions
+ * in 2C". Every part comes from the student's own response — the sessions they
+ * have completed and the class they are in — so nothing is inferred.
+ *
+ * docs/12 §133 requires the fixed phrase on any surface showing a PRIORITY; D39
+ * withdrew priority numbers, so this card no longer carries one and the fixed
+ * wording no longer binds it. It still says what the judgement is based on,
+ * which is the rule's purpose. Falls back to the fixed phrase whenever either
+ * number is missing — a learner with no sessions, or no class name to scope it
+ * to — because "Based on 0 sessions" states a scope that explains nothing.
+ */
+export function snapshotFraming(sessionsCompleted: number, className: string): string {
+  if (!Number.isFinite(sessionsCompleted) || sessionsCompleted < 1 || !className.trim()) {
+    return SNAPSHOT_FRAMING;
+  }
+  const sessions = sessionsCompleted === 1 ? "1 session" : `${sessionsCompleted} sessions`;
+  return `Based on ${sessions} in ${className}`;
+}
+
 /** D13 source label for a suggestion (ML ruling ANSWERS_TO_APP_TEAM_4 section 3):
  * the only suggestion v1 generates (D35) is raised from Component B practice
  * evidence, and the card says so outside the 280-character summary. */
