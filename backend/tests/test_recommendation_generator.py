@@ -186,11 +186,36 @@ def test_a_dismissed_unexpired_fallback_is_not_reissued():
     assert gen.evaluate_watch_list(session=13, watch_flag=True, barred=True) is None
 
 
-def test_the_fallback_summary_is_short_and_uses_no_banned_word():
-    text = gen.watch_list_summary(25)
-    assert len(text) <= 280
-    for banned in ("diagnos", "detect", "identif", "screen", "risk", "struggl", "weak", "deficit", "probab", "model"):
-        assert banned not in text.lower()
+def test_the_fallback_summaries_are_short_and_use_no_banned_word():
+    for assessed in (0, 1):
+        text = gen.watch_list_summary(25, assessed)
+        assert len(text) <= 280
+        for banned in ("diagnos", "detect", "identif", "screen", "risk", "struggl", "weak", "deficit", "probab", "model"):
+            assert banned not in text.lower()
+
+
+def test_d45_the_summary_never_claims_practice_was_examined_when_none_could_be():
+    """ANSWERS_TO_APP_TEAM_5 Q3: 3.4% of cohort watch_flag cases had no skill with >= 4
+    opportunities. For those, the sentence must say there was not enough practice."""
+
+    nothing = gen.evaluate_watch_list(session=9, watch_flag=True, opportunities={"counting": 3, "addition": 0})
+    assert nothing.evidence["skills_assessed"] == 0
+    assert nothing.evidence_summary == (
+        "Flagged for review at session 9. There has not been enough recent practice to point to a "
+        "particular skill. Suggestion: keep monitoring progress over the next few sessions."
+    )
+
+    some = gen.evaluate_watch_list(session=9, watch_flag=True, opportunities={"counting": 4, "addition": 6})
+    assert some.evidence["skills_assessed"] == 2
+    assert some.evidence_summary == (
+        "Flagged for review at session 9. Recent practice does not point to one particular skill "
+        "yet. Suggestion: keep monitoring progress over the next few sessions."
+    )
+
+
+def test_skills_assessed_ignores_missing_and_non_numeric_values():
+    assert gen.skills_assessed(None) == 0
+    assert gen.skills_assessed({"a": None, "b": "7", "c": True, "d": 4}) == 1
 
 
 def test_the_fallback_evidence_carries_no_mastery_value_and_passes_the_filter():

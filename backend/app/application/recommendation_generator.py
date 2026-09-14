@@ -24,8 +24,16 @@ The ML team had ruled against exactly this (D36): it restates the watch flag, an
 it easily, so it can inflate the acceptance rate `docs/13` section 6 makes a research outcome. The
 mitigation built in here is that it carries its OWN `trigger.type`, copied into every decision-log
 row, so acceptance can -- and must -- be reported separately for `stagnation` and `watch_flag`.
-It has NOT had the D16 subgroup check the ML team requires for every trigger (their Q6); that is
-recorded as outstanding in D41.
+D43: the ML team has since run the D16 check and `watch_flag` PASSES (DD parity 1.01 [0.87, 1.16]).
+Recorded beside it: on held-out learners this group carries no within-session forecast signal
+(lift 1.023 [0.961, 1.090] against 1.188 for `stagnation`), and it is 74% of all suggestions.
+
+EXPIRY (D47)
+------------
+`run_generator` closes a suggestion's active period whatever its status once the learner's session
+passes `expires_after_session`. Closure NEVER rewrites `teacher_status` -- an acceptance stays an
+acceptance -- and is logged as a system event with no teacher id. The learner is then judged
+afresh. Without this, a learner whose teacher accepted one suggestion would never receive another.
 
 WHAT IS NEVER GENERATED
 -----------------------
@@ -39,8 +47,8 @@ The mastery VALUE. It is read to evaluate clause 2 and recorded only as
 across all seven skills, and `parameter_source_status` travels inside the evidence so no later
 reader mistakes fixture-derived evidence for calibrated evidence.
 
-`evaluate` is pure (no database), so the rule can be tested exactly. `run_generator` applies the
-issuing rules from the ruling's Q3 and writes.
+`evaluate` and `evaluate_watch_list` are pure (no database), so both rules can be tested exactly.
+`run_generator` applies the issuing rules from the ruling's Q3, the D47 closures, and writes.
 """
 
 from __future__ import annotations
@@ -51,10 +59,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy import null as sql_null
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.db.models import Panel, Prediction, Recommendation
+from app.infrastructure.db.models import (
+    Panel,
+    Prediction,
+    Recommendation,
+    RecommendationTransition,
+)
 
 # --- docs/06 section 3, primary arm (n = 4 under 3-Q1). Reused, not new. ------------------
 STAGNATION_SLOPE_EPSILON = 0.005
@@ -82,6 +96,9 @@ SOURCE_SYSTEM = "recommendation_generator"
 PARAMETER_SOURCE_STATUS = "TEST_FIXTURE_ONLY"
 
 ACTIVE_STATUSES = ("pending", "accepted", "modified")
+
+#: D47: the system event written when a suggestion's active period ends.
+CLOSURE_EVENT_TYPE = "expiry_closure"
 
 #: Display names for the summary. Lower-case because they sit mid-sentence.
 SKILL_SUMMARY_NAME: Mapping[str, str] = {
@@ -201,13 +218,31 @@ def evaluate(
     )
 
 
-def watch_list_summary(session: int) -> str:
-    """Summary for the D41 fallback. States what is true -- the learner is on the watch list and
-    no single skill stands out -- and names no cause, no number but the session, no model."""
+def skills_assessed(opportunities: Mapping[str, Any] | None) -> int:
+    """D45: how many skills had enough recent practice (`opportunities_w4 >= 4`) for the D35 rule
+    to examine at all. Zero means nothing was examined -- not that nothing stood out."""
 
+    return sum(
+        1
+        for value in (opportunities or {}).values()
+        if (n := _number(value)) is not None and n >= STAGNATION_MIN_OPPORTUNITIES
+    )
+
+
+def watch_list_summary(session: int, assessed: int) -> str:
+    """D45 (ML team, ANSWERS_TO_APP_TEAM_5 Q3). Two variants, chosen by `skills_assessed`, so the
+    sentence never claims practice was examined when no skill had enough of it. "Flagged for
+    review" is rule 1's own verb; neither variant names a cause or implies nothing is wrong."""
+
+    if assessed >= 1:
+        return (
+            f"Flagged for review at session {session}. Recent practice does not point to one "
+            "particular skill yet. Suggestion: keep monitoring progress over the next few sessions."
+        )
     return (
-        f"On the watch list at session {session}, and no single skill stands out in recent "
-        "practice. Suggestion: keep monitoring progress over the next few sessions."
+        f"Flagged for review at session {session}. There has not been enough recent practice to "
+        "point to a particular skill. Suggestion: keep monitoring progress over the next few "
+        "sessions."
     )
 
 
@@ -215,6 +250,7 @@ def evaluate_watch_list(
     *,
     session: int,
     watch_flag: bool,
+    opportunities: Mapping[str, Any] | None = None,
     barred: bool = False,
 ) -> Candidate | None:
     """D41: a watch-flagged learner with no D35 suggestion gets `monitor_progress`. Pure.
@@ -225,6 +261,7 @@ def evaluate_watch_list(
 
     if not watch_flag or barred:
         return None
+    assessed = skills_assessed(opportunities)
     return Candidate(
         skill=None,
         session=session,
@@ -234,9 +271,10 @@ def evaluate_watch_list(
             "session": session,
             "watch_flag": True,
             "stagnant_skill_found": False,
+            "skills_assessed": assessed,
             "parameter_source_status": PARAMETER_SOURCE_STATUS,
         },
-        evidence_summary=watch_list_summary(session),
+        evidence_summary=watch_list_summary(session, assessed),
         kind=WATCH_ACTION_KIND,
         trigger_type=WATCH_TRIGGER_TYPE,
         target_component=WATCH_TARGET_COMPONENT,
@@ -252,6 +290,8 @@ class GeneratorResult:
     issued: int
     skipped_active: int
     skipped_not_eligible: int
+    #: D47: suggestions whose active period ended at this run.
+    closed: int = 0
 
 
 async def run_generator(
@@ -311,10 +351,14 @@ async def run_generator(
     existing = (
         await session.execute(
             select(
+                Recommendation.recommendation_id,
                 Recommendation.student_id,
                 Recommendation.teacher_status,
                 Recommendation.expires_after_session,
+                Recommendation.closed_at_session,
                 Recommendation.proposed_action,
+                Recommendation.trigger,
+                Recommendation.pipeline_run_id,
             ).where(
                 # Every target: D41 allows one suggestion per learner, B or both.
                 Recommendation.student_id.in_(list(latest_panel)),
@@ -322,15 +366,61 @@ async def run_generator(
         )
     ).all() if latest_panel else []
 
-    issued = skipped_active = skipped_not_eligible = 0
+    issued = skipped_active = skipped_not_eligible = closed = 0
     now = dt.datetime.now(dt.timezone.utc)
 
     for student_id, panel in latest_panel.items():
         s = panel.intervention_session_number
         mine = [r for r in existing if r.student_id == student_id]
 
-        # One suggestion per learner at a time, whichever trigger raised it.
-        if any(r.teacher_status in ACTIVE_STATUSES for r in mine):
+        # D47 step 1: close any suggestion whose active period has passed, WHATEVER its status.
+        # Closure never touches `teacher_status` -- an acceptance stays an acceptance -- and is
+        # logged as a system event with no teacher id.
+        for row in mine:
+            if (
+                row.closed_at_session is None
+                and row.teacher_status in ACTIVE_STATUSES
+                and s > row.expires_after_session
+            ):
+                closed += 1
+                if dry_run:
+                    continue
+                await session.execute(
+                    update(Recommendation)
+                    .where(
+                        Recommendation.recommendation_id == row.recommendation_id,
+                        Recommendation.closed_at_session.is_(None),
+                    )
+                    .values(closed_at_session=s, closed_at_utc=now, updated_at_utc=now)
+                )
+                trigger = row.trigger if isinstance(row.trigger, dict) else {}
+                session.add(
+                    RecommendationTransition(
+                        transition_id=uuid.uuid4(),
+                        recommendation_id=row.recommendation_id,
+                        teacher_profile_id=None,  # system event
+                        event_type=CLOSURE_EVENT_TYPE,
+                        # Unchanged on both sides: the CHECK refuses anything else.
+                        from_status=row.teacher_status,
+                        to_status=row.teacher_status,
+                        trigger_type=(
+                            str(trigger["type"]) if trigger.get("type") is not None else None
+                        ),
+                        teacher_modified_action=sql_null(),
+                        occurred_at_utc=now,
+                        source_class=SOURCE_CLASS,
+                        source_system=SOURCE_SYSTEM,
+                        parameter_source_status=PARAMETER_SOURCE_STATUS,
+                        pipeline_run_id=row.pipeline_run_id,
+                    )
+                )
+                # Closed here, so it no longer blocks a fresh judgement below (D47 step 5).
+                mine = [r for r in mine if r.recommendation_id != row.recommendation_id]
+
+        # One OPEN suggestion per learner at a time, whichever trigger raised it.
+        if any(
+            r.teacher_status in ACTIVE_STATUSES and r.closed_at_session is None for r in mine
+        ):
             skipped_active += 1
             continue
 
@@ -354,6 +444,7 @@ async def run_generator(
         ) or evaluate_watch_list(
             session=s,
             watch_flag=watch_flag,
+            opportunities=panel.b_opportunities_w4,
             barred=any(
                 (r.proposed_action or {}).get("kind") == WATCH_ACTION_KIND
                 for r in unexpired_dismissals
@@ -403,6 +494,7 @@ async def run_generator(
         issued=issued,
         skipped_active=skipped_active,
         skipped_not_eligible=skipped_not_eligible,
+        closed=closed,
     )
 
 
@@ -434,7 +526,8 @@ async def _amain() -> None:  # pragma: no cover - operational entrypoint
         await engine.dispose()
     print(
         f"learners={result.learners} issued={result.issued} "
-        f"skipped_active={result.skipped_active} skipped_not_eligible={result.skipped_not_eligible}"
+        f"skipped_active={result.skipped_active} "
+        f"skipped_not_eligible={result.skipped_not_eligible} closed={result.closed}"
     )
 
 
