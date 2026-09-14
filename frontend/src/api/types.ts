@@ -74,6 +74,11 @@ export interface SkillProgress {
   // until one exists — a fabricated count a teacher acts on is worse than no
   // count at all.
   practiceCount: number;
+  // D46: the learner has never practised this skill in any session, so there is no
+  // measurement at all -- its stored value is the model's starting guess. The row says
+  // "Not practised yet" instead of drawing the shortest bar on the screen. Distinct from
+  // an unknown DIRECTION (D38): untested and unreadable are different states.
+  neverPractised?: boolean;
 }
 
 export interface SessionEntry {

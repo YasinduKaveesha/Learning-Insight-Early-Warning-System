@@ -56,7 +56,13 @@ export function SkillProgressRow({ skill, bounds, colorIndex }: SkillProgressRow
           <span className="text-sm text-ink-secondary">{skillDirectionLabel(skill.direction)}</span>
         ) : null}
       </div>
-      {position !== null ? (
+      {/* D46: "Not practised yet" and "Not enough data" are DIFFERENT statements. The first
+          means this learner has never practised the skill, so nothing was measured; the second
+          means there is practice but not enough of it to read. Collapsing them would let a
+          teacher see "weak at division" where the truth is "never tried division". */}
+      {skill.neverPractised ? (
+        <p className="text-sm text-ink-secondary">Not practised yet</p>
+      ) : position !== null ? (
         <div className="h-5 w-full rounded-full bg-surface2">
           <div className={`h-5 rounded-full ${barColorClass}`} style={{ width: `${position}%` }} />
         </div>

@@ -585,6 +585,25 @@ def _mastery_level(value: Any) -> float | None:
     return round(float(value), 2)
 
 
+def _ever_practised(rows: Sequence[Any]) -> set[str]:
+    """D46 (ML team, ANSWERS_TO_APP_TEAM_5 Q4): the skills with at least one opportunity in ANY
+    panel row up to the learner's current session.
+
+    Every practised session appears in at least one trailing `w = 4` window, so "zero in every
+    window so far" is exactly "never practised". Implemented on OPPORTUNITIES, never on the value
+    test `mastery == 0.15`: 0.15 is a fixture parameter that real BKT settings will change, and
+    float equality on a posterior is fragile. The ML team measured the two as equivalent on
+    13,084 of 13,084 cohort skill-sessions; reproduced here on the demo, 9,324 of 9,324.
+    """
+
+    practised: set[str] = set()
+    for row in rows:
+        for skill, count in (getattr(row, "b_opportunities_w4", None) or {}).items():
+            if isinstance(count, (int, float)) and not isinstance(count, bool) and count > 0:
+                practised.add(skill)
+    return practised
+
+
 async def skill_progress(
     session: AsyncSession,
     teacher_profile_id: uuid.UUID,
@@ -613,17 +632,25 @@ async def skill_progress(
     slopes = latest.b_mastery_slope_w4 or {}
     opportunities = latest.b_opportunities_w4 or {}
     mastery = getattr(latest, "b_mastery", None) or {}
+    practised = _ever_practised(rows)
 
     skills = []
     for skill in sorted(set(slopes) | set(opportunities) | set(mastery)):
         observations = int(opportunities.get(skill) or 0)
+        never_practised = skill not in practised  # D46
         skills.append(
             SkillProgress(
                 skill=skill,
                 direction=SKILL_DIRECTION_WITHHELD,  # D38
                 practice_count=observations,
                 relative_level=None,
-                mastery_level=_mastery_level(mastery.get(skill)),  # D42
+                # D46: a never-practised skill has NO measurement -- its stored value is the
+                # model's starting prior. Serving the level would draw the shortest bar on the
+                # screen for a skill that was simply never tested.
+                mastery_level=(
+                    None if never_practised else _mastery_level(mastery.get(skill))
+                ),
+                never_practised=never_practised,
             )
         )
 

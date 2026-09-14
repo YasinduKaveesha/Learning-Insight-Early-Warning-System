@@ -118,6 +118,12 @@ class SkillProgress(_Base):
     practice_count: int
     relative_level: int | None = None
     mastery_level: float | None = Field(default=None, ge=0.0, le=1.0)
+    #: D46. True when the learner has never practised this skill in ANY session so far, so its
+    #: stored value is the model's starting prior rather than a measurement. `mastery_level` is
+    #: then None: the client says "Not practised yet" instead of drawing the shortest bar on the
+    #: screen for a skill nobody has tested. Distinct from "no direction" (D38) -- untested and
+    #: unreadable are different states.
+    never_practised: bool = False
 
 
 class SkillProgressResponse(Disclosed):

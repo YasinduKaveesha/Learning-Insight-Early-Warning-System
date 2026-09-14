@@ -96,6 +96,52 @@ describe("SkillProgressRow", () => {
     expect(container.textContent).not.toMatch(/0\.27|27%/);
   });
 
+  it("D46: a never-practised skill says so, and draws no bar", () => {
+    const { container } = render(
+      <SkillProgressRow
+        skill={{
+          skillId: "division",
+          displayName: "Division",
+          direction: "unknown",
+          // The backend sends no level for a never-practised skill; this also proves the row
+          // would not draw one even if a level arrived.
+          relativeLevel: 0.15,
+          practiceCount: 0,
+          neverPractised: true,
+        }}
+        bounds={{ min: 0, max: 1 }}
+        colorIndex={0}
+      />,
+    );
+    expect(screen.getByText("Not practised yet")).toBeInTheDocument();
+    expect(screen.queryByText("Not enough data")).toBeNull();
+    expect(container.querySelector(".bg-skillBar-1")).toBeNull();
+  });
+
+  it("D46: 'Not practised yet' and 'Not enough data' are never the same message", () => {
+    const base = {
+      skillId: "division",
+      displayName: "Division",
+      direction: "unknown" as const,
+      relativeLevel: null,
+      practiceCount: 2,
+    };
+    const practised = render(
+      <SkillProgressRow skill={base} bounds={{ min: 0, max: 1 }} colorIndex={0} />,
+    );
+    expect(practised.container.textContent).toContain("Not enough data");
+    practised.unmount();
+
+    const untested = render(
+      <SkillProgressRow
+        skill={{ ...base, neverPractised: true }}
+        bounds={{ min: 0, max: 1 }}
+        colorIndex={0}
+      />,
+    );
+    expect(untested.container.textContent).toContain("Not practised yet");
+  });
+
   it("a known direction with no bar position shows the direction, not 'Not enough data'", () => {
     // The real backend's shape today: direction computed, relative_level null.
     const { container } = render(

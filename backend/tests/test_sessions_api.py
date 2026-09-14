@@ -67,7 +67,9 @@ class _PanelRow:
         self.c_session_technical_issue_flag = False
         self.c_inactive_time_sec = 0.0
         # Mastery must never be served in any form; carried here so a test can prove it.
-        self.b_mastery = {"counting": 0.83}
+        # `division` is in mastery but NEVER in opportunities: the D46 "not practised yet"
+        # case -- its 0.15 is the model's starting prior, not a measurement.
+        self.b_mastery = {"counting": 0.83, "division": 0.15}
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -254,6 +256,49 @@ def test_the_sessions_route_never_serves_a_mastery_value(client):
     body = client.get(SESSIONS).text
     for banned in ("b_mastery", "mastery", "p_l", "skill_estimate", "0.83"):
         assert banned not in body
+
+
+def test_a_never_practised_skill_serves_no_level_and_says_so(client):
+    """D46. `division` has a stored mastery of 0.15 and no opportunity in any session, so it is
+    the model's starting prior, not a measurement. Serving the level would draw the shortest bar
+    on the screen for a skill nobody has practised."""
+
+    skills = {s["skill"]: s for s in client.get(SKILLS).json()["skills"]}
+    assert skills["division"]["never_practised"] is True
+    assert skills["division"]["mastery_level"] is None
+    # A practised skill is unaffected, and is never labelled untested.
+    assert skills["counting"]["never_practised"] is False
+    assert skills["counting"]["mastery_level"] == 0.83
+
+
+def test_practice_in_any_earlier_session_counts_not_just_the_latest_window(client, monkeypatch):
+    """The rule is LIFETIME practice. A skill practised early and not since is still practised --
+    the failure mode of the `opportunities_w4 = 0` shortcut, which the ML team measured at 45 of
+    116 demo division bars."""
+
+    rows = [_PanelRow(1), _PanelRow(2)]
+    rows[0].b_opportunities_w4 = {"division": 5}
+    rows[1].b_opportunities_w4 = {"counting": 8}
+    for row in rows:
+        row.b_mastery = {"counting": 0.6, "division": 0.42}
+
+    async def _history(_session, _run, _student):
+        return rows
+
+    monkeypatch.setattr(dashboard_service.data_access, "session_history_for_student", _history)
+    skills = {s["skill"]: s for s in client.get(SKILLS).json()["skills"]}
+    assert skills["division"]["never_practised"] is False
+    assert skills["division"]["mastery_level"] == 0.42
+
+
+def test_ever_practised_ignores_zero_and_non_numeric_counts():
+    class _Row:
+        def __init__(self, opportunities):
+            self.b_opportunities_w4 = opportunities
+
+    assert dashboard_service._ever_practised(
+        [_Row({"a": 0, "b": None, "c": "3", "d": True, "e": 1}), _Row(None)]
+    ) == {"e"}
 
 
 def test_the_skills_route_serves_mastery_only_as_mastery_level(client):

@@ -132,6 +132,8 @@ interface WireSkills {
     relative_level: number | null;
     /** D42: latest mastery, 0-1, rounded to 2 decimals. Bar only, never a number. */
     mastery_level: number | null;
+    /** D46: never practised in any session -- no measurement exists. */
+    never_practised: boolean;
   }[];
 }
 
@@ -423,6 +425,7 @@ export class HttpClient implements ApiClient {
           // draws no bar rather than an empty one.
           relativeLevel: s.mastery_level,
           practiceCount: s.practice_count,
+          neverPractised: s.never_practised,
         })),
       disclosure: detail.disclosure,
       className: detail.class_name ?? "",
