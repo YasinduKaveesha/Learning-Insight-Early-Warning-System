@@ -79,6 +79,14 @@ def test_0009_round_trip_touches_only_its_own_table() -> None:
 
 
 def test_0009_constraint_names_are_exactly_as_written() -> None:
+    """Asserted at 0009, not at head: 0010 (D47) deliberately replaces three of these CHECKs and
+    turns the unique constraint into a partial index. What this pins is that 0009 itself still
+    creates the names it wrote -- the naming-convention bug it was added for."""
+
     with _database_url_env(_LIVE_URL):
-        command.upgrade(_alembic_config(), "head")
-    assert _constraint_names() == EXPECTED_CONSTRAINTS
+        cfg = _alembic_config()
+        command.downgrade(cfg, "0009_reco_transitions")
+        try:
+            assert _constraint_names() == EXPECTED_CONSTRAINTS
+        finally:
+            command.upgrade(cfg, "head")

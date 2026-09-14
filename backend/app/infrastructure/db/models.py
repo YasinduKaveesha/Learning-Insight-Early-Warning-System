@@ -617,14 +617,27 @@ class Recommendation(ProvenanceCoreMixin, Base):
             name=conv("ck_t3_reco_ethical_gate"),
         ),
         source_class_check(),
+        # D47: the constraint covers OPEN suggestions only. Expiry closes a suggestion's active
+        # period whatever its status, so a learner whose teacher accepted one still receives the
+        # next. Expiry could not be written into this index before `closed_at_session` existed:
+        # it depends on the learner's CURRENT session, which is not on the row.
         Index(
             "uq_t3_reco_active",
             "student_id",
             "target_component",
             unique=True,
             postgresql_where=sa_text(
-                "teacher_status IN ('pending', 'accepted', 'modified')"
+                "teacher_status IN ('pending', 'accepted', 'modified') "
+                "AND closed_at_session IS NULL"
             ),
+        ),
+        CheckConstraint(
+            "(closed_at_session IS NULL) = (closed_at_utc IS NULL)",
+            name=conv("ck_t3_reco_closure_pair"),
+        ),
+        CheckConstraint(
+            "closed_at_session IS NULL OR closed_at_session > expires_after_session",
+            name=conv("ck_t3_reco_closure_after_expiry"),
         ),
     )
 
@@ -658,6 +671,13 @@ class Recommendation(ProvenanceCoreMixin, Base):
     )
     c_applied_at_intervention_session: Mapped[int | None] = mapped_column(
         Integer, nullable=True
+    )
+    #: D47. Set once, by the generator, when the learner's current session passes
+    #: `expires_after_session`. Lifecycle only -- `teacher_status` is never rewritten, so an
+    #: acceptance stays an acceptance and "expired unanswered" means closed while `pending`.
+    closed_at_session: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    closed_at_utc: Mapped[dt.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     pipeline_run_id: Mapped[uuid.UUID] = mapped_column(
         PgUUID(as_uuid=True),
@@ -697,18 +717,47 @@ class RecommendationTransition(ProvenanceMixin, Base):
     __tablename__ = "t3_recommendation_transitions"
     __table_args__ = (
         CheckConstraint(
-            "from_status = 'pending'",
-            name=conv("ck_t3_reco_transition_from_pending"),
+            "event_type IN ('teacher_decision', 'expiry_closure')",
+            name=conv("ck_t3_reco_transition_event_type"),
+        ),
+        # D47: a closure is a SYSTEM event -- no teacher id -- and a teacher decision always has
+        # one. The two kinds of row cannot be confused in the research log.
+        CheckConstraint(
+            "(teacher_profile_id IS NOT NULL) = (event_type = 'teacher_decision')",
+            name=conv("ck_t3_reco_transition_actor"),
         ),
         CheckConstraint(
-            "to_status IN ('accepted', 'dismissed', 'modified')",
+            "(event_type = 'teacher_decision' AND from_status = 'pending') "
+            "OR (event_type = 'expiry_closure' "
+            "AND from_status IN ('pending', 'accepted', 'modified'))",
+            name=conv("ck_t3_reco_transition_from_pending"),
+        ),
+        # `to_status = from_status` for a closure is D47 rule 2 as a DATABASE rule: expiry
+        # cannot rewrite the teacher's decision, whatever a future endpoint tries.
+        CheckConstraint(
+            "(event_type = 'teacher_decision' "
+            "AND to_status IN ('accepted', 'dismissed', 'modified')) "
+            "OR (event_type = 'expiry_closure' AND to_status = from_status)",
             name=conv("ck_t3_reco_transition_to_status"),
         ),
         CheckConstraint(
-            "(teacher_modified_action IS NOT NULL) = (to_status = 'modified')",
+            "(event_type = 'teacher_decision' "
+            "AND (teacher_modified_action IS NOT NULL) = (to_status = 'modified')) "
+            "OR (event_type = 'expiry_closure' AND teacher_modified_action IS NULL)",
             name=conv("ck_t3_reco_transition_modified"),
         ),
-        UniqueConstraint("recommendation_id", name=conv("uq_t3_reco_transition_once")),
+        Index(
+            "uq_t3_reco_transition_once",
+            "recommendation_id",
+            unique=True,
+            postgresql_where=sa_text("event_type = 'teacher_decision'"),
+        ),
+        Index(
+            "uq_t3_reco_closure_once",
+            "recommendation_id",
+            unique=True,
+            postgresql_where=sa_text("event_type = 'expiry_closure'"),
+        ),
         source_class_check(),
     )
 
@@ -722,7 +771,12 @@ class RecommendationTransition(ProvenanceMixin, Base):
         ),
         nullable=False,
     )
-    teacher_profile_id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    teacher_profile_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), nullable=True
+    )
+    event_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="teacher_decision"
+    )
     from_status: Mapped[str] = mapped_column(String(16), nullable=False)
     to_status: Mapped[str] = mapped_column(String(16), nullable=False)
     trigger_type: Mapped[str | None] = mapped_column(String(64), nullable=True)

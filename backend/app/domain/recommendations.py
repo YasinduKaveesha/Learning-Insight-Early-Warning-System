@@ -92,9 +92,14 @@ class RecommendationOut(_Base):
     #: D10 -- no write-back in v1. Served so a client can see they are null, never set here.
     b_applied_at_intervention_session: int | None = None
     c_applied_at_intervention_session: int | None = None
-    #: Derived at read time from the learner's latest session in the active run. A
-    #: recommendation past its `expires_after_session` is not "active" even while `pending`.
+    #: Derived at read time from the learner's latest session in the active run, OR stored by
+    #: the generator's closure (D47). A recommendation past its `expires_after_session` is not
+    #: "active" even while `pending`.
     expired: bool = False
+    #: D47. The session at which the generator closed this suggestion's active period, or None
+    #: while it is still open. Closure never changes `teacher_status`: an acceptance that later
+    #: expires is still an acceptance, and "expired unanswered" means closed while `pending`.
+    closed_at_session: int | None = None
 
 
 class RecommendationListResponse(Disclosed):

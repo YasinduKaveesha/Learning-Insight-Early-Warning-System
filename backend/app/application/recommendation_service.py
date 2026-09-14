@@ -80,10 +80,22 @@ async def _latest_session(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-def _is_expired(expires_after_session: int, latest_session: int | None) -> bool:
+def _is_expired(
+    expires_after_session: int,
+    latest_session: int | None,
+    closed_at_session: int | None = None,
+) -> bool:
     """Past `expires_after_session` means no longer the right suggestion (`docs/13` section 2).
-    With no known session there is no evidence it has expired, so it has not."""
+    With no known session there is no evidence it has expired, so it has not.
 
+    D47: a suggestion the generator has CLOSED is expired regardless of the learner's session --
+    closure is the stored fact, the session comparison is the live one. The API keeps applying
+    the live comparison so a suggestion reads as not actionable even before the next generator
+    run closes it (the ML team's "keep the existing guards").
+    """
+
+    if closed_at_session is not None:
+        return True
     return latest_session is not None and latest_session > expires_after_session
 
 
@@ -114,7 +126,10 @@ def _to_out(row: Recommendation, latest_session: int | None) -> RecommendationOu
         teacher_modified_action=_action(row.teacher_modified_action),
         b_applied_at_intervention_session=row.b_applied_at_intervention_session,
         c_applied_at_intervention_session=row.c_applied_at_intervention_session,
-        expired=_is_expired(row.expires_after_session, latest_session),
+        expired=_is_expired(
+            row.expires_after_session, latest_session, row.closed_at_session
+        ),
+        closed_at_session=row.closed_at_session,
     )
 
 
@@ -199,7 +214,7 @@ async def decide(
         raise RecommendationConflictError("already_decided")
 
     latest = await _latest_session(session, row.pipeline_run_id, row.student_id)
-    if _is_expired(row.expires_after_session, latest):
+    if _is_expired(row.expires_after_session, latest, row.closed_at_session):
         await session.rollback()
         raise RecommendationConflictError("expired")
 
@@ -229,6 +244,7 @@ async def decide(
             transition_id=uuid.uuid4(),
             recommendation_id=recommendation_id,
             teacher_profile_id=teacher_profile_id,
+            event_type="teacher_decision",  # D47: never a system closure
             from_status="pending",
             to_status=decision,
             trigger_type=str(trigger["type"]) if trigger.get("type") is not None else None,

@@ -116,6 +116,21 @@ async def _with_service(monkeypatch, body):
         await engine.dispose()
 
 
+async def _insert_second(conn: asyncpg.Connection, learner, run) -> None:
+    """A second `both`-targeted suggestion for the same learner -- what uq_t3_reco_active
+    permits or refuses."""
+
+    await conn.execute(
+        "insert into t3_recommendations (recommendation_id, student_id, "
+        "issued_at_intervention_session, expires_after_session, target_component, trigger, "
+        "proposed_action, evidence_summary, teacher_status, pipeline_run_id, source_class, "
+        "source_system, parameter_source_status) "
+        "values ($1,$2,9,14,'both',$3,$4,'s','pending',$5,$6,$7,$8)",
+        uuid.uuid4(), learner, json.dumps({"type": "watch_flag", "evidence": {}}),
+        json.dumps({"kind": "monitor_progress", "detail": {}}), run, *_PROV,
+    )
+
+
 # --- the service, end to end ------------------------------------------------------------
 
 
@@ -197,6 +212,26 @@ def test_an_expired_recommendation_cannot_be_decided(monkeypatch):
             return 9  # expires_after_session is 8
 
         monkeypatch.setattr(recommendation_service, "_latest_session", _late)
+        with pytest.raises(recommendation_service.RecommendationConflictError) as caught:
+            await recommendation_service.decide(session, TEACHER, reco, "accepted")
+        assert caught.value.reason == "expired"
+        assert await conn.fetchval(
+            "select teacher_status from t3_recommendations where recommendation_id=$1", reco
+        ) == "pending"
+
+    _run(_with_service(monkeypatch, body))
+
+
+def test_a_closed_suggestion_cannot_be_decided(monkeypatch):
+    """D47: closure ends the active period, so the teacher actions refuse it -- even though the
+    learner's session (unknown here) would not, by itself, make it expired."""
+
+    async def body(session, learner, run, reco, conn):
+        await conn.execute(
+            "update t3_recommendations set closed_at_session=9, closed_at_utc=now() "
+            "where recommendation_id=$1",
+            reco,
+        )
         with pytest.raises(recommendation_service.RecommendationConflictError) as caught:
             await recommendation_service.decide(session, TEACHER, reco, "accepted")
         assert caught.value.reason == "expired"
@@ -301,6 +336,161 @@ def test_one_transition_per_recommendation_is_a_database_rule():
             with pytest.raises(asyncpg.exceptions.UniqueViolationError) as caught:
                 await conn.execute(insert, uuid.uuid4(), reco, TEACHER, "dismissed", *_PROV, run)
             assert caught.value.constraint_name == "uq_t3_reco_transition_once"
+        finally:
+            await tx.rollback()
+            await conn.close()
+
+    _run(go())
+
+# --- D47: expiry closure ------------------------------------------------------------------
+
+
+def _closure_sql() -> str:
+    return (
+        "insert into t3_recommendation_transitions (transition_id, recommendation_id, "
+        "teacher_profile_id, event_type, from_status, to_status, source_class, source_system, "
+        "parameter_source_status, pipeline_run_id) values ($1,$2,$3,'expiry_closure',$4,$5,$6,$7,$8,$9)"
+    )
+
+
+@pytest.mark.parametrize(
+    "from_status, to_status, teacher, constraint",
+    [
+        # Rule 2 as a DATABASE rule: a closure may not rewrite the teacher's decision.
+        ("accepted", "dismissed", None, "ck_t3_reco_transition_to_status"),
+        ("pending", "accepted", None, "ck_t3_reco_transition_to_status"),
+        # Rule 3: a closure is a SYSTEM event and carries no teacher id.
+        ("accepted", "accepted", TEACHER, "ck_t3_reco_transition_actor"),
+    ],
+)
+def test_a_closure_cannot_rewrite_a_decision_or_carry_a_teacher(
+    from_status, to_status, teacher, constraint
+):
+    async def go():
+        conn = await asyncpg.connect(_plain(_LIVE_URL))
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            _learner, run, reco = await _seed(conn)
+            with pytest.raises(asyncpg.exceptions.CheckViolationError) as caught:
+                await conn.execute(
+                    _closure_sql(), uuid.uuid4(), reco, teacher, from_status, to_status, *_PROV, run
+                )
+            assert caught.value.constraint_name == constraint
+        finally:
+            await tx.rollback()
+            await conn.close()
+
+    _run(go())
+
+
+def test_a_closure_and_a_teacher_decision_can_both_exist_but_only_one_each():
+    """`uq_t3_reco_transition_once` is now partial: one teacher decision AND one closure per
+    recommendation -- an accepted suggestion that later expires has both rows."""
+
+    async def go():
+        conn = await asyncpg.connect(_plain(_LIVE_URL))
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            _learner, run, reco = await _seed(conn)
+            await conn.execute(
+                "insert into t3_recommendation_transitions (transition_id, recommendation_id, "
+                "teacher_profile_id, from_status, to_status, source_class, source_system, "
+                "parameter_source_status, pipeline_run_id) values ($1,$2,$3,'pending','accepted',$4,$5,$6,$7)",
+                uuid.uuid4(), reco, TEACHER, *_PROV, run,
+            )
+            await conn.execute(
+                _closure_sql(), uuid.uuid4(), reco, None, "accepted", "accepted", *_PROV, run
+            )
+            assert await conn.fetchval(
+                "select count(*) from t3_recommendation_transitions where recommendation_id=$1", reco
+            ) == 2
+            with pytest.raises(asyncpg.exceptions.UniqueViolationError) as caught:
+                await conn.execute(
+                    _closure_sql(), uuid.uuid4(), reco, None, "accepted", "accepted", *_PROV, run
+                )
+            assert caught.value.constraint_name == "uq_t3_reco_closure_once"
+        finally:
+            await tx.rollback()
+            await conn.close()
+
+    _run(go())
+
+
+def test_closing_a_suggestion_frees_the_learner_for_the_next_one():
+    """The whole point of D47: `uq_t3_reco_active` covers OPEN suggestions only, so an ACCEPTED
+    suggestion no longer blocks its learner forever."""
+
+    async def go():
+        conn = await asyncpg.connect(_plain(_LIVE_URL))
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            learner, run, reco = await _seed(conn)
+            await conn.execute(
+                "update t3_recommendations set teacher_status='accepted' where recommendation_id=$1",
+                reco,
+            )
+            # The refused insert aborts the enclosing transaction, so it runs inside its own
+            # savepoint -- the point is that the SECOND attempt, after closure, succeeds.
+            inner = conn.transaction()
+            await inner.start()
+            with pytest.raises(asyncpg.exceptions.UniqueViolationError):
+                await _insert_second(conn, learner, run)
+            await inner.rollback()
+
+            await conn.execute(
+                "update t3_recommendations set closed_at_session=9, closed_at_utc=now() "
+                "where recommendation_id=$1",
+                reco,
+            )
+            await _insert_second(conn, learner, run)  # now permitted
+            assert await conn.fetchval(
+                "select count(*) from t3_recommendations where student_id=$1 and target_component='both'",
+                learner,
+            ) == 2
+        finally:
+            await tx.rollback()
+            await conn.close()
+
+    _run(go())
+
+
+def test_a_closure_cannot_predate_expiry():
+    async def go():
+        conn = await asyncpg.connect(_plain(_LIVE_URL))
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            _learner, _run, reco = await _seed(conn)  # expires_after_session = 8
+            with pytest.raises(asyncpg.exceptions.CheckViolationError) as caught:
+                await conn.execute(
+                    "update t3_recommendations set closed_at_session=8, closed_at_utc=now() "
+                    "where recommendation_id=$1",
+                    reco,
+                )
+            assert caught.value.constraint_name == "ck_t3_reco_closure_after_expiry"
+        finally:
+            await tx.rollback()
+            await conn.close()
+
+    _run(go())
+
+
+def test_a_closure_session_needs_its_timestamp():
+    async def go():
+        conn = await asyncpg.connect(_plain(_LIVE_URL))
+        tx = conn.transaction()
+        await tx.start()
+        try:
+            _learner, _run, reco = await _seed(conn)
+            with pytest.raises(asyncpg.exceptions.CheckViolationError) as caught:
+                await conn.execute(
+                    "update t3_recommendations set closed_at_session=9 where recommendation_id=$1",
+                    reco,
+                )
+            assert caught.value.constraint_name == "ck_t3_reco_closure_pair"
         finally:
             await tx.rollback()
             await conn.close()
