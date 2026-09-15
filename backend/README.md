@@ -58,9 +58,44 @@ cp .env.example .env
 
 ## Run
 
+### In Docker (recommended)
+
+This backend and the student app's backend are two separate services with two separate
+images and two separate compose projects. They share only the Postgres server, because this
+one reads the student app's roster tables. Start that stack first, so the database and its
+network exist:
+
 ```bash
+cd ../../../Upadya/Dev/backend && docker compose up -d db api    # student app
+cd -                                                             # back to backend/
+docker compose up -d --build                                     # this backend, on :8100
+docker compose logs -f api                                       # follow it
+docker compose down                                              # stop it; leaves the student app running
+```
+
+`compose.yaml` joins the student stack's existing network as an **external** network, so
+`db:5432` resolves without the host proxy, and a missing student stack fails loudly instead
+of starting an API with no data behind it. `.env` is read at run time and is never copied
+into the image (it holds the Supabase service-role key); only `DATABASE_URL` is overridden,
+from the host's `127.0.0.1:55432` to the in-network `db:5432`.
+
+The source tree is mounted read-only with `--reload`, so an edit on the host restarts the
+container. The serving artefact is baked into the image, not mounted.
+
+### On the host
+
+Still the right way to run the test suite, the loader and Alembic, because the pinned
+`c3-ews` conda env lives here. It reaches Postgres on `127.0.0.1:55432`, which needs the
+proxy container:
+
+```bash
+docker run -d --name c3-pgproxy --network upadya-be1_default \
+  -p 127.0.0.1:55432:5432 alpine/socat \
+  tcp-listen:5432,fork,reuseaddr tcp-connect:db:5432
 uvicorn app.main:app --port 8100 --reload
 ```
+
+Run the API either in Docker or on the host, not both: they would fight over port 8100.
 
 `GET /health/live` and `GET /health/ready` (model-artefact status only for this build).
 
