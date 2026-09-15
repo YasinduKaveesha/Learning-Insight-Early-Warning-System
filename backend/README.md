@@ -1,12 +1,49 @@
 # Component 3 backend
 
-FastAPI backend for the Learning Insight & Early Warning System (R26-IT-138). See
-`../../plan/backend_plan.md` for the full build plan; this README covers only local setup.
+FastAPI backend for the Learning Insight & Early Warning System (R26-IT-138). It serves the
+teacher's dashboard: it runs the model over learner activity, keeps the suggestions and the
+teacher's decisions on them, and answers every read the dashboard makes.
 
-## Scope of this build
+See the [repository README](../README.md) for how the pieces fit together and
+`../../plan/backend_plan.md` for the full build plan.
 
-Build-order steps 1 (scaffold), 3 (model loading) and 4 (feature builder) only. No database,
-no auth, no business endpoints -- those are later work orders.
+## What it owns, and what it must never touch
+
+It owns the `t3_*` tables: pipeline runs, the panel, features, predictions, suggestions and
+their decisions, and class keys.
+
+Everything about accounts, learners, classes and memberships belongs to the **student app**,
+a separate backend owned by another team. This service reads those tables and **never writes
+them** — a test (`tests/test_no_bc_writeback.py`) scans the source and fails the build if any
+write to them appears. Creating a class, approving a join request or deleting a class goes
+through the student app's own API, called by the frontend.
+
+The two backends share one Postgres server so those reads are possible; they are still two
+separate services, images and compose projects.
+
+## Its API
+
+All under `/api/v1/t3`, all requiring a teacher's Supabase token:
+
+| Read | |
+|---|---|
+| `GET /home` | Counts and the teacher's classes |
+| `GET /watch`, `GET /classes/{id}/watch` | Learners worth a closer look |
+| `GET /classes/{id}/cohort` | One class's roster with each learner's status |
+| `GET /students/{id}`, `/sessions`, `/skills` | One learner in detail |
+| `GET /classes/{id}/reports` | Class-level charts |
+| `GET /students/{id}/recommendations` | Suggested next steps for that learner |
+
+| Write | |
+|---|---|
+| `POST /recommendations/{id}/accept`, `/modify`, `/dismiss` | The teacher's decision, saved as research data |
+| `POST /classes/{id}/key` | Store a new class's key, proved against the student app's invite |
+
+`GET /health/live` and `GET /health/ready`. Ready means the model artefact loaded with its
+SHA-256 verified and the database answered.
+
+A saved decision never changes what the student app teaches a child. It is a record of what
+the teacher chose.
 
 ## Environment
 
