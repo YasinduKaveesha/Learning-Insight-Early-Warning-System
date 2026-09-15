@@ -1,6 +1,6 @@
 # Learning Insight & Early Warning System
 
-Component 3 of R26-IT-138: a teacher's dashboard for a primary-school mathematics app. It
+R26-IT-138: a teacher's dashboard for a primary-school mathematics app. It
 reads what learners have done in that app and shows a teacher **which learners are worth a
 closer look**, with the evidence that prompted it.
 
@@ -20,7 +20,7 @@ closer look**, with the evidence that prompted it.
 |---|---|---|---|
 | **Dashboard frontend** | `frontend/` | 5173 | What a teacher sees |
 | **Dashboard backend** | `backend/` | 8100 | Predictions, suggestions, class keys (`t3_*` tables) |
-| **Student app backend** | `../../Upadya/Dev/backend` (separate repo, another team) | 8000 | Accounts, learners, classes, memberships, gameplay |
+| **Student app backend** | its own repository, owned by another team | 8000 | Accounts, learners, classes, memberships, gameplay |
 
 They are **separate backends** with separate images and separate compose projects. They share
 one Postgres server, because this dashboard reads the student app's rosters — read-only. Every
@@ -43,11 +43,11 @@ backend verifies that token against the project's public keys.
 Docker Desktop must be running. Full instructions live in each README; the short version:
 
 ```bash
-# 1. student app: database + API
-cd ../../Upadya/Dev/backend && docker compose up -d db api
+# 1. student app: database + API, from the student app repository
+docker compose up -d db api
 
-# 2. dashboard backend
-cd Learning-Insight-Early-Warning-System/backend && docker compose up -d --build
+# 2. dashboard backend, from this repository
+cd backend && docker compose up -d --build
 
 # 3. dashboard frontend
 cd ../frontend && npm install && npm run dev

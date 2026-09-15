@@ -1,4 +1,4 @@
-# Component 3 backend
+# Learning Insight & Early Warning System -- backend
 
 FastAPI backend for the Learning Insight & Early Warning System (R26-IT-138). It serves the
 teacher's dashboard: it runs the model over learner activity, keeps the suggestions and the
@@ -89,7 +89,7 @@ test before anything else.
 
 ```bash
 cp .env.example .env
-# edit .env -- DATABASE_URL and SUPABASE_* come from Upadya/Dev/backend/.env (same project);
+# edit .env -- DATABASE_URL and SUPABASE_* match the student app's own .env (same project);
 # everything else is this backend's own.
 ```
 
@@ -103,11 +103,10 @@ one reads the student app's roster tables. Start that stack first, so the databa
 network exist:
 
 ```bash
-cd ../../../Upadya/Dev/backend && docker compose up -d db api    # student app
-cd -                                                             # back to backend/
-docker compose up -d --build                                     # this backend, on :8100
-docker compose logs -f api                                       # follow it
-docker compose down                                              # stop it; leaves the student app running
+docker compose up -d db api      # in the STUDENT APP repository, first
+docker compose up -d --build     # here, in backend/ -- this backend, on :8100
+docker compose logs -f api       # follow it
+docker compose down              # stop it; leaves the student app running
 ```
 
 `compose.yaml` joins the student stack's existing network as an **external** network, so
@@ -162,13 +161,13 @@ These are already pinned in `requirements.txt`; this just gets them into the con
 
 ### 2. Bring the database up with a published port
 
-`Upadya/Dev/backend/compose.yaml` (owned by another team) deliberately does not publish the
+The student app's `compose.yaml` (owned by another team) deliberately does not publish the
 `db` service's port -- the `c3-ews` env runs on the host, not in a container, so it cannot
-reach an unpublished port. Component 3 adds a port with a separate, opt-in override file
+reach an unpublished port. This repository adds a port with a separate, opt-in override file
 instead of editing that compose file:
 
 ```powershell
-Set-Location "...\Upadya\Dev\backend"
+Set-Location "<the student app repository>\backend"
 docker compose -f compose.yaml -f "...\Learning-Insight-Early-Warning-System\backend\docker\compose.c3-test-db.yaml" up -d db
 ```
 
@@ -178,7 +177,7 @@ This publishes `db` on `127.0.0.1:55432` only while the override `-f` is passed.
 
 ### 3. THE TARGET DATABASE IS `upadya_test`, NEVER `upadya`
 
-`upadya` is the student app's live-looking dev database -- the one Component 3's own tests,
+`upadya` is the student app's live-looking dev database -- the one this backend's own tests,
 Alembic downgrades, and the loader would happily wipe or corrupt if pointed at it (this
 project has already had a shared database wiped once). `upadya_test` is a separate, disposable
 database on the same Postgres server, created once via
