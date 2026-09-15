@@ -1,0 +1,17 @@
+# Secrets and local state never enter the image. `.env` in particular holds the Supabase
+# service-role key; it is supplied at RUN time by compose's env_file instead.
+.env
+.env.*
+!.env.example
+scripts/demo_tenancy_receipt.json
+
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+docker/
+README.md

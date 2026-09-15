@@ -1,0 +1,66 @@
+# Component 3 backend -- local development stack.
+#
+# IT OWNS NO DATABASE. Postgres belongs to the student app's stack
+# (`Upadya/Dev/backend/compose.yaml`, project `upadya-be1`), and Component 3 reads it. So
+# this file joins that stack's EXISTING network as an external network rather than starting
+# a second Postgres, which would give the two applications different data and silently break
+# every roster read.
+#
+# START THE STUDENT APP FIRST:
+#   cd Upadya/Dev/backend && docker compose up -d db api
+# then here:
+#   docker compose up -d --build
+#
+# THE HOST PROXY IS STILL USEFUL, JUST NOT FOR THIS. Inside the network the database is
+# `db:5432`, so the c3-pgproxy container is no longer needed to run the API. It is still how
+# the host-side conda env (tests, the loader, alembic from a terminal) reaches Postgres on
+# 127.0.0.1:55432.
+name: c3-dashboard
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: c3-dashboard-backend:local
+    # --reload plus the mounts below: edit a file on the host and the container restarts
+    # itself, matching how this backend has been run during development.
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8100", "--reload", "--no-access-log"]
+    env_file:
+      - .env
+    environment:
+      # .env points at 127.0.0.1:55432, which is the HOST's view. Inside the network the
+      # same database is `db:5432`. Everything else (Supabase, artefact paths, demo flags)
+      # is taken from .env unchanged.
+      DATABASE_URL: ${T3_DOCKER_DATABASE_URL:-postgresql://upadya:local-development-only@db:5432/upadya_demo}
+      # The browser still calls this API from the host, so the CORS list is unchanged; it is
+      # restated here only so a missing .env value cannot silently allow nothing.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+    volumes:
+      # Source only. The artefact store is baked into the image and stays read-only.
+      - ./app:/app/app:ro
+      - ./migrations:/app/migrations:ro
+      - ./scripts:/app/scripts:ro
+      - ./tests:/app/tests:ro
+    ports:
+      - "127.0.0.1:8100:8100"
+    networks:
+      - upadya
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+    init: true
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  # Created by the student app's stack. `external: true` means compose joins it and never
+  # creates it: if the student app is not up, this fails loudly instead of starting an
+  # isolated API that cannot see any data.
+  upadya:
+    external: true
+    name: upadya-be1_default
