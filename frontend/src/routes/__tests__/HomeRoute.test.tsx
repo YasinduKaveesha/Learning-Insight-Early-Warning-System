@@ -280,12 +280,15 @@ describe("HomeRoute — scroll layout: pinned watch card, sticky 'Your Classes'"
     expect(pinned.className).toMatch(/bg-background/);
   });
 
-  it("the three stat tiles are NOT pinned, so they slide up under the watch card", async () => {
+  // 2026-09-16, explicit direction: the tiles used to scroll UNDER the watch card,
+  // which read as three cards cut off along their top edge. They are pinned with it
+  // now, so only the class cards scroll.
+  it("the three stat tiles are pinned with the watch card", async () => {
     renderHome();
     await waitFor(() => expect(screen.getByText("Active Students")).toBeInTheDocument());
     const pinned = screen.getByText("Students to Watch").closest(".sticky") as HTMLElement;
     for (const label of ["Active Students", "Classes", "Getting Started"]) {
-      expect(pinned.contains(screen.getByText(label))).toBe(false);
+      expect(pinned.contains(screen.getByText(label))).toBe(true);
     }
   });
 

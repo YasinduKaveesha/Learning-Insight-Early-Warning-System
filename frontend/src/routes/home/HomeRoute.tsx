@@ -1,6 +1,6 @@
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Plus, UserRound } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { client, isDuplicateClassNameError } from "../../api/client";
 import { ClassCard } from "../../components/class/ClassCard";
@@ -11,6 +11,7 @@ import { SwipeToDelete } from "../../components/class/SwipeToDelete";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { StatTile } from "../../components/shared/StatTile";
+import { prefetchClasses } from "../../lib/prefetch";
 import { sortClassesByWatchShare, type Grade } from "../../lib/presentation";
 
 /**
@@ -24,6 +25,17 @@ export default function HomeRoute() {
     queryKey: ["home"],
     queryFn: () => client.getHome(),
   });
+
+  // Once Home has its data, load every class page and every learner in the
+  // background, in the order the classes are shown, so opening any of them is
+  // instant. The class ids are the dependency, not `data` itself: a refetch of
+  // the same classes does not start the warm-up again.
+  const classOrder = data ? sortClassesByWatchShare(data.classes).map((c) => c.classId) : [];
+  const classOrderKey = classOrder.join(",");
+  useEffect(() => {
+    if (classOrderKey === "") return;
+    void prefetchClasses(queryClient, classOrderKey.split(","));
+  }, [classOrderKey, queryClient]);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [nameError, setNameError] = useState<string | undefined>(undefined);
@@ -105,10 +117,10 @@ export default function HomeRoute() {
           screen-reader-only h1 supplies the landmark without changing the
           visual layout (docs/11 §8: "sane heading hierarchy"). */}
       <h1 className="sr-only">Home</h1>
-      {/* PINNED: the buttons and the watch card stay at the top while the page
-          scrolls. The three stat tiles below slide up UNDER this block, and
-          its page-coloured background is what hides them -- so it spans the
-          column's padding (-mx-4 px-4) and carries the gap beneath the card
+      {/* PINNED: the buttons, the watch card and the three stat tiles stay at the
+          top while the class list scrolls beneath them. Its page-coloured
+          background is what hides the cards passing behind it -- so it spans the
+          column's padding (-mx-4 px-4) and carries the gap beneath itself
           (pb-4), leaving no strip for them to show through. */}
       <div
         ref={pinnedRef}
@@ -160,6 +172,15 @@ export default function HomeRoute() {
                   View watch list
                 </span>
               </Link>
+              {/* Pinned with the watch card, at explicit direction (2026-09-16).
+                  They used to scroll UNDER it, which read as three cards cut off
+                  along their top edge rather than as a deliberate slide. Now only
+                  the class cards scroll, the same as the class page. */}
+              <div className="grid grid-cols-3 gap-2">
+                <StatTile label="Active Students" value={data.activeStudents} tone="blue" />
+                <StatTile label="Classes" value={data.classCount} tone="green" />
+                <StatTile label="Getting Started" value={data.gettingStarted} tone="amber" />
+              </div>
           </>
         ) : null}
       </div>
@@ -206,15 +227,7 @@ export default function HomeRoute() {
         />
       ) : (
         <>
-
-
-          <div className="grid grid-cols-3 gap-2">
-            <StatTile label="Active Students" value={data.activeStudents} tone="blue" />
-            <StatTile label="Classes" value={data.classCount} tone="green" />
-            <StatTile label="Getting Started" value={data.gettingStarted} tone="amber" />
-          </div>
-
-          <section className="mt-4">
+          <section>
             {/* Rises with the page until it meets the pinned block, then stays
                 there; only the class cards scroll beneath it after that. Its
                 `top` is the pinned block's measured height, not a guess. */}

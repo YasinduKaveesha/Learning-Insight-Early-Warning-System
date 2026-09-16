@@ -77,6 +77,11 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
       void queryClient.invalidateQueries({ queryKey: ["home"] });
       void queryClient.invalidateQueries({ queryKey: ["watch"] });
       void queryClient.invalidateQueries({ queryKey: ["classWatch"] });
+      // This learner's suggestions may have been seeded from a class-wide read
+      // before the decision; refetch them so revisiting shows the saved state,
+      // not stale Accept/Modify buttons. The class read is refetched too.
+      void queryClient.invalidateQueries({ queryKey: ["studentRecommendations", studentId] });
+      void queryClient.invalidateQueries({ queryKey: ["classStudentOverviews"] });
     } catch (e) {
       setErrors((prev) => ({ ...prev, [id]: recommendationDecisionError(e) }));
       // Already decided or expired elsewhere (another tab, another device):
