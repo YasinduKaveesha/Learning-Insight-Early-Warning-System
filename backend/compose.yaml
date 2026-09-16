@@ -37,6 +37,8 @@ services:
       # The browser still calls this API from the host, so the CORS list is unchanged; it is
       # restated here only so a missing .env value cannot silently allow nothing.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      # Passed through so the API uses the transaction pooler at runtime (see .env).
+      DATABASE_URL_POOLED: ${DATABASE_URL_POOLED:-}
     volumes:
       # Source only. The artefact store is baked into the image and stays read-only.
       - ./app:/app/app:ro

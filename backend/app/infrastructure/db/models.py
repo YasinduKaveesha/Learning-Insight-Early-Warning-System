@@ -231,6 +231,13 @@ class Panel(ProvenanceCoreMixin, Base):
             "student_id",
             "intervention_session_number",
         ),
+        # 0012: every run-wide read filters on the run first (a class page, the run cache).
+        Index(
+            conv("ix_t3_panel_run_student"),
+            "pipeline_run_id",
+            "student_id",
+            "intervention_session_number",
+        ),
     )
 
     student_id: Mapped[uuid.UUID] = mapped_column(
@@ -397,6 +404,8 @@ class Prediction(ProvenanceCoreMixin, Base):
         ),
         source_class_check(),
         Index("ix_t3_predictions_latest", "student_id", sa_desc("t")),
+        # 0012: run-scoped reads (`predictions_for_run`) lead with the run, not the learner.
+        Index(conv("ix_t3_predictions_run_student"), "pipeline_run_id", "student_id"),
     )
 
     student_id: Mapped[uuid.UUID] = mapped_column(
@@ -656,6 +665,8 @@ class Recommendation(ProvenanceCoreMixin, Base):
             "closed_at_session IS NULL OR closed_at_session > expires_after_session",
             name=conv("ck_t3_reco_closure_after_expiry"),
         ),
+        # 0012: a class's suggestions are read in one query, by run and learner.
+        Index(conv("ix_t3_recommendations_run_student"), "pipeline_run_id", "student_id"),
     )
 
     recommendation_id: Mapped[uuid.UUID] = mapped_column(

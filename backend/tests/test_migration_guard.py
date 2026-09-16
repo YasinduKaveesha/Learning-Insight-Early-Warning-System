@@ -59,19 +59,30 @@ def test_include_object_excludes_unattributable_object() -> None:
 @pytest.mark.parametrize(
     "url",
     [
-        "postgresql://u:p@aws-0-eu-west-2.pooler.supabase.com:5432/postgres",
         "postgresql://u:p@db.example.supabase.co:6543/postgres",
         "postgresql+asyncpg://u:p@host:6543/postgres",
+        "postgresql://u:p@aws-0-eu-west-2.pooler.supabase.com:6543/postgres",
     ],
 )
-def test_pooler_urls_are_refused(url: str) -> None:
+def test_transaction_pooler_urls_are_refused(url: str) -> None:
+    """Port 6543 on ANY host: that is the pooler that breaks prepared statements."""
+
     assert is_pooler_url(url) is True
     with pytest.raises(RuntimeError, match="pooler"):
         assert_direct_connection(url)
 
 
-def test_direct_url_is_allowed() -> None:
-    url = "postgresql://u:p@db.example.supabase.co:5432/postgres"
+@pytest.mark.parametrize(
+    "url",
+    [
+        "postgresql://u:p@db.example.supabase.co:5432/postgres",
+        # The SESSION pooler (2026-09-16). One server connection per client, so prepared
+        # statements work -- and it is the only IPv4 route into a Supabase project on the
+        # free plan, which is what migrating to a hosted database depends on.
+        "postgresql://u:p@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres",
+    ],
+)
+def test_direct_and_session_pooler_urls_are_allowed(url: str) -> None:
     assert is_pooler_url(url) is False
     assert_direct_connection(url)  # does not raise
 

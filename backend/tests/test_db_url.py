@@ -117,9 +117,21 @@ def test_pooler_detected_by_port_6543() -> None:
     assert result.dialect_kwargs["prepared_statement_cache_size"] == 0
 
 
-def test_pooler_detected_by_pooler_hostname() -> None:
+def test_session_pooler_hostname_is_not_treated_as_the_transaction_pooler() -> None:
+    """A pooler HOSTNAME on port 5432 is Supabase's SESSION pooler: one server connection per
+    client, so prepared statements work and the caches stay on. Only 6543 turns them off
+    (2026-09-16 -- the session pooler is the free plan's only IPv4 route)."""
+
     result = normalise_database_url(
         f"postgresql://u:{_PW}@aws-0-eu-west-2.pooler.supabase.com:5432/postgres"
+    )
+    assert result.pooler_detected is False
+    assert "statement_cache_size" not in result.connect_args
+
+
+def test_pooler_detected_on_the_transaction_port_of_a_pooler_host() -> None:
+    result = normalise_database_url(
+        f"postgresql://u:{_PW}@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
     )
     assert result.pooler_detected is True
     assert result.connect_args["statement_cache_size"] == 0

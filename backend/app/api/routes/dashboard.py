@@ -34,6 +34,7 @@ from app.domain.sessions import (
     SessionHistoryResponse,
     SkillProgressResponse,
 )
+from app.domain.overviews import ClassStudentOverviewsResponse
 from app.infrastructure.settings import get_settings
 
 router = APIRouter(prefix="/api/v1/t3", tags=["dashboard"])
@@ -194,6 +195,30 @@ async def class_reports(
 ) -> ClassReportResponse:
     try:
         return await dashboard_service.class_report(
+            session,
+            principal.teacher_profile_id,
+            classroom_id,
+            model_version=_active_model_version(),
+        )
+    except dashboard_service.ClassroomNotVisibleError as exc:
+        raise _FORBIDDEN from exc
+    except ActivePipelineRunError as exc:
+        raise _no_active_run(exc) from exc
+
+
+@router.get(
+    "/classes/{classroom_id}/students/overview",
+    response_model=ClassStudentOverviewsResponse,
+)
+async def class_student_overviews(
+    classroom_id: uuid.UUID, principal: CurrentPrincipal, session: DbSession
+) -> ClassStudentOverviewsResponse:
+    """Every learner's student screen for one class, in one request -- the detail, skills and
+    active suggestions each single-learner endpoint serves, built by the same code. Lets the
+    dashboard open any learner in a class without a round trip (2026-09-16)."""
+
+    try:
+        return await dashboard_service.class_student_overviews(
             session,
             principal.teacher_profile_id,
             classroom_id,

@@ -249,3 +249,45 @@ def test_class_keys_for_classrooms_short_circuits_on_an_empty_list():
     """No database round trip, and an `IN ()` that Postgres would reject is never built."""
 
     assert _run(lambda s: data_access.class_keys_for_classrooms(s, [])) == {}
+
+
+# --------------------------------------------------------------------------------------
+# 2026-09-16: the batched readers behind the run cache and the class overview. Each is only
+# ever called with many ids at once, so a column typo or a bad IN clause would surface as a
+# slow page that then 500s -- executing them against the real schema is the whole point.
+# --------------------------------------------------------------------------------------
+
+
+def test_rosters_for_classrooms_executes_and_short_circuits():
+    assert _run(lambda s: data_access.rosters_for_classrooms(s, [])) == []
+    rows = _run(lambda s: data_access.rosters_for_classrooms(s, [uuid.UUID(int=0)]))
+    assert list(rows) == []
+
+
+def test_session_history_for_students_executes_and_short_circuits():
+    run = uuid.UUID(int=0)
+    assert _run(lambda s: data_access.session_history_for_students(s, run, [])) == []
+    rows = _run(
+        lambda s: data_access.session_history_for_students(s, run, [uuid.UUID(int=0)])
+    )
+    assert list(rows) == []
+
+
+def test_run_scoped_prediction_and_panel_filters_execute():
+    run = uuid.UUID(int=0)
+    ids = [uuid.UUID(int=0)]
+    assert _run(lambda s: data_access.predictions_for_run(s, run, student_ids=[])) == []
+    assert list(_run(lambda s: data_access.predictions_for_run(s, run, student_ids=ids))) == []
+    assert _run(lambda s: data_access.panel_rows_for_run(s, run, student_ids=[])) == []
+    assert list(_run(lambda s: data_access.panel_rows_for_run(s, run, student_ids=ids))) == []
+
+
+def test_active_for_students_executes_against_the_real_schema():
+    from app.application import recommendation_service
+
+    run = uuid.UUID(int=0)
+    sid = uuid.UUID(int=0)
+    out = _run(
+        lambda s: recommendation_service.active_for_students(s, run, [sid], {sid: None})
+    )
+    assert out[sid].recommendations == []

@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     # that never sets either env var behaves exactly like today. See the fail-fast rule
     # below: T3_DEMO_MODE=true is refused outright when APP_ENV=production.
     t3_demo_mode: bool = Field(default=False, validation_alias="T3_DEMO_MODE")
+
+    # 2026-09-16: load the active run's predictions and panel into `run_cache` in the
+    # background as the API starts, so the first teacher does not pay for it. Off by default:
+    # a process that starts with no database (every TestClient) must not reach for one.
+    t3_cache_warm_on_startup: bool = Field(
+        default=False, validation_alias="T3_CACHE_WARM_ON_STARTUP"
+    )
     t3_demo_teacher_pool: Annotated[list[str], NoDecode] = Field(
         default="", validation_alias="T3_DEMO_TEACHER_POOL"
     )

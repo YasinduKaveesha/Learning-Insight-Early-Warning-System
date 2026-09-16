@@ -57,3 +57,24 @@ def full_research_panel():
 @pytest.fixture(scope="session")
 def full_feature_matrix(full_research_panel):
     return feature_builder.build_feature_matrix(full_research_panel)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_run_cache(monkeypatch):
+    """Every test starts and ends with an empty `run_cache`.
+
+    The dashboard tests stub `data_access` with different rows under the SAME fixed run id, so
+    a cache surviving from one test would serve another test's predictions -- a pass or a
+    failure that has nothing to do with the code under test.
+    """
+
+    from app.application.run_cache import run_cache
+
+    # Settings also read `.env`, where the demo turns warm-up ON. A test app that warmed
+    # itself would load the REAL database's run into this cache and silently replace the
+    # stubbed one -- which is exactly how a "missing run is 503" test once passed a real run
+    # instead. An environment variable outranks the file, so this pins it off for every test.
+    monkeypatch.setenv("T3_CACHE_WARM_ON_STARTUP", "false")
+    run_cache.clear()
+    yield
+    run_cache.clear()

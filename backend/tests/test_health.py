@@ -46,7 +46,12 @@ def _make_client(monkeypatch, database_url: str) -> TestClient:
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("API_PORT", "8100")
     monkeypatch.setenv("DATABASE_URL", database_url)
-    monkeypatch.delenv("DATABASE_URL_POOLED", raising=False)
+    # SET, not deleted. Settings also read `.env`, and a variable absent from the process
+    # environment falls back to the file -- so `delenv` left a real `DATABASE_URL_POOLED` in
+    # force, the API connected through it, and the "dead database" probe answered ready.
+    # That stayed invisible until `.env` first carried a pooled URL (2026-09-16). The API
+    # prefers the pooled URL, so it must name the same target as `DATABASE_URL` here.
+    monkeypatch.setenv("DATABASE_URL_POOLED", database_url)
     monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
     monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setenv("SUPABASE_JWT_ISSUER", "https://example.supabase.co/auth/v1")

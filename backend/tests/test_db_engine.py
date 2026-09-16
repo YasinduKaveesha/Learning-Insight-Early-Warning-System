@@ -31,7 +31,12 @@ from app.infrastructure.db_url import InvalidDatabaseUrl  # noqa: E402
 _PW = "s3cr3t-p@ss"
 _DIRECT = f"postgresql://appuser:{_PW}@db.example.supabase.co:5432/postgres"
 _POOLER_PORT = f"postgresql://appuser:{_PW}@db.example.supabase.co:6543/postgres"
+#: The SESSION pooler: a pooler hostname on 5432. Allowed for migrations since 2026-09-16.
 _POOLER_HOST = f"postgresql://appuser:{_PW}@aws-0-eu-west-2.pooler.supabase.com:5432/postgres"
+#: The TRANSACTION pooler on the same host: still refused.
+_POOLER_HOST_TRANSACTION = (
+    f"postgresql://appuser:{_PW}@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+)
 
 
 def _driver_connect_params(engine: AsyncEngine) -> dict:
@@ -57,7 +62,11 @@ def _driver_connect_params(engine: AsyncEngine) -> dict:
 # --------------------------------------------------------------------------------------
 # Gate 6: prepared-statement caching off for the pooler, untouched for a direct connection
 # --------------------------------------------------------------------------------------
-@pytest.mark.parametrize("url", [_POOLER_PORT, _POOLER_HOST], ids=["port-6543", "pooler-host"])
+@pytest.mark.parametrize(
+    "url",
+    [_POOLER_PORT, _POOLER_HOST_TRANSACTION],
+    ids=["port-6543", "pooler-host-6543"],
+)
 def test_pooler_engine_disables_both_statement_caches(url: str) -> None:
     params = _driver_connect_params(db_engine._build_engine(url))
 
@@ -67,8 +76,14 @@ def test_pooler_engine_disables_both_statement_caches(url: str) -> None:
     assert params["prepared_statement_cache_size"] == 0
 
 
-def test_direct_engine_leaves_the_statement_cache_alone() -> None:
-    params = _driver_connect_params(db_engine._build_engine(_DIRECT))
+@pytest.mark.parametrize(
+    "url", [_DIRECT, _POOLER_HOST], ids=["direct", "session-pooler-5432"]
+)
+def test_direct_engine_leaves_the_statement_cache_alone(url: str) -> None:
+    """The SESSION pooler holds one server connection per client, so prepared statements
+    survive there exactly as on a direct connection (2026-09-16)."""
+
+    params = _driver_connect_params(db_engine._build_engine(url))
 
     assert "statement_cache_size" not in params
     assert "prepared_statement_cache_size" not in params
@@ -124,7 +139,11 @@ def test_create_direct_engine_returns_a_redacted_target() -> None:
     assert target == "postgresql+asyncpg://***:***@db.example.supabase.co:5432/postgres"
 
 
-@pytest.mark.parametrize("url", [_POOLER_PORT, _POOLER_HOST], ids=["port-6543", "pooler-host"])
+@pytest.mark.parametrize(
+    "url",
+    [_POOLER_PORT, _POOLER_HOST_TRANSACTION],
+    ids=["port-6543", "pooler-host-6543"],
+)
 def test_create_direct_engine_refuses_the_pooler(url: str) -> None:
     """The CLI callers do bulk writes. `assert_direct_connection` must still fire after
     the B2.2 repoint -- this is the rail that keeps Alembic and the loader off 6543."""
