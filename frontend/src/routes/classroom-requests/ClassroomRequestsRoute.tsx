@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { JoinRequestsSkeleton } from "../../components/skeletons/PageSkeletons";
 import { formatDate } from "../../lib/format";
 import type { PendingRequestDisplay } from "../../lib/presentation";
 
@@ -80,7 +80,7 @@ export default function ClassroomRequestsRoute() {
       </header>
 
       {isPending ? (
-        <LoadingSkeleton rows={2} rowHeight={96} />
+        <JoinRequestsSkeleton />
       ) : isError ? (
         <ErrorState
           message="Couldn't load join requests. Check your connection and try again."

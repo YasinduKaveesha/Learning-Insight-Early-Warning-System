@@ -7,7 +7,7 @@ import { prefetchClassStudents } from "../../lib/prefetch";
 import { ClassInfoDialog } from "../../components/class/ClassInfoDialog";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { ClassNamePillBone, ClassroomSkeleton } from "../../components/skeletons/PageSkeletons";
 import { SearchField } from "../../components/shared/SearchField";
 import { SectionHeader } from "../../components/shared/SectionHeader";
 import { StatTile } from "../../components/shared/StatTile";
@@ -137,6 +137,8 @@ export default function ClassroomRoute() {
               >
                 {data.className}
               </span>
+            ) : isPending ? (
+              <ClassNamePillBone />
             ) : null}
           </h1>
           <button
@@ -194,11 +196,7 @@ export default function ClassroomRoute() {
       ) : null}
 
       {isPending ? (
-        <div className="flex flex-col gap-4">
-          <LoadingSkeleton rows={1} rowHeight={44} />
-          <LoadingSkeleton rows={1} rowHeight={72} />
-          <LoadingSkeleton rows={4} rowHeight={80} />
-        </div>
+        <ClassroomSkeleton />
       ) : isError ? (
         <ErrorState
           message="Couldn't load this class. Check your connection and try again."

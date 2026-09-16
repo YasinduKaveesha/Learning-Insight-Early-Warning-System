@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { StudentSessionsSkeleton } from "../../components/skeletons/PageSkeletons";
 import { SessionCard } from "../../components/student/SessionCard";
 
 /**
@@ -80,7 +80,7 @@ export default function StudentSessionsRoute() {
       </div>
 
       {isPending ? (
-        <LoadingSkeleton rows={3} rowHeight={140} />
+        <StudentSessionsSkeleton />
       ) : isError ? (
         <ErrorState
           message="Couldn't load session history. Check your connection and try again."

@@ -6,7 +6,7 @@ import { Chart } from "../../components/shared/Chart";
 import { DisclosureFooter } from "../../components/shared/DisclosureFooter";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { FramingLine } from "../../components/shared/FramingLine";
-import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { ReportsSkeleton } from "../../components/skeletons/PageSkeletons";
 import { NeutralNotice } from "../../components/shared/NeutralNotice";
 import { SectionHeader } from "../../components/shared/SectionHeader";
 import { StatTile } from "../../components/shared/StatTile";
@@ -65,12 +65,7 @@ export default function ClassroomReportsRoute() {
       <FramingLine />
 
       {isPending ? (
-        <>
-          <LoadingSkeleton rows={1} rowHeight={120} />
-          <LoadingSkeleton rows={1} rowHeight={120} />
-          <LoadingSkeleton rows={1} rowHeight={120} />
-          <LoadingSkeleton rows={1} rowHeight={80} />
-        </>
+        <ReportsSkeleton />
       ) : isError ? (
         <ErrorState
           message="Couldn't load reports. Check your connection and try again."

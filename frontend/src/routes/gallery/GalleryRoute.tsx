@@ -9,6 +9,16 @@ import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { FramingLine } from "../../components/shared/FramingLine";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import {
+  ClassroomSkeleton,
+  HomeSkeleton,
+  JoinRequestsSkeleton,
+  ProfileSkeleton,
+  ReportsSkeleton,
+  StudentDetailSkeleton,
+  StudentSessionsSkeleton,
+  WatchListSkeleton,
+} from "../../components/skeletons/PageSkeletons";
 import { SearchField } from "../../components/shared/SearchField";
 import { SectionHeader } from "../../components/shared/SectionHeader";
 import { StatTile } from "../../components/shared/StatTile";
@@ -289,6 +299,18 @@ export default function GalleryRoute() {
         <Row label="Empty"><EmptyState message="No students yet. Share the class key so students can join." /></Row>
         <Row label="Error"><ErrorState message="Couldn't load this class. Check your connection and try again." onRetry={noop} /></Row>
         <Row label="Getting Started (first-class, not empty)"><GettingStartedNotice sessionsCompleted={2} /></Row>
+      </GallerySection>
+
+      {/* One skeleton per page (2026-09-16) -- what each screen shows while it loads. */}
+      <GallerySection title="Page skeletons">
+        <Row label="Home"><HomeSkeleton /></Row>
+        <Row label="Class"><ClassroomSkeleton /></Row>
+        <Row label="Student"><StudentDetailSkeleton /></Row>
+        <Row label="Sessions"><StudentSessionsSkeleton /></Row>
+        <Row label="Watch list"><WatchListSkeleton /></Row>
+        <Row label="Join requests"><JoinRequestsSkeleton /></Row>
+        <Row label="Reports"><ReportsSkeleton /></Row>
+        <Row label="Profile"><ProfileSkeleton /></Row>
       </GallerySection>
     </div>
   );
