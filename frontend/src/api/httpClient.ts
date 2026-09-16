@@ -21,6 +21,7 @@ import type {
   ClassReportsResponse,
   CohortResponse,
   CreateClassResult,
+  ClassStudentOverview,
   StudentOverviewResponse,
   WatchListResponse,
 } from "./client";
@@ -181,6 +182,15 @@ interface WireRecommendation {
 
 interface WireRecommendations {
   recommendations: WireRecommendation[];
+}
+
+interface WireClassOverviews {
+  classroom_id: string;
+  students: {
+    detail: WireStudent;
+    skills: WireSkills;
+    recommendations: WireRecommendations;
+  }[];
 }
 
 function actionSkill(action: WireAction | null): string | null {
@@ -353,6 +363,50 @@ function toSkillDirection(direction: TrajectoryState): SkillProgress["direction"
 
 // --- the client ----------------------------------------------------------------
 
+/** Detail + skills -> the student screen's one object. The single-learner path and the
+ * class overview both use this, so a learner cannot render differently depending on
+ * which request filled the cache. */
+function toStudentOverview(detail: WireStudent, skills: WireSkills): StudentOverviewResponse {
+  const snapshot: LearnerSnapshot = {
+    studentId: detail.student_id,
+    displayName: detail.display_name,
+    classId: detail.classroom_id ?? "",
+    sessionNumber: detail.t,
+    watchFlag: detail.watch_flag,
+    rankWithinSnapshot: null, // D39 -- see withoutPriority
+    evidenceStatus: detail.evidence_status,
+    sessionsCompleted: detail.sessions_completed,
+    practiceTrajectory: { source: "practice_accuracy", state: detail.practice_trajectory },
+    explanation: detail.explanation,
+    // Not rendered on the student screen, and not on StudentDetail.
+    lastActiveDate: "",
+    accuracySparkline: [],
+    engagementSparkline: [],
+    modelVersion: "",
+    inferenceTimestamp: "",
+  };
+
+  return {
+    snapshot,
+    skills: skills.skills
+      .slice()
+      .sort((a, b) => SKILL_ORDER.indexOf(a.skill) - SKILL_ORDER.indexOf(b.skill))
+      .map((s) => ({
+        skillId: s.skill,
+        displayName: SKILL_DISPLAY_NAME[s.skill] ?? s.skill,
+        direction: toSkillDirection(s.direction),
+        // D42: the bar is the latest mastery value. Null (no stored value)
+        // draws no bar rather than an empty one.
+        relativeLevel: s.mastery_level,
+        practiceCount: s.practice_count,
+        neverPractised: s.never_practised,
+      })),
+    disclosure: detail.disclosure,
+    className: detail.class_name ?? "",
+    skillBounds: Object.fromEntries(skills.skills.map((s) => [s.skill, MASTERY_BOUNDS])),
+  };
+}
+
 export class HttpClient implements ApiClient {
   async getHome(): Promise<HomeSummary> {
     const w = await get<WireHome>("/home");
@@ -429,45 +483,18 @@ export class HttpClient implements ApiClient {
       get<WireStudent>(`/students/${id}`),
       get<WireSkills>(`/students/${id}/skills`),
     ]);
+    return toStudentOverview(detail, skills);
+  }
 
-    const snapshot: LearnerSnapshot = {
-      studentId: detail.student_id,
-      displayName: detail.display_name,
-      classId: detail.classroom_id ?? "",
-      sessionNumber: detail.t,
-      watchFlag: detail.watch_flag,
-      rankWithinSnapshot: null, // D39 -- see withoutPriority
-      evidenceStatus: detail.evidence_status,
-      sessionsCompleted: detail.sessions_completed,
-      practiceTrajectory: { source: "practice_accuracy", state: detail.practice_trajectory },
-      explanation: detail.explanation,
-      // Not rendered on the student screen, and not on StudentDetail.
-      lastActiveDate: "",
-      accuracySparkline: [],
-      engagementSparkline: [],
-      modelVersion: "",
-      inferenceTimestamp: "",
-    };
-
-    return {
-      snapshot,
-      skills: skills.skills
-        .slice()
-        .sort((a, b) => SKILL_ORDER.indexOf(a.skill) - SKILL_ORDER.indexOf(b.skill))
-        .map((s) => ({
-          skillId: s.skill,
-          displayName: SKILL_DISPLAY_NAME[s.skill] ?? s.skill,
-          direction: toSkillDirection(s.direction),
-          // D42: the bar is the latest mastery value. Null (no stored value)
-          // draws no bar rather than an empty one.
-          relativeLevel: s.mastery_level,
-          practiceCount: s.practice_count,
-          neverPractised: s.never_practised,
-        })),
-      disclosure: detail.disclosure,
-      className: detail.class_name ?? "",
-      skillBounds: Object.fromEntries(skills.skills.map((s) => [s.skill, MASTERY_BOUNDS])),
-    };
+  async getClassStudentOverviews(classId: string): Promise<ClassStudentOverview[]> {
+    const w = await get<WireClassOverviews>(
+      `/classes/${encodeURIComponent(classId)}/students/overview`,
+    );
+    return w.students.map((st) => ({
+      studentId: st.detail.student_id,
+      overview: toStudentOverview(st.detail, st.skills),
+      recommendations: st.recommendations.recommendations.map(toRecommendationDisplay),
+    }));
   }
 
   async getStudentSessions(studentId: string): Promise<SessionEntry[]> {

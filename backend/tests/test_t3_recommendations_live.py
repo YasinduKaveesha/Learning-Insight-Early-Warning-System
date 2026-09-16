@@ -92,8 +92,8 @@ def test_gate1_table_exists_and_student_app_untouched() -> None:
                 "and table_type='BASE TABLE' and table_name not like 't3_%'"
             )
             assert non_t3 == 36, non_t3
-            # Updated for each new migration -- D49 added 0011_class_key_is_invite_token.
-            assert await conn.fetchval("select version_num from t3_alembic_version") == "0011_class_key_is_invite_token"
+            # Updated for each new migration -- 0012 added the run-scoped indexes.
+            assert await conn.fetchval("select version_num from t3_alembic_version") == "0012_run_scoped_indexes"
         finally:
             await conn.close()
 

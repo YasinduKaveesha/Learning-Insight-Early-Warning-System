@@ -5,6 +5,7 @@
 import type { HomeSummary, LearnerSnapshot, SessionEntry } from "../types";
 import type {
   ApiClient,
+  ClassStudentOverview,
   ClassReportsResponse,
   CohortResponse,
   CreateClassResult,
@@ -178,6 +179,17 @@ export class MockClient implements ApiClient {
 
   getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]> {
     return delay(recommendationsForStudent(studentId));
+  }
+
+  async getClassStudentOverviews(classId: string): Promise<ClassStudentOverview[]> {
+    // Built from the single-learner methods, so the mock cannot disagree with itself.
+    return Promise.all(
+      studentsInClass(classId).map(async (s) => ({
+        studentId: s.studentId,
+        overview: await this.getStudentOverview(s.studentId),
+        recommendations: await this.getStudentRecommendations(s.studentId),
+      })),
+    );
   }
 
   // Each wraps the fixture call so a refusal REJECTS rather than throwing

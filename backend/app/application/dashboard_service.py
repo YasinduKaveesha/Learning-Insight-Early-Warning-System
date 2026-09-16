@@ -33,6 +33,7 @@ from typing import Any, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application import data_access
+from app.application.run_cache import run_cache
 from app.domain.dashboard import (
     ClassCard,
     CohortResponse,
@@ -134,9 +135,32 @@ class _RunContext:
     handled: dict[uuid.UUID, tuple[str, int]] = field(default_factory=dict)
 
 
-async def _run_context(session: AsyncSession, pipeline_run_id: uuid.UUID) -> _RunContext:
-    predictions = await data_access.predictions_for_run(session, pipeline_run_id)
-    panel_rows = await data_access.panel_rows_for_run(session, pipeline_run_id)
+async def _run_context(
+    session: AsyncSession,
+    pipeline_run_id: uuid.UUID,
+    *,
+    student_ids: Sequence[uuid.UUID] | None = None,
+) -> _RunContext:
+    """The run data a page of cards needs.
+
+    Predictions and the panel are the run's IMMUTABLE data, served from `run_cache` and then
+    narrowed in memory to `student_ids` -- the learners the page shows, taken from a roster the
+    caller has already read under an ownership check. `None` means the whole run.
+
+    Suggestion status is read LIVE: a teacher's decision must show on the next request, and the
+    watch count depends on it."""
+
+    wanted = None if student_ids is None else set(student_ids)
+    predictions = [
+        row
+        for row in await run_cache.predictions(session, pipeline_run_id)
+        if wanted is None or row.student_id in wanted
+    ]
+    panel_rows = [
+        row
+        for row in await run_cache.panel(session, pipeline_run_id)
+        if wanted is None or row.student_id in wanted
+    ]
     handled = await data_access.handled_suggestions_for_run(session, pipeline_run_id)
     return _RunContext(
         latest=_latest_by_student(predictions),
@@ -174,7 +198,9 @@ def _learner_card(
         watch_flag=row.watch_flag,
         rank_within_t=row.rank_within_t,
         practice_trajectory=row.practice_trajectory,
-        explanation=row.risk_explanation,
+        # Absent when the caller asked for the narrow projection (see `_run_context`); those
+        # callers count cards rather than render them.
+        explanation=getattr(row, "risk_explanation", None),
         last_active_date=panel.last_active_date,
         accuracy_sparkline=panel.accuracy_sparkline,
         engagement_sparkline=panel.engagement_sparkline,
@@ -199,26 +225,18 @@ def _sort_watch_list(cards: list[LearnerCard]) -> list[LearnerCard]:
     )
 
 
-async def _cards_for_classroom(
-    session: AsyncSession,
-    classroom_id: uuid.UUID,
-    pipeline_run_id: uuid.UUID,
-    context: _RunContext | None = None,
+def _cards_from_roster(
+    roster: Sequence[Any], classroom_id: uuid.UUID, context: _RunContext
 ) -> list[LearnerCard]:
-    """`context` is the whole run, read once by the caller. Passing it is what keeps a
-    six-class dashboard at one predictions read instead of six."""
+    """The card-building half of `_cards_for_classroom`, with the roster already in hand.
 
-    roster = await data_access.classroom_roster(session, classroom_id)
-    if not roster:
-        return []
-
-    if context is None:
-        context = await _run_context(session, pipeline_run_id)
-    latest = context.latest
+    Split out so `/home` can read every class's roster in one query and still build cards the
+    same way -- identical rules, including the not-in-this-run case below.
+    """
 
     cards: list[LearnerCard] = []
     for learner in roster:
-        row = latest.get(learner.learner_id)
+        row = context.latest.get(learner.learner_id)
         if row is None:
             # On the roster but not in this run: the demo learner map does not reach them.
             # Shown as getting-started rather than silently dropped, so a teacher's class
@@ -257,6 +275,26 @@ async def _cards_for_classroom(
     return cards
 
 
+async def _cards_for_classroom(
+    session: AsyncSession,
+    classroom_id: uuid.UUID,
+    pipeline_run_id: uuid.UUID,
+    context: _RunContext | None = None,
+) -> list[LearnerCard]:
+    """`context` is the whole run, read once by the caller. Passing it is what keeps a
+    six-class dashboard at one predictions read instead of six."""
+
+    roster = await data_access.classroom_roster(session, classroom_id)
+    if not roster:
+        return []
+
+    if context is None:
+        context = await _run_context(
+            session, pipeline_run_id, student_ids=[l.learner_id for l in roster]
+        )
+    return _cards_from_roster(roster, classroom_id, context)
+
+
 def _stats_for(cards: Sequence[LearnerCard]) -> CohortStats:
     """Invariant 3. `watch_count` and `getting_started_count` are disjoint by construction:
     a below-floor learner cannot carry a watch flag (the decision layer forces it false)."""
@@ -280,14 +318,23 @@ async def home_summary(
     session: AsyncSession, teacher_profile_id: uuid.UUID, *, model_version: str
 ) -> HomeSummary:
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
     classrooms = await data_access.classrooms_for_teacher(session, teacher_profile_id)
 
-    # Three reads for the whole page, not three per classroom.
-    context = await _run_context(session, run)
+    # One roster read for every class, not one per class.
+    roster_rows = await data_access.rosters_for_classrooms(
+        session, [c.classroom_id for c in classrooms]
+    )
+    rosters: dict[uuid.UUID, list[Any]] = {}
+    for row in roster_rows:
+        rosters.setdefault(row.classroom_id, []).append(row)
+
+    # Three reads for the whole page, scoped to this teacher's learners. No explanations:
+    # this page counts cards, it never renders one.
+    context = await _run_context(
+        session, run, student_ids=[r.learner_id for r in roster_rows]
+    )
     pending = await data_access.pending_request_counts(
         session, [c.classroom_id for c in classrooms]
     )
@@ -299,8 +346,8 @@ async def home_summary(
     getting_started_total = 0
 
     for classroom in classrooms:
-        cards = await _cards_for_classroom(
-            session, classroom.classroom_id, run, context
+        cards = _cards_from_roster(
+            rosters.get(classroom.classroom_id, []), classroom.classroom_id, context
         )
         stats = _stats_for(cards)
         watch_total += stats.watch_count
@@ -342,9 +389,7 @@ async def cohort(
         raise ClassroomNotVisibleError(str(classroom_id))
 
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
     cards = await _cards_for_classroom(session, classroom_id, run)
 
@@ -384,9 +429,7 @@ async def classroom_watch_list(
         raise ClassroomNotVisibleError(str(classroom_id))
 
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
     all_cards = await _cards_for_classroom(session, classroom_id, run)
     flagged = [c for c in all_cards if c.watch_flag]
@@ -404,19 +447,27 @@ async def all_classes_watch_list(
     session: AsyncSession, teacher_profile_id: uuid.UUID, *, model_version: str
 ) -> WatchListResponse:
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
     classrooms = await data_access.classrooms_for_teacher(session, teacher_profile_id)
 
-    context = await _run_context(session, run)
+    # One roster read for every class, then one context scoped to those learners -- the same
+    # shape as `/home`, for the same reason.
+    roster_rows = await data_access.rosters_for_classrooms(
+        session, [c.classroom_id for c in classrooms]
+    )
+    rosters: dict[uuid.UUID, list[Any]] = {}
+    for row in roster_rows:
+        rosters.setdefault(row.classroom_id, []).append(row)
+    context = await _run_context(
+        session, run, student_ids=[r.learner_id for r in roster_rows]
+    )
 
     cards: list[LearnerCard] = []
     total_students = 0
     for classroom in classrooms:
-        classroom_cards = await _cards_for_classroom(
-            session, classroom.classroom_id, run, context
+        classroom_cards = _cards_from_roster(
+            rosters.get(classroom.classroom_id, []), classroom.classroom_id, context
         )
         total_students += len(classroom_cards)
         cards.extend(c for c in classroom_cards if c.watch_flag)
@@ -438,11 +489,17 @@ async def student_detail(
         raise LearnerNotVisibleError(str(student_id))
 
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
-    rows = await data_access.predictions_for_run(session, run, student_id=student_id)
+    if run_cache.has_predictions(run):
+        rows = [
+            row
+            for row in await run_cache.predictions(session, run)
+            if row.student_id == student_id
+        ]
+    else:
+        # A cold cache: one learner's rows, rather than loading the whole run to open one page.
+        rows = await data_access.predictions_for_run(session, run, student_id=student_id)
     latest = _latest_by_student(rows).get(student_id)
     roster_name = await _display_name_for(session, student_id)
 
@@ -458,28 +515,12 @@ async def student_detail(
         classroom_row = await data_access.classroom_for_learner(
             session, teacher_profile_id, student_id
         )
-        return StudentDetail(
-            student_id=student_id,
-            display_name=roster_name,
-            classroom_id=None if classroom_row is None else classroom_row.classroom_id,
-            class_name=None if classroom_row is None else classroom_row.name,
-            t=0,
-            evidence_status="insufficient_exposure",
-            sessions_completed=0,
-            watch_flag=False,
-            rank_within_t=None,
-            practice_trajectory="unknown",
-            explanation=None,
-            signals=[],
+        return _getting_started_detail(
+            student_id,
+            roster_name,
+            None if classroom_row is None else classroom_row.classroom_id,
+            None if classroom_row is None else classroom_row.name,
         )
-
-    # `shap_top3` stores the raw feature key alongside the display name; only the display
-    # name crosses the wire (filter 3). `SignalOut` forbids extras, so a future change that
-    # widens the stored shape cannot leak the key by accident.
-    signals = [
-        SignalOut(display_name=s["display_name"], direction=s["direction"])
-        for s in (latest.shap_top3 or [])
-    ]
 
     # `StudentDetail` carries no classroom context of its own, and the student-overview screen
     # has no other source for a class name. Scoped to this teacher so it cannot surface a class
@@ -489,11 +530,38 @@ async def student_detail(
         session, teacher_profile_id, student_id
     )
 
+    return _detail_from(
+        student_id,
+        roster_name,
+        None if classroom_row is None else classroom_row.classroom_id,
+        None if classroom_row is None else classroom_row.name,
+        latest,
+    )
+
+
+def _detail_from(
+    student_id: uuid.UUID,
+    display_name: str,
+    classroom_id: uuid.UUID | None,
+    class_name: str | None,
+    latest: Any,
+) -> StudentDetail:
+    """A scored learner's `StudentDetail`, from their latest prediction row. Shared by the
+    single-learner endpoint and the class overview, so the two cannot describe one learner
+    differently."""
+
+    # `shap_top3` stores the raw feature key alongside the display name; only the display
+    # name crosses the wire (filter 3). `SignalOut` forbids extras, so a future change that
+    # widens the stored shape cannot leak the key by accident.
+    signals = [
+        SignalOut(display_name=s["display_name"], direction=s["direction"])
+        for s in (latest.shap_top3 or [])
+    ]
     return StudentDetail(
         student_id=student_id,
-        display_name=roster_name,
-        classroom_id=None if classroom_row is None else classroom_row.classroom_id,
-        class_name=None if classroom_row is None else classroom_row.name,
+        display_name=display_name,
+        classroom_id=classroom_id,
+        class_name=class_name,
         t=latest.t,
         evidence_status=latest.evidence_status,
         sessions_completed=latest.sessions_completed,
@@ -502,6 +570,31 @@ async def student_detail(
         practice_trajectory=latest.practice_trajectory,
         explanation=latest.risk_explanation,
         signals=signals,
+    )
+
+
+def _getting_started_detail(
+    student_id: uuid.UUID,
+    display_name: str,
+    classroom_id: uuid.UUID | None,
+    class_name: str | None,
+) -> StudentDetail:
+    """A learner on a roster but not in the run: `insufficient_exposure`, which every screen
+    renders as Getting Started -- "we cannot tell yet", never "no concern"."""
+
+    return StudentDetail(
+        student_id=student_id,
+        display_name=display_name,
+        classroom_id=classroom_id,
+        class_name=class_name,
+        t=0,
+        evidence_status="insufficient_exposure",
+        sessions_completed=0,
+        watch_flag=False,
+        rank_within_t=None,
+        practice_trajectory="unknown",
+        explanation=None,
+        signals=[],
     )
 
 
@@ -590,11 +683,9 @@ async def session_history(
         raise LearnerNotVisibleError(str(student_id))
 
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
-    rows = await data_access.session_history_for_student(session, run, student_id)
+    rows = await run_cache.history_for_student(session, run, student_id)
 
     return SessionHistoryResponse(
         student_id=student_id,
@@ -670,22 +761,25 @@ async def skill_progress(
         raise LearnerNotVisibleError(str(student_id))
 
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
-    rows = await data_access.session_history_for_student(session, run, student_id)
+    rows = await run_cache.history_for_student(session, run, student_id)
+    return _skills_from(student_id, await _display_name_for(session, student_id), rows)
+
+
+def _skills_from(
+    student_id: uuid.UUID, display_name: str, rows: Sequence[Any]
+) -> SkillProgressResponse:
+    """Skill progress from one learner's session history, oldest first. Shared by the
+    single-learner endpoint and the class overview."""
+
     if not rows:
         # A child who has not practised yet has no skills to report -- that is an empty list,
         # not a failure. 404 here took down the whole student screen (the client fetches the
         # detail and the skills together), so a brand-new learner rendered as "couldn't load
         # this student" instead of Getting Started. The sessions route already answers an empty
         # history with 200; this now matches it.
-        return SkillProgressResponse(
-            student_id=student_id,
-            display_name=await _display_name_for(session, student_id),
-            skills=[],
-        )
+        return SkillProgressResponse(student_id=student_id, display_name=display_name, skills=[])
 
     latest = rows[-1]
     slopes = latest.b_mastery_slope_w4 or {}
@@ -714,9 +808,7 @@ async def skill_progress(
         )
 
     return SkillProgressResponse(
-        student_id=student_id,
-        display_name=await _display_name_for(session, student_id),
-        skills=skills,
+        student_id=student_id, display_name=display_name, skills=skills
     )
 
 
@@ -765,16 +857,14 @@ async def class_report(
         raise ClassroomNotVisibleError(str(classroom_id))
 
     run = (
-        await data_access.active_pipeline_run(
-            session, active_model_version=model_version
-        )
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
     roster = await data_access.classroom_roster(session, classroom_id)
     roster_ids = {learner.learner_id for learner in roster}
 
     predictions = [
         row
-        for row in await data_access.predictions_for_run(session, run)
+        for row in await run_cache.predictions(session, run)
         if row.student_id in roster_ids
     ]
 
@@ -824,3 +914,68 @@ async def class_report(
         early_warning_curve=curve,
         practice_trajectory_trend=trend,
     )
+
+
+async def class_student_overviews(
+    session: AsyncSession,
+    teacher_profile_id: uuid.UUID,
+    classroom_id: uuid.UUID,
+    *,
+    model_version: str,
+) -> "ClassStudentOverviewsResponse":
+    """Every learner's student screen for one class, in one response (2026-09-16).
+
+    Same ownership rule as the single-learner endpoints, decided ONCE: the teacher must own the
+    class, and a learner appears only if APPROVED on its roster -- which is precisely what
+    `learner_visible_to_teacher` answers per learner. Every part of each overview is built by
+    the same builder the single-learner endpoint uses.
+
+    Reads: the class check, the roster, the class name, and the class's suggestions are live;
+    predictions and session history come from `run_cache` (one query for the whole class when
+    cold).
+    """
+
+    from app.application import recommendation_service
+    from app.domain.overviews import ClassStudentOverviewsResponse, StudentOverviewOut
+
+    if not await data_access.teacher_owns_classroom(session, teacher_profile_id, classroom_id):
+        raise ClassroomNotVisibleError(str(classroom_id))
+
+    run = (await run_cache.active_run(session, model_version=model_version)).pipeline_run_id
+    roster = await data_access.classroom_roster(session, classroom_id)
+    student_ids = [learner.learner_id for learner in roster]
+
+    classrooms = await data_access.classrooms_for_teacher(session, teacher_profile_id)
+    this_class = next((c for c in classrooms if c.classroom_id == classroom_id), None)
+    class_name = None if this_class is None else this_class.name
+
+    wanted = set(student_ids)
+    latest = _latest_by_student(
+        [row for row in await run_cache.predictions(session, run) if row.student_id in wanted]
+    )
+    histories = await run_cache.history_for_students(session, run, student_ids)
+    latest_sessions = {
+        sid: (rows[-1].intervention_session_number if rows else None)
+        for sid, rows in histories.items()
+    }
+    suggestions = await recommendation_service.active_for_students(
+        session, run, student_ids, latest_sessions
+    )
+
+    students = []
+    for learner in roster:
+        sid = learner.learner_id
+        row = latest.get(sid)
+        detail = (
+            _getting_started_detail(sid, learner.name, classroom_id, class_name)
+            if row is None
+            else _detail_from(sid, learner.name, classroom_id, class_name, row)
+        )
+        students.append(
+            StudentOverviewOut(
+                detail=detail,
+                skills=_skills_from(sid, learner.name, histories.get(sid, [])),
+                recommendations=suggestions[sid],
+            )
+        )
+    return ClassStudentOverviewsResponse(classroom_id=classroom_id, students=students)

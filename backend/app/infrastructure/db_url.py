@@ -45,6 +45,7 @@ _LIBPQ_ONLY_PARAMS = frozenset(
 
 #: Supabase pooler signals (backend_plan.md section 2).
 _POOLER_PORT = 6543
+#: Kept for readers of the URLs; NOT a refusal signal any more -- see `is_pooler_url`.
 _POOLER_HOST_MARKER = "pooler"
 
 
@@ -108,19 +109,27 @@ def normalise_async_url(url: str) -> str:
 
 
 def is_pooler_url(url: str) -> bool:
-    """True if the URL points at the Supabase transaction pooler.
+    """True if the URL points at the Supabase TRANSACTION pooler.
 
-    Signalled by port ``6543`` or a ``pooler`` hostname. The pooler multiplexes connections
-    and breaks asyncpg prepared-statement caching, so migrations must not run through it.
+    The transaction pooler multiplexes one server connection across clients, which breaks
+    asyncpg's prepared-statement caching, so migrations must not run through it. It is
+    signalled by port ``6543`` -- on any host.
+
+    A ``pooler`` HOSTNAME on port 5432 is the SESSION pooler, which is a different thing: it
+    holds one server connection per client for the life of that connection, so prepared
+    statements behave exactly as on a direct connection. It is also the only route into a
+    Supabase project without the paid IPv4 add-on -- the direct ``db.<ref>.supabase.co`` host
+    resolves to IPv6 only, which Docker on Windows cannot reach. Refusing it by hostname
+    (as this did until 2026-09-16) made migrating to a hosted database impossible on the free
+    plan, for a reason that only applies to port 6543.
     """
 
     parts = urlsplit(url)
-    host = (parts.hostname or "").lower()
     try:
         port = parts.port
     except ValueError:
         port = None
-    return port == _POOLER_PORT or _POOLER_HOST_MARKER in host
+    return port == _POOLER_PORT
 
 
 def redact_url(url: str) -> str:

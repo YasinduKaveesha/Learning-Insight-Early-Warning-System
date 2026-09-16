@@ -33,6 +33,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application import data_access
+from app.application.run_cache import run_cache
 from app.domain.recommendations import (
     ActionOut,
     RecommendationListResponse,
@@ -154,7 +155,7 @@ async def list_for_student(
         raise LearnerNotVisibleError(str(student_id))
 
     run = (
-        await data_access.active_pipeline_run(session, active_model_version=model_version)
+        await run_cache.active_run(session, model_version=model_version)
     ).pipeline_run_id
     latest = await _latest_session(session, run, student_id)
 
@@ -174,6 +175,45 @@ async def list_for_student(
     if status_filter == "active":
         items = [i for i in items if i.teacher_status in ACTIVE_STATUSES and not i.expired]
     return RecommendationListResponse(student_id=student_id, recommendations=items)
+
+
+async def active_for_students(
+    session: AsyncSession,
+    pipeline_run_id: uuid.UUID,
+    student_ids: list[uuid.UUID],
+    latest_sessions: dict[uuid.UUID, int | None],
+) -> dict[uuid.UUID, RecommendationListResponse]:
+    """`list_for_student(..., status_filter="active")` for many learners in ONE query.
+
+    NO ownership check here: the only caller has already established that every id is on a
+    roster of a class the teacher owns, which is exactly what `learner_visible_to_teacher`
+    decides. `latest_sessions` is each learner's latest panel session -- the clock expiry is
+    measured against -- read from the same run data `_latest_session` queries.
+
+    Rows are converted by `_to_out` and filtered by the same rule as the single-learner reader,
+    so a suggestion cannot be active in one and expired in the other.
+    """
+
+    out = {sid: RecommendationListResponse(student_id=sid, recommendations=[]) for sid in student_ids}
+    if not student_ids:
+        return out
+    stmt = (
+        select(Recommendation)
+        .where(
+            Recommendation.pipeline_run_id == pipeline_run_id,
+            Recommendation.student_id.in_(student_ids),
+        )
+        .order_by(
+            Recommendation.student_id,
+            Recommendation.issued_at_intervention_session.desc(),
+            Recommendation.recommendation_id,
+        )
+    )
+    for row in (await session.execute(stmt)).scalars().all():
+        item = _to_out(row, latest_sessions.get(row.student_id))
+        if item.teacher_status in ACTIVE_STATUSES and not item.expired:
+            out[row.student_id].recommendations.append(item)
+    return out
 
 
 async def decide(

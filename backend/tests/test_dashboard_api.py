@@ -111,6 +111,15 @@ class _Learner:
         self.name = name
 
 
+class _RosterRow:
+    """One learner of one classroom, as `rosters_for_classrooms` returns them."""
+
+    def __init__(self, classroom_id, learner):
+        self.classroom_id = classroom_id
+        self.learner_id = learner.learner_id
+        self.name = learner.name
+
+
 class _Classroom:
     def __init__(self, classroom_id, name, grade="GRADE_3"):
         self.classroom_id = classroom_id
@@ -167,7 +176,18 @@ def client(monkeypatch):
     async def _roster(_session, classroom_id):
         return [_Learner(LEARNER, "Amara"), _Learner(OTHER_LEARNER, "Bo")]
 
-    async def _predictions(_session, _run, student_id=None):
+    async def _rosters(_session, classroom_ids):
+        """`/home` reads every class's roster in one query (2026-09-16). Built from `_roster`
+        so the two stubs cannot describe different rosters for the same class."""
+        out = []
+        for classroom_id in classroom_ids:
+            for learner in await _roster(_session, classroom_id):
+                out.append(_RosterRow(classroom_id, learner))
+        return out
+
+    async def _predictions(
+        _session, _run, student_id=None, student_ids=None, with_explanation=True
+    ):
         rows = [
             _Row(
                 student_id=LEARNER, t=9, sessions_completed=9,
@@ -210,7 +230,7 @@ def client(monkeypatch):
             self.b_accuracy_rate = accuracy
             self.c_engagement_score = engagement
 
-    async def _panel_rows(_session, _run, student_id=None):
+    async def _panel_rows(_session, _run, student_id=None, student_ids=None):
         rows = [
             _PanelRow(LEARNER, 1, _dt.date(2026, 1, 5), 0.4, 0.7),
             _PanelRow(LEARNER, 2, _dt.date(2026, 1, 12), None, 0.8),
@@ -255,6 +275,7 @@ def client(monkeypatch):
     monkeypatch.setattr(da, "active_pipeline_run", _active_run)
     monkeypatch.setattr(da, "classrooms_for_teacher", _classrooms)
     monkeypatch.setattr(da, "classroom_roster", _roster)
+    monkeypatch.setattr(da, "rosters_for_classrooms", _rosters)
     monkeypatch.setattr(da, "predictions_for_run", _predictions)
     monkeypatch.setattr(da, "teacher_owns_classroom", _owns)
     monkeypatch.setattr(da, "learner_visible_to_teacher", _visible)

@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, House, KeyRound } from "lucide-react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
+import { prefetchClassStudents } from "../../lib/prefetch";
 import { ClassInfoDialog } from "../../components/class/ClassInfoDialog";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
@@ -49,6 +50,14 @@ export default function ClassroomRoute() {
     queryFn: () => client.getCohort(classId!),
     enabled: !!classId,
   });
+
+  // Every learner in this class, loaded in one request and cached, so opening a
+  // student is instant. Usually already done by Home's warm-up; when it is, this
+  // is a cache hit and sends nothing.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (classId) void prefetchClassStudents(queryClient, classId);
+  }, [classId, queryClient]);
 
   const ordered = useMemo(() => {
     if (!data) return [];

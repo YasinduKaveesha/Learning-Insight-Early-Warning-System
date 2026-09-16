@@ -31,7 +31,11 @@ function walk(dir: string, out: string[] = []): string[] {
 function stripComments(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
+    // Split on \r?\n, not \n: with core.autocrlf a Windows checkout hands these
+    // files back CRLF, every line then ends "...\r", and `//.*$` matches nothing
+    // because `.` excludes \r -- so the stripper silently stopped stripping and
+    // these checks flagged their own documentation. Found 2026-09-16.
+    .split(/\r?\n/)
     .map((line) => line.replace(/\/\/.*$/, ""))
     .join("\n");
 }

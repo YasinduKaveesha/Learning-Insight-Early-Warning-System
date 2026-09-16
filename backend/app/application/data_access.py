@@ -190,6 +190,43 @@ async def classroom_roster(session: AsyncSession, classroom_id: uuid.UUID) -> Se
     return (await session.execute(stmt)).all()
 
 
+async def rosters_for_classrooms(
+    session: AsyncSession, classroom_ids: Sequence[uuid.UUID]
+) -> Sequence[Row]:
+    """Every classroom's roster in ONE query, each row carrying its `classroom_id`.
+
+    Same rule as `classroom_roster` (APPROVED membership, REAL learner); this is that query
+    for many classrooms at once. `/home` used to call `classroom_roster` once per class,
+    which is six extra round trips on a seven-class dashboard -- 1.7 s of the 4.2 s that page
+    took against the hosted database on 2026-09-16, and invisible on a local socket.
+    """
+
+    if not classroom_ids:
+        return []
+
+    stmt = (
+        select(
+            classroom_memberships.c.classroom_id,
+            b_learners.c.learner_id,
+            b_learners.c.name,
+            b_learners.c.grade,
+            b_learners.c.status,
+        )
+        .select_from(
+            classroom_memberships.join(
+                b_learners,
+                classroom_memberships.c.learner_id == b_learners.c.learner_id,
+            )
+        )
+        .where(
+            classroom_memberships.c.classroom_id.in_(classroom_ids),
+            classroom_memberships.c.state == APPROVED_STATE,
+            b_learners.c.source_class == REAL_SOURCE_CLASS,
+        )
+    )
+    return (await session.execute(stmt)).all()
+
+
 async def classrooms_for_teacher(
     session: AsyncSession, teacher_profile_id: uuid.UUID
 ) -> Sequence[Row]:
@@ -370,6 +407,7 @@ async def panel_rows_for_run(
     pipeline_run_id: uuid.UUID,
     *,
     student_id: uuid.UUID | None = None,
+    student_ids: Sequence[uuid.UUID] | None = None,
 ) -> Sequence[Row]:
     """`t3_panel` rows for one pipeline run. Deliberately carries NO `source_class` filter
     -- `t3_panel` is written with `source_class = 'SYNTHETIC'` by design (D15), and applying
@@ -389,7 +427,48 @@ async def panel_rows_for_run(
     ).where(Panel.pipeline_run_id == pipeline_run_id)
     if student_id is not None:
         stmt = stmt.where(Panel.student_id == student_id)
+    if student_ids is not None:
+        if not student_ids:
+            return []
+        stmt = stmt.where(Panel.student_id.in_(student_ids))
     return (await session.execute(stmt)).all()
+
+
+#: The columns the sessions and skills screens read, shared by the single-learner and the
+#: batched reader so the two can never return different shapes for the same learner.
+_SESSION_HISTORY_COLUMNS = (
+    Panel.student_id,
+    Panel.intervention_session_number,
+    Panel.intervention_session_date,
+    Panel.b_present,
+    Panel.c_present,
+    # Component B -- practice.
+    Panel.b_accuracy_rate,
+    Panel.b_total_questions,
+    Panel.b_correct_responses,
+    Panel.b_hint_requests,
+    Panel.b_median_item_response_time_sec,
+    # D42: read for the skill progress bar ONLY. The sessions service names every field
+    # it returns, so selecting it here does not put it in the sessions response.
+    Panel.b_mastery,
+    Panel.b_mastery_slope_w4,
+    Panel.b_opportunities_w4,
+    # Component C -- games. NEVER merged with the B values above.
+    Panel.c_accuracy_rate,
+    Panel.c_task_completion_rate,
+    Panel.c_median_game_task_latency_sec,
+    Panel.c_engagement_score,
+    Panel.c_engagement_components,
+    Panel.c_frustration_index,
+    Panel.c_frustration_components,
+    Panel.c_learner_state,
+    Panel.c_current_difficulty_level,
+    Panel.c_difficulty_trend,
+    # Guards.
+    Panel.c_telemetry_quality_status,
+    Panel.c_session_technical_issue_flag,
+    Panel.c_inactive_time_sec,
+)
 
 
 async def session_history_for_student(
@@ -413,44 +492,38 @@ async def session_history_for_student(
     """
 
     stmt = (
-        select(
-            Panel.student_id,
-            Panel.intervention_session_number,
-            Panel.intervention_session_date,
-            Panel.b_present,
-            Panel.c_present,
-            # Component B -- practice.
-            Panel.b_accuracy_rate,
-            Panel.b_total_questions,
-            Panel.b_correct_responses,
-            Panel.b_hint_requests,
-            Panel.b_median_item_response_time_sec,
-            # D42: read for the skill progress bar ONLY. The sessions service names every field
-            # it returns, so selecting it here does not put it in the sessions response.
-            Panel.b_mastery,
-            Panel.b_mastery_slope_w4,
-            Panel.b_opportunities_w4,
-            # Component C -- games. NEVER merged with the B values above.
-            Panel.c_accuracy_rate,
-            Panel.c_task_completion_rate,
-            Panel.c_median_game_task_latency_sec,
-            Panel.c_engagement_score,
-            Panel.c_engagement_components,
-            Panel.c_frustration_index,
-            Panel.c_frustration_components,
-            Panel.c_learner_state,
-            Panel.c_current_difficulty_level,
-            Panel.c_difficulty_trend,
-            # Guards.
-            Panel.c_telemetry_quality_status,
-            Panel.c_session_technical_issue_flag,
-            Panel.c_inactive_time_sec,
-        )
+        select(*_SESSION_HISTORY_COLUMNS)
         .where(
             Panel.pipeline_run_id == pipeline_run_id,
             Panel.student_id == student_id,
         )
         .order_by(Panel.intervention_session_number)
+    )
+    return (await session.execute(stmt)).all()
+
+
+async def session_history_for_students(
+    session: AsyncSession,
+    pipeline_run_id: uuid.UUID,
+    student_ids: Sequence[uuid.UUID],
+) -> Sequence[Row]:
+    """`session_history_for_student` for many learners in ONE query -- same columns, same
+    run scope, each row carrying its `student_id` (2026-09-16).
+
+    A class's student pages used to cost one history read per learner; against a hosted
+    database that was seconds before a teacher could open anyone. `run_cache` groups these rows
+    by learner. Ordered by learner then session, so each learner's slice is already in order.
+    """
+
+    if not student_ids:
+        return []
+    stmt = (
+        select(*_SESSION_HISTORY_COLUMNS)
+        .where(
+            Panel.pipeline_run_id == pipeline_run_id,
+            Panel.student_id.in_(student_ids),
+        )
+        .order_by(Panel.student_id, Panel.intervention_session_number)
     )
     return (await session.execute(stmt)).all()
 
@@ -482,12 +555,24 @@ async def predictions_for_run(
     pipeline_run_id: uuid.UUID,
     *,
     student_id: uuid.UUID | None = None,
+    student_ids: Sequence[uuid.UUID] | None = None,
+    with_explanation: bool = True,
 ) -> Sequence[Row]:
     """`t3_predictions` rows for one pipeline run. No `source_class` filter -- see module
     docstring. Does NOT select `prob_class_0/1/2plus`, `predicted_class` or
     `engagement_trajectory`: those are server-only / never-served fields (backend_plan.md
-    section 8), and this reader has no caller that is entitled to them."""
+    section 8), and this reader has no caller that is entitled to them.
 
+    `with_explanation=False` drops `risk_explanation` and `shap_top3` -- the two wide columns
+    on this table (a sentence of up to 280 characters plus a JSON array, per row). `/home`
+    reads every prediction in the run only to COUNT them, and never reads either field, so
+    shipping them costs the whole run's prose for nothing. Measured against the hosted
+    database on 2026-09-16: 2.2 s with them, 0.4 s without, on 606 rows. Callers that render
+    a learner (the cohort, the watch list, the student screen) keep the default."""
+
+    explanation_columns = (
+        [Prediction.risk_explanation, Prediction.shap_top3] if with_explanation else []
+    )
     stmt = select(
         Prediction.student_id,
         Prediction.t,
@@ -502,14 +587,19 @@ async def predictions_for_run(
         Prediction.rank_within_t,
         Prediction.rank_percentile_within_t,
         Prediction.practice_trajectory,
-        Prediction.risk_explanation,
-        Prediction.shap_top3,
+        *explanation_columns,
         Prediction.risk_level,
         Prediction.risk_level_status,
         Prediction.pipeline_run_id,
     ).where(Prediction.pipeline_run_id == pipeline_run_id)
     if student_id is not None:
         stmt = stmt.where(Prediction.student_id == student_id)
+    if student_ids is not None:
+        # Scope to the learners the page actually shows. A class page used to download the
+        # whole run -- every teacher's learners -- to render one class (2026-09-16).
+        if not student_ids:
+            return []
+        stmt = stmt.where(Prediction.student_id.in_(student_ids))
     # `_as_records`, not `.all()`: `Prediction.t` collides with `Row.t`. See its docstring.
     return _as_records((await session.execute(stmt)).all())
 

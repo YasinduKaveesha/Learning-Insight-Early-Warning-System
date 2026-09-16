@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -26,6 +27,21 @@ logger = logging.getLogger("t3.http")
 
 def _accepted_request_id(value: str | None) -> str:
     return value if value and REQUEST_ID_PATTERN.fullmatch(value) else str(uuid4())
+
+
+async def _warm_run_cache(model_version: str) -> None:
+    """Background warm-up of `run_cache`. Never fails startup: a database that is down, or a
+    run that is missing, is logged and the cache simply stays cold until the first request."""
+
+    from app.application.run_cache import run_cache
+
+    try:
+        async for session in db_engine.get_session():
+            await run_cache.warm(session, model_version=model_version)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:  # noqa: BLE001 -- best-effort by design
+        logger.warning("run cache warm-up skipped", extra={"error": type(exc).__name__})
 
 
 def create_app() -> FastAPI:
@@ -53,9 +69,15 @@ def create_app() -> FastAPI:
         # The engine is NOT opened here. It is created lazily on first use so a database
         # that is briefly down cannot stop the process from starting and answering
         # `/health/ready` with an honest 503 -- which is the whole point of the probe.
+        warm_task: asyncio.Task[None] | None = None
+        if settings.t3_cache_warm_on_startup:
+            warm_task = asyncio.create_task(_warm_run_cache(settings.t3_active_model_version))
+
         try:
             yield
         finally:
+            if warm_task is not None and not warm_task.done():
+                warm_task.cancel()
             # Always dispose, even if startup partly failed: an undisposed asyncpg pool
             # holds server connections open, and on a shared database those are somebody
             # else's too. `dispose()` also clears the module-level engine, so a fresh app

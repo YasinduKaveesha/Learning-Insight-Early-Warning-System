@@ -100,6 +100,13 @@ export interface WatchListResponse {
   students: LearnerSnapshot[];
 }
 
+/** One learner of a class, as `getClassStudentOverviews` returns them. */
+export interface ClassStudentOverview {
+  studentId: string;
+  overview: StudentOverviewResponse;
+  recommendations: RecommendationDisplay[];
+}
+
 export interface StudentOverviewResponse {
   snapshot: LearnerSnapshot;
   skills: SkillProgress[];
@@ -128,6 +135,13 @@ export interface ApiClient {
   // includes a Suggestions section; there is no recommendation endpoint or
   // specification behind this yet.
   getStudentRecommendations(studentId: string): Promise<RecommendationDisplay[]>;
+
+  /** Every learner's student screen for one class, in ONE request
+   * (2026-09-16). Exactly what `getStudentOverview` and
+   * `getStudentRecommendations` return per learner -- the server builds both
+   * with the same code -- so it is used to fill those caches ahead of time
+   * and open any learner in the class without a round trip. */
+  getClassStudentOverviews(classId: string): Promise<ClassStudentOverview[]>;
 
   /** A teacher's decision on one suggestion, SAVED (docs/13 §6: the log of
    * decisions is a research output). Each resolves to the updated suggestion.
