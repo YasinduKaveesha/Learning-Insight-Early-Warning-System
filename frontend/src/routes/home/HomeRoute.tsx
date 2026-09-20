@@ -9,7 +9,7 @@ import { CreateClassDialog } from "../../components/class/CreateClassDialog";
 import { DeleteClassDialog } from "../../components/class/DeleteClassDialog";
 import { SwipeToDelete } from "../../components/class/SwipeToDelete";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { HomeSkeleton } from "../../components/skeletons/PageSkeletons";
 import { StatTile } from "../../components/shared/StatTile";
 import { prefetchClasses } from "../../lib/prefetch";
 import { sortClassesByWatchShare, type Grade } from "../../lib/presentation";
@@ -215,11 +215,7 @@ export default function HomeRoute() {
       ) : null}
 
       {isPending ? (
-        <div className="flex flex-col gap-4">
-          <LoadingSkeleton rows={1} rowHeight={160} />
-          <LoadingSkeleton rows={1} rowHeight={80} />
-          <LoadingSkeleton rows={3} rowHeight={64} />
-        </div>
+        <HomeSkeleton />
       ) : isError ? (
         <ErrorState
           message="Couldn't load your dashboard. Check your connection and try again."

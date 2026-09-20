@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { client } from "../../api/client";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { WatchListSkeleton } from "../../components/skeletons/PageSkeletons";
 import { StudentDetail } from "../../components/student/StudentDetail";
 import { ExplanationBlock } from "../../components/student/ExplanationBlock";
 import { lastActiveLabel } from "../../lib/format";
@@ -117,7 +117,7 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
         </header>
 
         {isPending ? (
-          <LoadingSkeleton rows={4} rowHeight={140} />
+          <WatchListSkeleton />
         ) : isError ? (
           <ErrorState
             message="Couldn't load the watch list. Check your connection and try again."

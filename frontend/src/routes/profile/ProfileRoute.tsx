@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { client } from "../../api/client";
 import { useSession } from "../../auth/SessionProvider";
 import { ErrorState } from "../../components/shared/ErrorState";
-import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { ProfileSkeleton } from "../../components/skeletons/PageSkeletons";
 
 /**
  * Profile (plan §3). The teacher's own details and a way out, in the shape the
@@ -54,7 +54,7 @@ export default function ProfileRoute() {
 
       <div className="flex flex-1 flex-col justify-center gap-6">
       {isPending ? (
-        <LoadingSkeleton rows={3} rowHeight={56} />
+        <ProfileSkeleton />
       ) : isError ? (
         <ErrorState
           message="Couldn't load your profile. Check your connection and try again."

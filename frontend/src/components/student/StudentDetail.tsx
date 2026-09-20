@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { client } from "../../api/client";
 import { ErrorState } from "../shared/ErrorState";
-import { LoadingSkeleton } from "../shared/LoadingSkeleton";
+import { StudentDetailSkeleton, StudentNameBone } from "../skeletons/PageSkeletons";
 import { SectionHeader } from "../shared/SectionHeader";
 import { RecommendationCard } from "./RecommendationCard";
 import { SkillProgressList } from "./SkillProgress";
@@ -126,7 +126,7 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
             </Link>
           )}
           <h1 className="flex-1 truncate text-center text-[18px] font-bold text-ink-primary">
-            {isPending ? "" : (overviewQuery.data?.snapshot.displayName ?? "Student")}
+            {isPending ? <StudentNameBone /> : (overviewQuery.data?.snapshot.displayName ?? "Student")}
           </h1>
           <Link
             to="/"
@@ -159,11 +159,7 @@ export function StudentDetail({ studentId, showSessionsTab = true }: StudentDeta
       </div>
 
       {isPending ? (
-        <>
-          <LoadingSkeleton rows={1} rowHeight={100} />
-          <LoadingSkeleton rows={1} rowHeight={160} />
-          <LoadingSkeleton rows={1} rowHeight={160} />
-        </>
+        <StudentDetailSkeleton />
       ) : isError ? (
         <ErrorState
           message="Couldn't load this student. Check your connection and try again."
