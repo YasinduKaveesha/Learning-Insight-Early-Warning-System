@@ -100,6 +100,17 @@ export interface WatchListResponse {
   students: LearnerSnapshot[];
 }
 
+/**
+ * Lets a caller ABANDON a read it no longer wants. Only the reads the
+ * background warm-up makes take it, and only the warm-up passes one: when a
+ * teacher navigates, the request in flight for a page they are no longer
+ * waiting on is aborted, so it stops competing with the page they just opened.
+ * A screen's own reads never pass one -- a screen wants its data.
+ */
+export interface ReadOptions {
+  signal?: AbortSignal;
+}
+
 /** One learner of a class, as `getClassStudentOverviews` returns them. */
 export interface ClassStudentOverview {
   studentId: string;
@@ -124,11 +135,11 @@ export interface StudentOverviewResponse {
 
 export interface ApiClient {
   getHome(): Promise<HomeSummary>;
-  getCohort(classId: string): Promise<CohortResponse>;
-  getClassWatchList(classId: string): Promise<WatchListResponse>;
-  getWatchList(): Promise<WatchListResponse>;
+  getCohort(classId: string, opts?: ReadOptions): Promise<CohortResponse>;
+  getClassWatchList(classId: string, opts?: ReadOptions): Promise<WatchListResponse>;
+  getWatchList(opts?: ReadOptions): Promise<WatchListResponse>;
   getStudentOverview(studentId: string): Promise<StudentOverviewResponse>;
-  getStudentSessions(studentId: string): Promise<SessionEntry[]>;
+  getStudentSessions(studentId: string, opts?: ReadOptions): Promise<SessionEntry[]>;
   // PROVISIONAL — see the doc comment on RecommendationDisplay in
   // lib/presentation.ts (Step 4 review ruling B, carried forward). Added in
   // Step 5 only because the Student Overview screen's wireframe (plan §4.4)
@@ -141,7 +152,7 @@ export interface ApiClient {
    * `getStudentRecommendations` return per learner -- the server builds both
    * with the same code -- so it is used to fill those caches ahead of time
    * and open any learner in the class without a round trip. */
-  getClassStudentOverviews(classId: string): Promise<ClassStudentOverview[]>;
+  getClassStudentOverviews(classId: string, opts?: ReadOptions): Promise<ClassStudentOverview[]>;
 
   /** A teacher's decision on one suggestion, SAVED (docs/13 §6: the log of
    * decisions is a research output). Each resolves to the updated suggestion.

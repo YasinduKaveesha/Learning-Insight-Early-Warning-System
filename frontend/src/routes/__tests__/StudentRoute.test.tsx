@@ -277,8 +277,10 @@ describe("StudentRoute — Suggestions (Step 7: all four kinds + fallback)", () 
     await waitFor(() => expect(screen.getByText(BASE_REC.evidenceSummary)).toBeInTheDocument());
 
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
-    await userEvent.selectOptions(screen.getByLabelText("What should this be changed to?"), "review");
-    await userEvent.selectOptions(screen.getByLabelText("Skill"), "place_value");
+    await userEvent.click(screen.getByRole("combobox", { name: /What should this be changed to\?/ }));
+    await userEvent.click(screen.getByRole("option", { name: "Review" }));
+    await userEvent.click(screen.getByRole("combobox", { name: /Skill/ }));
+    await userEvent.click(screen.getByRole("option", { name: /Place value/ }));
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
 
     expect(client.modifyRecommendation).toHaveBeenCalledWith("rec-1", { kind: "review", skillId: "place_value" });

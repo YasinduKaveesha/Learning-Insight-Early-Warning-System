@@ -1,4 +1,5 @@
-import { useId, useState } from "react";
+import { useState } from "react";
+import { SelectField } from "../shared/SelectField";
 import {
   RECOMMENDATION_KIND_OPTIONS,
   SKILL_OPTIONS,
@@ -42,8 +43,6 @@ export function RecommendationCard({
   const [isModifying, setIsModifying] = useState(false);
   const [modifiedKind, setModifiedKind] = useState("");
   const [modifiedSkill, setModifiedSkill] = useState(recommendation.targetSkillId ?? "");
-  const kindFieldId = useId();
-  const skillFieldId = useId();
   const decisionLine = recommendationDecisionLine(recommendation);
 
   return (
@@ -79,38 +78,26 @@ export function RecommendationCard({
         <p className="text-sm font-semibold text-ink-primary">{decisionLine}</p>
       ) : isModifying ? (
         <div className="flex flex-col gap-2">
-          <label htmlFor={kindFieldId} className="text-sm font-medium text-ink-primary">
-            What should this be changed to?
-          </label>
-          <select
-            id={kindFieldId}
+          <SelectField
+            label="What should this be changed to?"
             value={modifiedKind}
-            onChange={(e) => setModifiedKind(e.target.value)}
-            className="min-h-[44px] rounded-lg border border-border-strong p-2 text-sm"
-          >
-            <option value="">Choose a suggestion</option>
-            {RECOMMENDATION_KIND_OPTIONS.map((o) => (
-              <option key={o.kind} value={o.kind}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <label htmlFor={skillFieldId} className="text-sm font-medium text-ink-primary">
-            Skill
-          </label>
-          <select
-            id={skillFieldId}
+            onChange={setModifiedKind}
+            placeholder="Choose a suggestion"
+            options={RECOMMENDATION_KIND_OPTIONS.map((o) => ({
+              value: o.kind,
+              label: o.label,
+            }))}
+          />
+          <SelectField
+            label="Skill"
             value={modifiedSkill}
-            onChange={(e) => setModifiedSkill(e.target.value)}
-            className="min-h-[44px] rounded-lg border border-border-strong p-2 text-sm"
-          >
-            <option value="">No specific skill</option>
-            {SKILL_OPTIONS.map((s) => (
-              <option key={s.skillId} value={s.skillId}>
-                {s.displayName}
-              </option>
-            ))}
-          </select>
+            onChange={setModifiedSkill}
+            placeholder="No specific skill"
+            options={SKILL_OPTIONS.map((s) => ({
+              value: s.skillId,
+              label: s.displayName,
+            }))}
+          />
           <div className="flex gap-2">
             <button
               type="button"

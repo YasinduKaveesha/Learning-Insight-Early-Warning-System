@@ -11,7 +11,7 @@ import { SwipeToDelete } from "../../components/class/SwipeToDelete";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { HomeSkeleton } from "../../components/skeletons/PageSkeletons";
 import { StatTile } from "../../components/shared/StatTile";
-import { prefetchClasses } from "../../lib/prefetch";
+import { startBackgroundLoad } from "../../lib/prefetch";
 import { sortClassesByWatchShare, type Grade } from "../../lib/presentation";
 
 /**
@@ -26,15 +26,16 @@ export default function HomeRoute() {
     queryFn: () => client.getHome(),
   });
 
-  // Once Home has its data, load every class page and every learner in the
-  // background, in the order the classes are shown, so opening any of them is
-  // instant. The class ids are the dependency, not `data` itself: a refetch of
-  // the same classes does not start the warm-up again.
+  // Once Home has its data, warm everything behind it, in the order the
+  // classes are shown: every class page first, then every class's learners,
+  // then each learner's sessions (lib/prefetch.ts). The class ids are the
+  // dependency, not `data` itself: a refetch of the same classes does not
+  // start the warm-up again.
   const classOrder = data ? sortClassesByWatchShare(data.classes).map((c) => c.classId) : [];
   const classOrderKey = classOrder.join(",");
   useEffect(() => {
     if (classOrderKey === "") return;
-    void prefetchClasses(queryClient, classOrderKey.split(","));
+    startBackgroundLoad(queryClient, classOrderKey.split(","));
   }, [classOrderKey, queryClient]);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);

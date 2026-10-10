@@ -52,7 +52,9 @@ describe("prefetchClassStudents", () => {
 
   it("swallows a failure -- the page loads on its own when opened", async () => {
     vi.mocked(client.getClassStudentOverviews).mockRejectedValue(new Error("HTTP 503"));
-    await expect(prefetchClassStudents(queryClient, "c1")).resolves.toBeUndefined();
+    // Resolves to the learner ids (empty here) rather than throwing: the queue
+    // uses them to line up each learner's session history.
+    await expect(prefetchClassStudents(queryClient, "c1")).resolves.toEqual([]);
     expect(queryClient.getQueryData(["studentOverview", "s1"])).toBeUndefined();
   });
 });
