@@ -77,16 +77,19 @@ describe("RecommendationCard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    const kind = screen.getByLabelText("What should this be changed to?");
-    const skill = screen.getByLabelText("Skill");
+    const kind = screen.getByRole("combobox", { name: /What should this be changed to\?/ });
+    const skill = screen.getByRole("combobox", { name: /Skill/ });
     // The skill starts on the suggestion's own skill.
-    expect(skill).toHaveValue("place_value");
-    // Four kinds plus the placeholder; seven skills plus "No specific skill".
-    expect(kind.querySelectorAll("option")).toHaveLength(5);
-    expect(skill.querySelectorAll("option")).toHaveLength(8);
+    expect(skill).toHaveTextContent("Place value");
 
-    await userEvent.selectOptions(kind, "try_again");
-    await userEvent.selectOptions(skill, "subtraction");
+    // Four kinds plus the placeholder; seven skills plus "No specific skill".
+    await userEvent.click(kind);
+    expect(screen.getAllByRole("option")).toHaveLength(5);
+    await userEvent.click(screen.getByRole("option", { name: "Try Again" }));
+
+    await userEvent.click(skill);
+    expect(screen.getAllByRole("option")).toHaveLength(8);
+    await userEvent.click(screen.getByRole("option", { name: /Subtraction/ }));
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
     expect(onModify).toHaveBeenCalledWith("rec-1", { kind: "try_again", skillId: "subtraction" });
   });
@@ -95,7 +98,8 @@ describe("RecommendationCard", () => {
     const onModify = vi.fn();
     render(<RecommendationCard recommendation={BASE} onAccept={vi.fn()} onModify={onModify} />);
     await userEvent.click(screen.getByRole("button", { name: "Modify" }));
-    await userEvent.selectOptions(screen.getByLabelText("What should this be changed to?"), "monitor_progress");
+    await userEvent.click(screen.getByRole("combobox", { name: /What should this be changed to\?/ }));
+    await userEvent.click(screen.getByRole("option", { name: "Monitor Progress" }));
     await userEvent.click(screen.getByRole("button", { name: "Save change" }));
     expect(onModify).toHaveBeenCalledWith("rec-1", { kind: "monitor_progress", skillId: null });
   });
