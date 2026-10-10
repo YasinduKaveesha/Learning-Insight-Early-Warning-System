@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, House } from "lucide-react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { client } from "../../api/client";
 import { EmptyState } from "../../components/shared/EmptyState";
@@ -8,6 +9,7 @@ import { WatchListSkeleton } from "../../components/skeletons/PageSkeletons";
 import { StudentDetail } from "../../components/student/StudentDetail";
 import { ExplanationBlock } from "../../components/student/ExplanationBlock";
 import { lastActiveLabel } from "../../lib/format";
+import { focusClass } from "../../lib/prefetch";
 import { handledNote } from "../../lib/presentation";
 import { IS_DESKTOP_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { type Grade, type LearnerSnapshot } from "../../lib/presentation";
@@ -82,6 +84,14 @@ export function WatchListScreen({ classId, selectedStudentId }: WatchListScreenP
     queryFn: () => client.getCohort(classId!),
     enabled: !!classId,
   });
+
+  // A class's own watch list is one of that class's pages, so opening it holds
+  // the warm-up and loads this class first (see lib/prefetch.ts). The
+  // teacher-wide variant belongs to no class and holds nothing.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (classId) void focusClass(queryClient, classId);
+  }, [classId, queryClient]);
 
   const isPending = watchQuery.isPending || (!classId && homeQuery.isPending);
   const isError = watchQuery.isError || (!classId && homeQuery.isError);

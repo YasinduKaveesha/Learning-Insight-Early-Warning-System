@@ -5,6 +5,7 @@ import { client } from "../../api/client";
 import { useSession } from "../../auth/SessionProvider";
 import { ErrorState } from "../../components/shared/ErrorState";
 import { ProfileSkeleton } from "../../components/skeletons/PageSkeletons";
+import { cancelBackgroundLoad } from "../../lib/prefetch";
 
 /**
  * Profile (plan §3). The teacher's own details and a way out, in the shape the
@@ -33,6 +34,9 @@ export default function ProfileRoute() {
 
   async function handleSignOut() {
     await signOut();
+    // Stop the warm-up before clearing the cache: a task still in flight would
+    // otherwise land this teacher's data in the cache the next one inherits.
+    cancelBackgroundLoad();
     // Order matters less than completeness: the cache must be empty before
     // the next teacher's data can load.
     queryClient.clear();
@@ -56,10 +60,19 @@ export default function ProfileRoute() {
       {isPending ? (
         <ProfileSkeleton />
       ) : isError ? (
-        <ErrorState
-          message="Couldn't load your profile. Check your connection and try again."
-          onRetry={() => refetch()}
-        />
+        /* THE LOG OUT BUTTON RENDERS HERE TOO, and that is the point of this
+           branch's shape. It used to be inside the success branch only, so a
+           teacher whose profile would not load lost the only control on the
+           dashboard that ends a session -- the exact situation in which they
+           most need it, since signing in as someone else is often the fix.
+           Clearing site data by hand was the only way out. */
+        <div className="flex flex-col gap-6">
+          <ErrorState
+            message="Couldn't load your profile. Check your connection and try again."
+            onRetry={() => refetch()}
+          />
+          <SignOutButton onSignOut={() => void handleSignOut()} />
+        </div>
       ) : (
         <>
           <div className="flex flex-col items-center gap-2">
@@ -102,14 +115,7 @@ export default function ProfileRoute() {
           {/* Set apart from the rows above, and in the danger tint the student
               app uses for the same control -- this is the one action on the
               screen that ends the session. */}
-          <button
-            type="button"
-            onClick={() => void handleSignOut()}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-danger bg-danger-soft px-4 text-sm font-bold text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          >
-            <LogOut aria-hidden="true" size={20} />
-            Log out
-          </button>
+          <SignOutButton onSignOut={() => void handleSignOut()} />
         </>
       )}
       </div>
@@ -131,6 +137,21 @@ export default function ProfileRoute() {
         </div>
       </nav>
     </div>
+  );
+}
+
+/* One definition, rendered from both branches -- so the two can never drift
+   into a page where logging out depends on whether the data loaded. */
+function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSignOut}
+      className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-danger bg-danger-soft px-4 text-sm font-bold text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+    >
+      <LogOut aria-hidden="true" size={20} />
+      Log out
+    </button>
   );
 }
 

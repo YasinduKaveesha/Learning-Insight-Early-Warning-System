@@ -3,7 +3,7 @@ import { ArrowRight, House, KeyRound } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { client } from "../../api/client";
-import { prefetchClassStudents } from "../../lib/prefetch";
+import { focusClass } from "../../lib/prefetch";
 import { ClassInfoDialog } from "../../components/class/ClassInfoDialog";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { ErrorState } from "../../components/shared/ErrorState";
@@ -51,12 +51,15 @@ export default function ClassroomRoute() {
     enabled: !!classId,
   });
 
-  // Every learner in this class, loaded in one request and cached, so opening a
-  // student is instant. Usually already done by Home's warm-up; when it is, this
-  // is a cache hit and sends nothing.
+  // OPENING THIS CLASS OUTRANKS THE WARM-UP. `focusClass` holds the background
+  // queue, loads this class -- page, watch list and every learner in it, so
+  // opening a student from here is instant -- and only then lets the warm-up
+  // resume where it left off. A class the warm-up already reached is a cache
+  // hit, so the hold is momentary. See lib/prefetch.ts.
   const queryClient = useQueryClient();
   useEffect(() => {
-    if (classId) void prefetchClassStudents(queryClient, classId);
+    if (!classId) return;
+    void focusClass(queryClient, classId);
   }, [classId, queryClient]);
 
   const ordered = useMemo(() => {

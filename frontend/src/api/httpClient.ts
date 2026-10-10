@@ -11,13 +11,16 @@
 //    frontend type wants, the mapping sends the honest empty (null, [], or no
 //    bar) rather than a plausible default. A made-up number a teacher acts on
 //    is worse than a gap.
-// 2. EVERY FAILURE REJECTS AS A PLAIN Error, so ErrorState renders. Nothing
-//    throws synchronously.
+// 2. EVERY FAILURE REJECTS AS AN Error, so ErrorState renders. Nothing throws
+//    synchronously. The rejection carries the HTTP status (`apiError`) because
+//    a 403 is not a retryable failure and must not be offered as one -- see
+//    lib/apiError.ts.
 // 3. The screens still re-apply sortCohortOrder / toWatchStatus /
 //    filterExplanation. Nothing here relies on the backend's ordering.
 
 import type {
   ApiClient,
+  ReadOptions,
   ClassReportsResponse,
   CohortResponse,
   CreateClassResult,
@@ -47,6 +50,7 @@ import {
   recommendationSourceLabel,
   skillDisplayName,
 } from "../lib/presentation";
+import { apiError } from "../lib/apiError";
 import * as studentApp from "./studentAppClient";
 import { supabase } from "./supabaseClient";
 
@@ -251,7 +255,7 @@ async function postJson(path: string, body?: unknown): Promise<Response> {
 async function post<T>(path: string, body?: unknown): Promise<T> {
   const response = await postJson(path, body);
   if (!response.ok) {
-    throw new Error(`Request to ${path} failed with HTTP ${response.status}`);
+    throw apiError(path, response.status);
   }
   return (await response.json()) as T;
 }
@@ -269,12 +273,12 @@ async function postDecision<T>(path: string, body?: unknown): Promise<T> {
     throw new RecommendationConflictError(reason);
   }
   if (!response.ok) {
-    throw new Error(`Request to ${path} failed with HTTP ${response.status}`);
+    throw apiError(path, response.status);
   }
   return (await response.json()) as T;
 }
 
-async function get<T>(path: string): Promise<T> {
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
     const { data } = await supabase.auth.getSession();
@@ -282,9 +286,12 @@ async function get<T>(path: string): Promise<T> {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
   // Bearer only, never a cookie: the API sets allow_credentials=False.
-  const response = await fetch(`${API_BASE}${PREFIX}${path}`, { headers });
+  // `signal` is passed only by the background warm-up, so a request for a page
+  // the teacher has navigated away from is actually cancelled, not merely
+  // ignored -- an ignored request still holds the connection.
+  const response = await fetch(`${API_BASE}${PREFIX}${path}`, { headers, signal });
   if (!response.ok) {
-    throw new Error(`Request to ${path} failed with HTTP ${response.status}`);
+    throw apiError(path, response.status);
   }
   return (await response.json()) as T;
 }
@@ -435,8 +442,11 @@ export class HttpClient implements ApiClient {
     };
   }
 
-  async getCohort(classId: string): Promise<CohortResponse> {
-    const w = await get<WireCohort>(`/classes/${encodeURIComponent(classId)}/cohort`);
+  async getCohort(classId: string, opts?: ReadOptions): Promise<CohortResponse> {
+    const w = await get<WireCohort>(
+      `/classes/${encodeURIComponent(classId)}/cohort`,
+      opts?.signal,
+    );
     return {
       classId: w.classroom_id,
       className: w.class_name ?? "",
@@ -453,8 +463,11 @@ export class HttpClient implements ApiClient {
     };
   }
 
-  async getClassWatchList(classId: string): Promise<WatchListResponse> {
-    const w = await get<WireWatch>(`/classes/${encodeURIComponent(classId)}/watch`);
+  async getClassWatchList(classId: string, opts?: ReadOptions): Promise<WatchListResponse> {
+    const w = await get<WireWatch>(
+      `/classes/${encodeURIComponent(classId)}/watch`,
+      opts?.signal,
+    );
     return {
       totalStudents: w.total_students,
       disclosure: w.disclosure,
@@ -465,8 +478,8 @@ export class HttpClient implements ApiClient {
     };
   }
 
-  async getWatchList(): Promise<WatchListResponse> {
-    const w = await get<WireWatch>("/watch");
+  async getWatchList(opts?: ReadOptions): Promise<WatchListResponse> {
+    const w = await get<WireWatch>("/watch", opts?.signal);
     return {
       totalStudents: w.total_students,
       disclosure: w.disclosure,
@@ -486,9 +499,13 @@ export class HttpClient implements ApiClient {
     return toStudentOverview(detail, skills);
   }
 
-  async getClassStudentOverviews(classId: string): Promise<ClassStudentOverview[]> {
+  async getClassStudentOverviews(
+    classId: string,
+    opts?: ReadOptions,
+  ): Promise<ClassStudentOverview[]> {
     const w = await get<WireClassOverviews>(
       `/classes/${encodeURIComponent(classId)}/students/overview`,
+      opts?.signal,
     );
     return w.students.map((st) => ({
       studentId: st.detail.student_id,
@@ -497,8 +514,11 @@ export class HttpClient implements ApiClient {
     }));
   }
 
-  async getStudentSessions(studentId: string): Promise<SessionEntry[]> {
-    const w = await get<WireSessions>(`/students/${encodeURIComponent(studentId)}/sessions`);
+  async getStudentSessions(studentId: string, opts?: ReadOptions): Promise<SessionEntry[]> {
+    const w = await get<WireSessions>(
+      `/students/${encodeURIComponent(studentId)}/sessions`,
+      opts?.signal,
+    );
     return w.sessions.map((s) => ({
       sessionNumber: s.session_number,
       date: s.session_date ?? "",

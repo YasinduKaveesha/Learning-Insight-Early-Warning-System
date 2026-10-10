@@ -1,4 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { AuthorizationBoundary } from "./auth/AuthorizationBoundary";
+import { ForegroundPriority } from "./components/shared/ForegroundPriority";
 import { RedirectIfAuthed, RequireAuth } from "./auth/RouteGuard";
 import { SessionProvider } from "./auth/SessionProvider";
 import LoginRoute from "./routes/login/LoginRoute";
@@ -32,7 +34,15 @@ function App() {
             <Route
               element={
                 <RequireAuth>
-                  <Outlet />
+                  {/* Signed in is not the same as authorized. RequireAuth
+                      answers the first; this answers the second, once, for
+                      every protected screen. */}
+                  <AuthorizationBoundary>
+                    {/* Renders nothing. Holds the background warm-up while the
+                        open screen loads, on every route and every reload. */}
+                    <ForegroundPriority />
+                    <Outlet />
+                  </AuthorizationBoundary>
                 </RequireAuth>
               }
             >

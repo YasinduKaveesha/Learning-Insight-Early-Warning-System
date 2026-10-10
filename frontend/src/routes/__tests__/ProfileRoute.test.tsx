@@ -115,6 +115,27 @@ describe("ProfileRoute — states", () => {
     expect(screen.queryByText(/500/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
+
+  // REGRESSION (2026-10-08). Log out used to live inside the success branch
+  // only, so a teacher whose profile would not load was stranded: this is the
+  // one screen that ends a session, and signing in as someone else is often
+  // the fix. Clearing site data by hand was the only way out.
+  it("still offers Log out when the profile fails to load", async () => {
+    vi.mocked(client.getHome).mockRejectedValue(new Error("500 Internal Server Error"));
+    renderProfile();
+    await waitFor(() => expect(screen.getByText(/Couldn't load your profile/)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /log out/i })).toBeInTheDocument();
+  });
+
+  it("Log out works from the error state, not just from a loaded profile", async () => {
+    vi.mocked(client.getHome).mockRejectedValue(new Error("500 Internal Server Error"));
+    renderProfile();
+    await waitFor(() => expect(screen.getByRole("button", { name: /log out/i })).toBeInTheDocument());
+
+    await userEvent.setup().click(screen.getByRole("button", { name: /log out/i }));
+
+    await waitFor(() => expect(signOut).toHaveBeenCalledOnce());
+  });
 });
 
 describe("ProfileRoute — sign out (B6.3e-1 gate 5)", () => {
