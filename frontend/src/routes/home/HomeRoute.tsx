@@ -162,18 +162,17 @@ export default function HomeRoute() {
                   buttons respond, so a stray tap on the card does not navigate. */}
               <div className="relative flex flex-col justify-between gap-2 rounded-2xl border border-toneCard-blue-border bg-toneCard-blue-bg px-5 py-10">
                 <span className="self-start text-[17px] font-bold text-white">Students to Watch</span>
-                {/* Placeholder: no CompD page exists in this dashboard yet.
+                {/* Opens compD's teacher side, /compd (owner decision D-028).
                     Absolute so its height can follow the card's own height:
                     a quarter of it.
                     top-10 matches the card's py-10, so its gap to the top edge
                     equals "View watch list"'s gap to the bottom edge. */}
-                <button
-                  type="button"
-                  title="Coming soon"
-                  className="absolute right-5 top-10 h-[25%] w-36 rounded-2xl bg-suggestionPurple-accept text-sm font-bold text-white"
+                <Link
+                  to="/compd"
+                  className="absolute right-5 top-10 flex h-[25%] w-36 items-center justify-center rounded-2xl bg-suggestionPurple-accept text-sm font-bold text-white"
                 >
-                  CompD
-                </button>
+                  Thinking Skills
+                </Link>
                 <span className="ml-10 text-7xl font-bold text-white">
                   {data.studentsToWatch}
                 </span>

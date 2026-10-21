@@ -60,6 +60,11 @@ class Settings(BaseSettings):
         default="", validation_alias="T3_DEMO_TEACHER_POOL"
     )
 
+    # CompD's "Generate with AI" (owner direction 2026-10-21: the dashboard serves compD
+    # itself). Optional: unset, the drafts route answers 503 and every other CompD route
+    # works. Never logged or returned.
+    gemini_api_key: str | None = Field(default=None, validation_alias="GEMINI_API_KEY")
+
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

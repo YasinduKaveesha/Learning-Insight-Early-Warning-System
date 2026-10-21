@@ -8,6 +8,8 @@ import ClassroomReportsRoute from "./routes/classroom-reports/ClassroomReportsRo
 import ClassroomRequestsRoute from "./routes/classroom-requests/ClassroomRequestsRoute";
 import ClassroomRoute from "./routes/classroom/ClassroomRoute";
 import ClassroomWatchRoute from "./routes/classroom-watch/ClassroomWatchRoute";
+import CompdRoute from "./routes/compd/CompdRoute";
+import CompdStudentRoute from "./routes/compd/CompdStudentRoute";
 import GalleryRoute from "./routes/gallery/GalleryRoute";
 import HomeRoute from "./routes/home/HomeRoute";
 import ProfileRoute from "./routes/profile/ProfileRoute";
@@ -53,6 +55,10 @@ function App() {
               Back must land somewhere real, not on a blank page. */}
           <Route path="/classes" element={<Navigate to="/" replace />} />
           <Route path="/watch/:studentId?" element={<WatchRoute />} />
+          {/* compD's teacher side (owner decision D-028): one page with two
+              tabs, and one page per student. */}
+          <Route path="/compd" element={<CompdRoute />} />
+          <Route path="/compd/students/:studentId" element={<CompdStudentRoute />} />
           <Route path="/profile" element={<ProfileRoute />} />
 
           <Route path="/classes/:classId" element={<ClassroomRoute />} />

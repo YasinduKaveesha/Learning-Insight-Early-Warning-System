@@ -48,7 +48,7 @@ services:
     ports:
       - "127.0.0.1:8100:8100"
     networks:
-      - upadya
+      - studentapp
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health/ready', timeout=3)"]
       interval: 10s
@@ -63,6 +63,9 @@ networks:
   # Created by the student app's stack. `external: true` means compose joins it and never
   # creates it: if the student app is not up, this fails loudly instead of starting an
   # isolated API that cannot see any data.
-  upadya:
+  studentapp:
     external: true
-    name: upadya-be1_default
+    # This must track the STUDENT APP's compose project name -- it is their network and we
+    # only join it. Renamed by that team on 2026-10-10 (was `upadya-be1_default`), which
+    # took this backend down until the name here followed.
+    name: studentapp_default

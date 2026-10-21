@@ -71,6 +71,18 @@ describe("HomeRoute — the watch card", () => {
     const link = screen.getByText("View watch list").closest("a")!;
     expect(link).toHaveAttribute("href", "/watch");
   });
+
+  it("CompD is a link to /compd, and the watch list link is unchanged (D-028, U1)", async () => {
+    vi.mocked(client.getHome).mockResolvedValue(HOME_SUMMARY);
+    renderHome();
+    await waitFor(() => expect(screen.getByText("7")).toBeInTheDocument());
+    // A link, not the old "Coming soon" button: its accessible name is its text.
+    const compd = screen.getByRole("link", { name: "Thinking Skills" });
+    expect(compd).toHaveAttribute("href", "/compd");
+    expect(compd).not.toHaveAttribute("title");
+    expect(screen.queryByRole("button", { name: "Thinking Skills" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View watch list" })).toHaveAttribute("href", "/watch");
+  });
 });
 
 describe("HomeRoute — stat tiles and classes", () => {

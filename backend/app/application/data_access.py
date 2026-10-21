@@ -59,6 +59,8 @@ from app.infrastructure.db.models import (
     classroom_invites,
     classroom_memberships,
     classrooms,
+    d_cognitive_profiles,
+    d_interactions,
     teacher_profiles,
 )
 
@@ -689,3 +691,131 @@ async def learner_visible_to_teacher(
         )
     )
     return (await session.execute(stmt)).first() is not None
+
+
+# ==========================================================================================
+# CompD readers (owner direction 2026-10-21: the dashboard serves compD's teacher side itself).
+# The student app's compD tables, READ ONLY, REAL learners only -- the same two rules as every
+# student-app reader above. Every teacher sees every REAL child here, in any class or none (owner
+# Q10, "use all the students in the compd"); narrowing that to a teacher's own classes is one
+# more WHERE on the class join.
+# ==========================================================================================
+
+
+def _compd_learners_stmt():
+    """REAL learners with the name of their one APPROVED class, in a REAL, non-deleted classroom,
+    whoever owns it -- an OUTER join, so a learner with no class is still listed (name None)."""
+
+    approved_live = (
+        select(classroom_memberships.c.learner_id, classrooms.c.name.label("classroom_name"))
+        .select_from(
+            classroom_memberships.join(
+                classrooms, classroom_memberships.c.classroom_id == classrooms.c.classroom_id
+            )
+        )
+        .where(
+            classroom_memberships.c.state == APPROVED_STATE,
+            classrooms.c.source_class == REAL_SOURCE_CLASS,
+            classrooms.c.deleted_at_utc.is_(None),
+        )
+        .subquery()
+    )
+    return (
+        select(
+            b_learners.c.learner_id,
+            b_learners.c.name,
+            b_learners.c.grade,
+            approved_live.c.classroom_name,
+        )
+        .select_from(
+            b_learners.outerjoin(approved_live, approved_live.c.learner_id == b_learners.c.learner_id)
+        )
+        .where(b_learners.c.source_class == REAL_SOURCE_CLASS)
+    )
+
+
+async def compd_learners(session: AsyncSession) -> list[SimpleNamespace]:
+    """Every REAL learner, with `learner_id`, `name`, `grade`, `classroom_name`."""
+
+    return _as_records((await session.execute(_compd_learners_stmt())).all())
+
+
+async def compd_learner(session: AsyncSession, learner_id: uuid.UUID) -> SimpleNamespace | None:
+    """One REAL learner as `compd_learners` shapes it, or None (unknown OR a TEST row -- the same
+    answer, so a caller cannot tell a TEST row exists)."""
+
+    rows = (
+        await session.execute(_compd_learners_stmt().where(b_learners.c.learner_id == learner_id))
+    ).all()
+    return _as_records(rows)[0] if rows else None
+
+
+async def compd_interactions(session: AsyncSession) -> list[SimpleNamespace]:
+    """Every REAL learner's answers, in ONE query, ordered `(created_at_utc, question_id)`.
+
+    One profiling run's rows are inserted in one transaction and share `created_at_utc`, so
+    `question_id` is a deterministic TIE-BREAK, not the order the child answered in.
+    """
+
+    stmt = (
+        select(
+            d_interactions.c.learner_id,
+            d_interactions.c.session_id,
+            d_interactions.c.question_id,
+            d_interactions.c.topic,
+            d_interactions.c.response_time_sec,
+            d_interactions.c.attempts,
+            d_interactions.c.response_matched,
+            d_interactions.c.assist_used,
+            d_interactions.c.created_at_utc,
+        )
+        .select_from(
+            d_interactions.join(b_learners, d_interactions.c.learner_id == b_learners.c.learner_id)
+        )
+        .where(b_learners.c.source_class == REAL_SOURCE_CLASS)
+        .order_by(d_interactions.c.created_at_utc, d_interactions.c.question_id)
+    )
+    return _as_records((await session.execute(stmt)).all())
+
+
+_PROFILE_COLUMNS = (
+    d_cognitive_profiles.c.learner_id,
+    d_cognitive_profiles.c.session_id,
+    d_cognitive_profiles.c.memory_level,
+    d_cognitive_profiles.c.attention_level,
+    d_cognitive_profiles.c.number_sense_level,
+    d_cognitive_profiles.c.processing_speed_level,
+    d_cognitive_profiles.c.features,
+    d_cognitive_profiles.c.generated_at,
+)
+
+
+async def compd_latest_profiles(session: AsyncSession) -> list[SimpleNamespace]:
+    """The newest profile of each REAL learner, in ONE query (`DISTINCT ON`)."""
+
+    stmt = (
+        select(*_PROFILE_COLUMNS)
+        .select_from(
+            d_cognitive_profiles.join(
+                b_learners, d_cognitive_profiles.c.learner_id == b_learners.c.learner_id
+            )
+        )
+        .where(b_learners.c.source_class == REAL_SOURCE_CLASS)
+        .distinct(d_cognitive_profiles.c.learner_id)
+        .order_by(d_cognitive_profiles.c.learner_id, d_cognitive_profiles.c.generated_at.desc())
+    )
+    return _as_records((await session.execute(stmt)).all())
+
+
+async def compd_profile_history(
+    session: AsyncSession, learner_id: uuid.UUID, limit: int
+) -> list[SimpleNamespace]:
+    """One learner's profiles, newest first. The caller has already checked the learner is REAL."""
+
+    stmt = (
+        select(*_PROFILE_COLUMNS)
+        .where(d_cognitive_profiles.c.learner_id == learner_id)
+        .order_by(d_cognitive_profiles.c.generated_at.desc())
+        .limit(limit)
+    )
+    return _as_records((await session.execute(stmt)).all())
