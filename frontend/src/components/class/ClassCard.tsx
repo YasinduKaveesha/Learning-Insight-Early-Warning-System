@@ -17,8 +17,8 @@ export interface ClassCardProps {
 const GRADE_TONE_CLASSES: Record<Grade, string> = {
   // Reuses the same blue/green pair Home's stat tiles use, so the two
   // colour languages on the page agree with each other.
-  GRADE_2: "border-watch-watching-border bg-watch-watching-bg text-watch-watching-fg",
-  GRADE_3: "border-watch-noConcern-border bg-watch-noConcern-bg text-watch-noConcern-fg",
+  GRADE_2: "border-toneCard-blue-border bg-toneCard-blue-bg text-white",
+  GRADE_3: "border-toneCard-green-border bg-toneCard-green-bg text-white",
 };
 
 export function ClassCard({
@@ -38,9 +38,9 @@ export function ClassCard({
         className={`relative flex min-h-[88px] w-full flex-col justify-between gap-2 rounded-lg border p-3 text-left ${GRADE_TONE_CLASSES[grade]}`}
       >
         <p className="text-[15px] font-bold">{name}</p>
-        <p className="self-end text-sm">
-          <span className="text-[24px] font-semibold">{toWatchCount}</span> /{" "}
-          <span className="text-[24px] font-semibold">{studentCount}</span>{" "}
+        <p className="self-end text-sm font-semibold">
+          <span className="text-[24px] font-bold">{toWatchCount}</span> /{" "}
+          <span className="text-[24px] font-bold">{studentCount}</span>{" "}
           <span className="text-[12px]">watch</span>
         </p>
         {pendingRequestCount && pendingRequestCount > 0 ? (

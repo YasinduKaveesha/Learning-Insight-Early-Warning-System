@@ -25,10 +25,11 @@ function CardFrame({ className = "", children }: { className?: string; children?
 export function HomeSkeleton() {
   return (
     <SkeletonRegion label="Loading your dashboard" className="flex flex-col gap-4">
-      {/* The watch card: title, big number, "View watch list" pill. */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface1 px-5 py-10">
+      {/* The watch card: title, big number, CompD and "View watch list" on the right. */}
+      <div className="relative flex flex-col gap-4 rounded-2xl border border-border bg-surface1 px-5 py-10">
         <Bone className="h-5 w-40" />
         <Bone className="ml-10 h-16 w-24" />
+        <Bone className="absolute right-5 top-10 h-[25%] w-36 rounded-2xl" />
         <Bone className="h-9 w-36 self-end rounded-full" />
       </div>
 

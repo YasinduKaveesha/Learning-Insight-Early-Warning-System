@@ -13,18 +13,22 @@ export interface ExplanationBlockProps {
    * other caller) renders the full text, unclamped — the explanation is
    * still never behind a tap, just visually capped where a caller opts in. */
   clampLines?: number;
+  /** White text, for a caller that places this on a solid-colour card (the
+   * /watch list cards). Default false keeps the dark ink everywhere else. */
+  onColor?: boolean;
 }
 
 /** A suppressed or null explanation renders nothing — not an empty "Why?"
  * heading (a heading with nothing under it reads as a broken page, not as
  * "there is no reason"). */
-export function ExplanationBlock({ explanation, showHeading = true, clampLines }: ExplanationBlockProps) {
+export function ExplanationBlock({ explanation, showHeading = true, clampLines, onColor = false }: ExplanationBlockProps) {
   if (!explanation) return null;
+  const textClass = onColor ? "font-semibold text-white" : "text-ink-primary";
   return (
     <div>
-      {showHeading ? <h3 className="text-sm font-semibold text-ink-primary">Why?</h3> : null}
+      {showHeading ? <h3 className={`text-sm font-semibold ${textClass}`}>Why?</h3> : null}
       <p
-        className="mt-1 text-sm text-ink-primary"
+        className={`mt-1 text-sm ${textClass}`}
         style={clampLines ? { display: "-webkit-box", WebkitLineClamp: clampLines, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}
       >
         {explanation}

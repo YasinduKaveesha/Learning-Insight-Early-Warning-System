@@ -18,13 +18,13 @@ import { type Grade, type LearnerSnapshot } from "../../lib/presentation";
 // agree with each other. Undefined (grade not yet known/resolved) falls
 // back to the original neutral surface1 card.
 const GRADE_TONE_CLASSES: Record<Grade, string> = {
-  GRADE_2: "border-watch-watching-border bg-watch-watching-bg text-watch-watching-fg",
-  GRADE_3: "border-watch-noConcern-border bg-watch-noConcern-bg text-watch-noConcern-fg",
+  GRADE_2: "border-toneCard-blue-border bg-toneCard-blue-bg text-white",
+  GRADE_3: "border-toneCard-green-border bg-toneCard-green-bg text-white",
 };
 
-// The class-name pill's own background — the card's fill is already a
-// SOFT tint of this same grade colour, so the pill uses the solid
-// foreground shade instead (with white text) to stay visible on top of it.
+// The class-name pill's own background — the card's fill is the solid
+// grade colour, so the pill uses the darker foreground shade of the same
+// hue (with white text) to stay visible on top of it.
 const GRADE_PILL_CLASSES: Record<Grade, string> = {
   GRADE_2: "bg-watch-watching-fg text-white",
   GRADE_3: "bg-watch-noConcern-fg text-white",
@@ -258,6 +258,8 @@ function WatchCard({
       : `/watch/${snapshot.studentId}`
     : `/students/${snapshot.studentId}`;
   const toneClasses = classInfo ? GRADE_TONE_CLASSES[classInfo.grade] : "border-border bg-surface1";
+  // White text only on a solid grade colour; the neutral fallback card keeps dark ink.
+  const onColor = classInfo !== undefined;
   // UI-refinement pass: every card the same height regardless of how long
   // its explanation is — a fixed min-height plus a 3-line clamp on the
   // explanation (below) together keep the layout from growing per-card.
@@ -266,7 +268,7 @@ function WatchCard({
       {/* UI-refinement pass: the "Worth watching right now" status badge is
           removed entirely — replaced by just the class name, top-right. */}
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[17px] font-bold text-ink-primary">{snapshot.displayName}</span>
+        <span className={`text-[17px] font-bold ${onColor ? "text-white" : "text-ink-primary"}`}>{snapshot.displayName}</span>
         {classInfo ? (
           <span
             className={`flex items-center justify-center rounded-full px-3 py-1 text-center text-[15px] font-medium ${GRADE_PILL_CLASSES[classInfo.grade]}`}
@@ -276,15 +278,15 @@ function WatchCard({
         ) : null}
       </div>
       <div className="mt-2">
-        <ExplanationBlock explanation={snapshot.explanation} showHeading={false} clampLines={3} />
+        <ExplanationBlock explanation={snapshot.explanation} showHeading={false} clampLines={3} onColor={onColor} />
       </div>
-      <p className="mt-2 text-sm text-ink-secondary">
+      <p className={`mt-2 text-sm ${onColor ? "font-semibold text-white" : "text-ink-secondary"}`}>
         {lastActiveLabel(snapshot.lastActiveDate)}
       </p>
       {/* Decision B: the watch list still lists every flagged learner (the count
           is unchanged), and says which ones the teacher has already acted on. */}
       {handledNote(snapshot) ? (
-        <p className="mt-1 text-sm font-semibold text-watch-watching-fg">{handledNote(snapshot)}</p>
+        <p className={`mt-1 text-sm font-semibold ${onColor ? "text-white" : "text-watch-watching-fg"}`}>{handledNote(snapshot)}</p>
       ) : null}
     </Link>
   );

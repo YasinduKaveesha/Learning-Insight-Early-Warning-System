@@ -394,7 +394,7 @@ describe("ClassroomRoute — decision B: a handled suggestion moves the card, no
 
     expect(screen.getByText("Suggestion accepted")).toBeInTheDocument();
     const card = screen.getByText("Dilshan").closest("a")!.firstElementChild as HTMLElement;
-    expect(card.className).toMatch(/watch-watching/);
+    expect(card.className).toMatch(/toneCard-blue/);
   });
 
   it("leads All Students, ahead of learners with no concern", async () => {
