@@ -50,8 +50,7 @@ const TEXT_PAIRS: { name: string; fg: string; bg: string; min: number }[] = [
   { name: "foreground / primary (CTA text)", fg: colors.foreground, bg: colors.primary, min: AA_NORMAL_TEXT },
   { name: "foreground / danger.soft (Dismiss/Reject text)", fg: colors.foreground, bg: colors.dangerSoft, min: AA_NORMAL_TEXT },
   { name: "dangerText / surface1 (inline form error)", fg: colors.dangerText, bg: colors.surface1, min: AA_NORMAL_TEXT },
-  { name: "surface1 / foreground (dark button text)", fg: colors.surface1, bg: colors.foreground, min: AA_NORMAL_TEXT },
-];
+  { name: "surface1 / foreground (dark button text)", fg: colors.surface1, bg: colors.foreground, min: AA_NORMAL_TEXT },];
 
 // Non-text graphical objects (icons, focus outlines, progress-bar fills) —
 // WCAG 1.4.11 sets a lower 3:1 bar for these, not 4.5:1.
@@ -88,6 +87,12 @@ describe("Step 8: WCAG AA contrast — every text/background pair in the theme l
   it("documents that primaryForeground (white on primary) FAILS AA for normal text — never use it for text", () => {
     const ratio = contrastRatio(colors.primaryForeground, colors.primary);
     expect(ratio).toBeLessThan(AA_NORMAL_TEXT);
+  });
+
+  it("documents that white text on the bright toneCard fills FAILS AA — chosen at explicit direction (see tokens.ts)", () => {
+    for (const bg of [colors.toneCardBlueBg, colors.toneCardGreenBg, colors.toneCardAmberBg]) {
+      expect(contrastRatio(colors.surface1, bg)).toBeLessThan(AA_NORMAL_TEXT);
+    }
   });
 
   it("documents that dangerForeground (white on danger) FAILS AA for normal text — never use it for text", () => {

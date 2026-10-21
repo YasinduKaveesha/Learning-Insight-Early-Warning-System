@@ -13,6 +13,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.class_keys import router as class_keys_router
+from app.api.routes.compd import router as compd_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.health import router as health_router
 from app.api.routes.recommendations import router as recommendations_router
@@ -116,6 +117,9 @@ def create_app() -> FastAPI:
     application.include_router(dashboard_router)
     application.include_router(class_keys_router)
     application.include_router(recommendations_router)
+    # CompD's teacher side (owner direction 2026-10-21): served here, so the dashboard needs
+    # nothing from the student app's API.
+    application.include_router(compd_router)
 
     return application
 

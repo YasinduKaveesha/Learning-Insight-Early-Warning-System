@@ -139,6 +139,21 @@ export default {
           fg: "#2f3136", // foreground
         },
 
+        // Solid card fills, at explicit direction (2026-10-21): the soft
+        // tints above read as too dull on the coloured cards (stat tiles,
+        // class cards, student cards, the Home watch card). A middle set
+        // between the student app's bright blue/green/orange (Upadya compd
+        // theme) and an AA-dark set — both rejected at explicit direction,
+        // as too bright and too dark respectively.
+        // FLAGGED, not substituted: white text on these measures 3.35 /
+        // 3.40 / 2.67:1, under AA 4.5 — text on them is kept bold.
+        // Badges and banners keep the soft tints.
+        toneCard: {
+          blue: { bg: "#3c8df0", border: "#2f7fdd" },
+          green: { bg: "#1f9e6e", border: "#188a5f" },
+          amber: { bg: "#e8862a", border: "#d07420" },
+        },
+
         // UI-refinement pass: 5-colour categorical palette for skill-
         // progress bars, exact values given — one hue per row, cycling
         // (rows 6-7 repeat rows 2-3's colours). coral/blue/green reuse

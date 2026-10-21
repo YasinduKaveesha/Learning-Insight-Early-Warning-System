@@ -22,9 +22,9 @@ export interface StudentCardProps {
 // watch.gettingStarted (near-white) is NOT used here — it barely reads as
 // a colour at all, which is why this card needed a visible one.
 const STATUS_TONE_CLASSES: Record<WatchStatus["kind"], string> = {
-  watching: "border-watch-watching-border bg-watch-watching-bg",
-  no_concern: "border-watch-noConcern-border bg-watch-noConcern-bg",
-  getting_started: "border-statAmber-border bg-statAmber-bg",
+  watching: "border-toneCard-blue-border bg-toneCard-blue-bg",
+  no_concern: "border-toneCard-green-border bg-toneCard-green-bg",
+  getting_started: "border-toneCard-amber-border bg-toneCard-amber-bg",
 };
 
 /** Name, practice trajectory word, last session (docs/11 §4). Getting
@@ -53,21 +53,21 @@ export function StudentCard({ snapshot, onClick }: StudentCardProps) {
       {/* Vertically centered on the whole card, right corner — independent
           of the name/last-active flow above and below it. */}
       {status.kind === "getting_started" ? (
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-ink-secondary">
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[20px] font-semibold text-white">
           {gettingStartedProgress(status.sessionsCompleted, status.sessionsRequired)}
         </span>
       ) : (
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[20px] text-ink-secondary">
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[20px] font-semibold text-white">
           {trajectoryStateWord(snapshot.practiceTrajectory.state)}
         </span>
       )}
 
-      <p className="text-sm text-ink-secondary">
+      <p className="text-sm font-semibold text-white">
         {lastActiveLabel(snapshot.lastActiveDate)}
       </p>
       {/* Decision B: says why a blue card is outside the watch section. */}
       {handledNote(snapshot) ? (
-        <p className="text-sm font-semibold text-watch-watching-fg">{handledNote(snapshot)}</p>
+        <p className="text-sm font-semibold text-white">{handledNote(snapshot)}</p>
       ) : null}
     </Wrapper>
   );

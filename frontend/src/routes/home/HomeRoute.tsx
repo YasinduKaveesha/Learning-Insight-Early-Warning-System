@@ -158,21 +158,32 @@ export default function HomeRoute() {
                   requirement is a compliance/checklist item, not a visual one,
                   so the total stays available to assistive tech even though
                   neither it nor the framing sentence is shown on screen. */}
-              <Link
-                to="/watch"
-                className="flex flex-col justify-between gap-2 rounded-2xl border border-watch-watching-border bg-watch-watching-bg px-5 py-10"
-              >
-                <span className="self-start text-[17px] font-medium text-watch-watching-fg">
-                  Students to Watch
-                </span>
-                <span className="ml-10 text-7xl font-bold text-watch-watching-fg">
+              {/* Not a link itself, at explicit direction (2026-10-21): only the two
+                  buttons respond, so a stray tap on the card does not navigate. */}
+              <div className="relative flex flex-col justify-between gap-2 rounded-2xl border border-toneCard-blue-border bg-toneCard-blue-bg px-5 py-10">
+                <span className="self-start text-[17px] font-bold text-white">Students to Watch</span>
+                {/* Opens compD's teacher side, /compd (owner decision D-028).
+                    Absolute so its height can follow the card's own height:
+                    a quarter of it.
+                    top-10 matches the card's py-10, so its gap to the top edge
+                    equals "View watch list"'s gap to the bottom edge. */}
+                <Link
+                  to="/compd"
+                  className="absolute right-5 top-10 flex h-[25%] w-36 items-center justify-center rounded-2xl bg-suggestionPurple-accept text-sm font-bold text-white"
+                >
+                  Thinking Skills
+                </Link>
+                <span className="ml-10 text-7xl font-bold text-white">
                   {data.studentsToWatch}
                 </span>
                 <span className="sr-only">of {data.activeStudents} students</span>
-                <span className="self-end rounded-full bg-watch-watching-fg px-4 py-2 text-sm font-medium text-white">
+                <Link
+                  to="/watch"
+                  className="w-36 self-end rounded-full bg-watch-watching-fg py-2 text-center text-sm font-medium text-white"
+                >
                   View watch list
-                </span>
-              </Link>
+                </Link>
+              </div>
               {/* Pinned with the watch card, at explicit direction (2026-09-16).
                   They used to scroll UNDER it, which read as three cards cut off
                   along their top edge rather than as a deliberate slide. Now only

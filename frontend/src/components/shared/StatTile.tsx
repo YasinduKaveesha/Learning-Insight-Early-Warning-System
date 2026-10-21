@@ -12,9 +12,9 @@ export interface StatTileProps {
 }
 
 const TONE_CLASSES: Record<NonNullable<StatTileProps["tone"]>, string> = {
-  blue: "border-watch-watching-border bg-watch-watching-bg text-watch-watching-fg",
-  green: "border-watch-noConcern-border bg-watch-noConcern-bg text-watch-noConcern-fg",
-  amber: "border-statAmber-border bg-statAmber-bg text-statAmber-fg",
+  blue: "border-toneCard-blue-border bg-toneCard-blue-bg text-white",
+  green: "border-toneCard-green-border bg-toneCard-green-bg text-white",
+  amber: "border-toneCard-amber-border bg-toneCard-amber-bg text-white",
 };
 
 export function StatTile({ label, value, caption, infoText, tone }: StatTileProps) {
@@ -37,7 +37,7 @@ export function StatTile({ label, value, caption, infoText, tone }: StatTileProp
           ) : null}
         </div>
         <div className="self-end text-2xl font-bold">{value}</div>
-        {caption ? <div className="self-end text-sm">{caption}</div> : null}
+        {caption ? <div className="self-end text-sm font-semibold">{caption}</div> : null}
       </div>
     );
   }

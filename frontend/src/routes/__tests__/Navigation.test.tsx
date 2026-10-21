@@ -1,8 +1,40 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
+
+// A session the CompD sign-in test (U11) can sign out. Every other test here runs
+// signed in, exactly as the real mock-mode SessionProvider would have them.
+const session = vi.hoisted(() => ({ authed: true }));
+vi.mock("../../auth/SessionProvider", async () => {
+  const actual = await vi.importActual<typeof import("../../auth/SessionProvider")>(
+    "../../auth/SessionProvider",
+  );
+  return {
+    ...actual,
+    SessionProvider: ({ children }: { children: ReactNode }) => children,
+    useSession: () => ({
+      status: session.authed ? "mock" : "unauthenticated",
+      session: null,
+      isAuthed: session.authed,
+      signIn: async () => {
+        session.authed = true;
+        return null;
+      },
+      signUp: async () => ({ ok: true, needsConfirmation: false }),
+      signOut: async () => {
+        session.authed = false;
+      },
+    }),
+  };
+});
+
+afterEach(() => {
+  session.authed = true;
+});
 
 /**
  * Navigation, against the REAL route table in App.tsx (the test environment runs
@@ -62,5 +94,42 @@ describe("Navigation — no screen links to /classes", () => {
     };
     walk(root);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("Navigation — the CompD pages through sign-in (D-028, U11)", () => {
+  function FullLocationProbe() {
+    const location = useLocation();
+    return <div data-testid="full-location">{`${location.pathname}${location.search}${location.hash}`}</div>;
+  }
+
+  function renderSignedOutAt(path: string) {
+    session.authed = false;
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[path]}>
+          <App />
+          <FullLocationProbe />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  async function signIn() {
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Email"), "teacher@example.test");
+    await user.type(screen.getByLabelText("Password"), "a-long-enough-password");
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+  }
+
+  it.each([
+    ["/compd?tab=questions", "/compd"],
+    ["/compd/students/STU-0001#history", "/compd/students/STU-0001"],
+  ])("%s redirects to sign-in, then returns to the same PATH (Q16 (a): not the ?tab or #)", async (start, back) => {
+    renderSignedOutAt(start);
+    await waitFor(() => expect(screen.getByTestId("full-location")).toHaveTextContent(/^\/login$/));
+    await signIn();
+    await waitFor(() => expect(screen.getByTestId("full-location").textContent).toBe(back));
   });
 });

@@ -23,6 +23,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -136,6 +137,43 @@ teacher_profiles = Table(
     # B6.1 and the whole suite stayed green over it.
     Column("name", String(255)),
     Column("source_class", String(16)),
+    info={"component3_shadow": True},
+)
+
+
+# CompD (owner direction 2026-10-21: the dashboard serves compD's teacher side itself). The
+# student app's own cognitive-profiling tables, READ ONLY -- `data_access` selects from them and
+# nothing in Component 3 may write them (`tests/test_no_bc_writeback.py`). Only the columns the
+# CompD readers select. The confidence value and model version stored beside each profile are
+# deliberately absent: the dashboard never serves them, so it never reads them.
+d_interactions = Table(
+    "d_interactions",
+    Base.metadata,
+    Column("d_interaction_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("learner_id", PgUUID(as_uuid=True)),
+    Column("session_id", PgUUID(as_uuid=True)),
+    Column("question_id", String(128)),
+    Column("topic", String(16)),
+    Column("response_time_sec", Float),
+    Column("attempts", SmallInteger),
+    Column("response_matched", Boolean),
+    Column("assist_used", Boolean),
+    Column("created_at_utc", DateTime(timezone=True)),
+    info={"component3_shadow": True},
+)
+
+d_cognitive_profiles = Table(
+    "d_cognitive_profiles",
+    Base.metadata,
+    Column("d_cognitive_profile_id", PgUUID(as_uuid=True), primary_key=True),
+    Column("learner_id", PgUUID(as_uuid=True)),
+    Column("session_id", PgUUID(as_uuid=True)),
+    Column("memory_level", String(16)),
+    Column("attention_level", String(16)),
+    Column("number_sense_level", String(16)),
+    Column("processing_speed_level", String(16)),
+    Column("features", JSONB),
+    Column("generated_at", DateTime(timezone=True)),
     info={"component3_shadow": True},
 )
 
@@ -811,4 +849,70 @@ class RecommendationTransition(ProvenanceMixin, Base):
     teacher_modified_action: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     occurred_at_utc: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class CompdQuestionRecord(ProvenanceMixin, Base):
+    """`t3_compd_questions` -- compD's shared question bank, owned by Component 3 (owner direction
+    2026-10-21: the dashboard is independent of the student app, CompD included).
+
+    compD kept one bank that every teacher reads and edits, with hard deletes and no idempotency
+    key; this keeps that behaviour. `created_by_teacher_profile_id` records the author and never
+    changes; `updated_by_teacher_profile_id` the last editor. Both reference the student app's
+    `teacher_profiles` read-only, RESTRICT, the way `t3_classroom_keys` references `classrooms`.
+
+    `question_code` is optional and unique only when given (a partial unique index); a clash is
+    the API's 409. `options` is a JSON array or SQL NULL -- `none_as_null`, so a Python `None` is
+    never stored as the JSON value `null`, which the CHECK would refuse. Its 2-6 rule, with the
+    answer appended, is the API's (`app.domain.compd.with_answer`).
+
+    Carries the full six-column `ProvenanceMixin` like `t3_classroom_keys`: a question is not a
+    pipeline output, so `pipeline_run_id` is the same all-zero sentinel that table writes. Nothing
+    on the children's side reads this table: these questions do not reach the student app (Q7).
+    """
+
+    __tablename__ = "t3_compd_questions"
+    __table_args__ = (
+        CheckConstraint(
+            "topic IN ('Counting', 'Addition', 'Subtraction', 'Division')", name="topic"
+        ),
+        CheckConstraint("difficulty IN ('Easy', 'Medium', 'Hard')", name="difficulty"),
+        CheckConstraint("question_text <> ''", name="question_text_nonblank"),
+        CheckConstraint("correct_answer <> ''", name="correct_answer_nonblank"),
+        CheckConstraint(
+            "options IS NULL OR jsonb_typeof(options) = 'array'", name="options_array"
+        ),
+        Index(
+            "uq_t3_compd_questions_question_code",
+            "question_code",
+            unique=True,
+            postgresql_where=sa_text("question_code IS NOT NULL"),
+        ),
+        source_class_check(),
+    )
+
+    question_id: Mapped[uuid.UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
+    question_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    topic: Mapped[str] = mapped_column(String(16), nullable=False)
+    difficulty: Mapped[str] = mapped_column(String(8), nullable=False)
+    question_text: Mapped[str] = mapped_column(String(500), nullable=False)
+    correct_answer: Mapped[str] = mapped_column(String(255), nullable=False)
+    options: Mapped[list | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    created_by_teacher_profile_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey(
+            "teacher_profiles.teacher_profile_id",
+            name="fk_t3_compd_questions_created_by_teacher_profiles",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+    updated_by_teacher_profile_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey(
+            "teacher_profiles.teacher_profile_id",
+            name="fk_t3_compd_questions_updated_by_teacher_profiles",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
     )

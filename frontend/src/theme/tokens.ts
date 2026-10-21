@@ -140,6 +140,17 @@ export const colors = {
   // `foreground` on this bg measures 11.72:1, clearing AA with margin.
   statAmberBg: "#fdf3d0",
 
+  // Solid card fills (toneCard in tailwind.config.js — kept in sync here).
+  // A middle set from Upadya's blue/green/orange. FAILS AA for white text
+  // (3.35 / 3.40 / 2.67:1) — flagged, not substituted; text on these is
+  // kept bold.
+  toneCardBlueBg: "#3c8df0",
+  toneCardBlueBorder: "#2f7fdd",
+  toneCardGreenBg: "#1f9e6e",
+  toneCardGreenBorder: "#188a5f",
+  toneCardAmberBg: "#e8862a",
+  toneCardAmberBorder: "#d07420",
+
   // UI-refinement pass: 5-colour categorical skill-bar palette (skillBar
   // in tailwind.config.js — kept in sync here). Exact values given;
   // contrast against `surface2` flagged, not overridden — see that
